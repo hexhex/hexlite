@@ -38,8 +38,43 @@ class alist(list):
   used to store lists separated by ',' or ':' or ';'
   used to store lists enclosed with '()' or '[]' or '{}'
   '''
+  def sleft(self):
+    if self.left:
+      return self.left
+    else:
+      return ''
+  def sright(self):
+    if self.right:
+      return self.right
+    else:
+      return ''
+  def ssep(self):
+    if self.sep:
+      return self.sep
+    else:
+      return ''
   def __init__(self, content, left=None, right=None, sep=None):
     assert(isinstance(content, list))
+    class MyError(Exception):
+      pass
+    def takeOrThrow(first, second):
+      if first is None:
+        return second
+      elif second is None:
+        return first
+      else:
+        raise MyError()
+    if isinstance(content, alist):
+      # incorporate list (if possible)
+      try:
+        self.left = takeOrThrow(left, content.left)
+        self.right = takeOrThrow(right, content.right)
+        self.sep = takeOrThrow(sep, content.sep)
+        list.__init__(self, content)
+        return
+      except MyError:
+        # if not possible continue with normal constructor
+        pass
     list.__init__(self, content)
     self.left = left
     self.right = right
@@ -50,16 +85,18 @@ class alist(list):
       assert(other.left == self.left and other.right == self.right and other.sep == self.sep)
     return alist(list.__add__(self, other), self.left, self.right, self.sep)
   def __repr__(self):
-    left = '<'
     if self.left:
-      left = self.left
-    right = '>'
+      left = '<'+self.left+'<'
+    else:
+      left = '<<'
     if self.right:
-      right = self.right
+      right = '>'+self.right+'>'
+    else:
+      right = '>>'
     sep = ' '
     if self.sep:
       sep = self.sep
-    return '<{}{}{}>'.format(left, sep.join([repr(s) for s in self]), right)
+    return '{}{}{}'.format(left, sep.join([repr(s) for s in self]), right)
   __str__ = __repr__
 
 # count line numbers and ignore them
@@ -106,9 +143,9 @@ def p_statement(p):
             | disjlist STOP
   '''
   if len(p) == 6:
-    p[0] = p[1] + [alist([p[4]], left='[', right=']')]
+    p[0] = [alist(p[1], right='.'), alist([p[4]], left='[', right=']')]
   else:
-    p[0] = p[1]
+    p[0] = alist(p[1], right='.')
 
 def p_rule_1(p):
   'rule : disjlist SEPRULE disjlist'
@@ -218,7 +255,7 @@ def testparse():
         message('LOK: '+t)
         lok += 1
         #if DEBUG:
-        #  print('LRES: '+repr(toks))
+        #  message('LRES: '+repr(toks))
       except:
         message('LFAIL: '+t)
         lfail += 1
@@ -250,32 +287,53 @@ def testparse():
         message('EXC: '+traceback.format_exc())
   message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
 
-def shallowprint(prog):
-  if isinstance(prog, alist):
-    pass
-  if isinstance(prog, list):
-    pass
-  for r in prog:
-    message(pprint.pformat(r))
+def shallowprint(x):
+  if isinstance(x, alist):
+    ret = (
+      x.sleft() +
+      (' '+x.ssep()+' ').join(
+        [ shallowprint(y) for y in x]) + 
+      x.sright())
+    if ret.endswith('.'):
+      ret += '\n'
+    return ret
+  if isinstance(x, list):
+    return ' '.join([ shallowprint(y) for y in x ])
+  if isinstance(x, str):
+    return x
+  if isinstance(x, int):
+    return str(x)
+  if x is None:
+    return ''
+  raise Exception("unexpected "+repr(x))
 
 def testprint():
   TESTSDIR='../tests/'
   for t in os.listdir(TESTSDIR):
     if t.endswith('.hex'):
-      s = open(TESTSDIR+t, 'r').read()
-      r = parse(s)
-      message('===\n'+shallowprint(r)+'\n===')
+      try:
+        s = open(TESTSDIR+t, 'r').read()
+        r = parse(s)
+        prt = shallowprint(r)
+        message('===\n'+prt+'\n===')
+        #p = subprocess.Popen('clingo', shell=True,
+        #  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #out, err = p.communicate(prt.encode('utf8'))
+        #if p.returncode != 0:
+        #  message("clingo failed\n"+err.decode('utf8'))
+      except:
+        message('EXC: '+traceback.format_exc())
 
 def main():
   logging.basicConfig(
     level=logging.DEBUG,
     format="%(filename)10s:%(lineno)4d:%(message)s",
-    stream=sys.stderr
+    stream=sys.stdout
   )
   testparse()
-  #testprint()
+  testprint()
 
 if __name__ == '__main__':
-  import os, traceback, logging, pprint
+  import os, traceback, logging, pprint, subprocess
   main()
 
