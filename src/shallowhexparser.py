@@ -25,8 +25,11 @@ import inspect
 
 DEBUG=True
 
-literals = ('(', ')', '[', ']', '{', '}', '.', ',')
-tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'OTHER', 'COMMENT')
+literals = ('(', ')', '[', ']', '{', '}', ',', ';')
+tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER')
+
+def message(s):
+  sys.stderr.write(s+'\n')
 
 class alist(list):
   def __init__(self, what, content):
@@ -49,11 +52,12 @@ def t_COMMENT(t):
 
 t_ignore = ' \t'
 
-t_SEPRULE = r':-'
-t_SEPCOL = r':'
+t_STOP = '[?.]'
+t_SEPRULE = r':[~-]'
+t_SEPCOL = r':(?![~-])'
 t_STRING = r'"[^"]*"'
 t_INTEGER = r'[0-9]+'
-t_OTHER = r'[^()\[\]{},:;.\r\n\t" ]+'
+t_OTHER = r'[^()\[\]{},:;.?\r\n\t" ]+'
 
 def t_error(t):
   msg = "unexpected character '{}'\n".format(repr(t))
@@ -67,68 +71,95 @@ start='content'
 def p_content_1(p):
   'content : statement content'
   p[0] = [ p[1] ] + p[2]
-
 def p_content_2(p):
-  'content : statement'
-  p[0] = [ p[1] ]
+  'content : '
+  p[0] = [ ]
 
 def p_statement(p):
   '''
-  statement : rule '.'
-            | elist '.'
+  statement : rule STOP '[' expandlist ']'
+            | rule STOP
+            | disjlist STOP
   '''
-  p[0] = alist('.', p[1])
-
-def p_rule(p):
-  '''
-  rule : seplist SEPRULE seplist
-       | SEPRULE seplist
-  '''
-  if len(p) == 4:
-    p[0] = alist(p[2], [p[1], p[3]])
-  else:
-    p[0] = alist(p[1], [None, p[2]])
-
-def p_seplist(p):
-  '''
-  seplist : commalist
-  '''
-  if len(p[1]) == 2:
-    # remove list from child if it has 1 element
-    p[0] = p[1][1]
+  if len(p) == 6:
+    p[0] = p[1] + alist('[', p[4])
   else:
     p[0] = p[1]
 
-def p_commalist(p):
-  '''
-  commalist : commalist ',' elist
-            | elist
-  '''
-  if len(p) == 4:
-    p[0] = p[1] + [p[3]]
-  else:
-    p[0] = alist(',', [p[1]])
+def p_rule_1(p):
+  'rule : disjlist SEPRULE disjlist'
+  p[0] = alist(p[2], [p[1], p[3]])
+def p_rule_2(p):
+  'rule : SEPRULE disjlist'
+  p[0] = alist(p[1], [None, p[2]])
 
-def p_elist(p):
+def p_disjlist(p):
   '''
-  elist : eterm elist
-        | eterm
+  disjlist : semicollist
+           | expandlist
   '''
-  if len(p) == 3:
-    p[0] = [p[1]] + p[2]
-  else:
-    p[0] = [p[1]]
-  #raise Exception('TODO '+inspect.stack()[0][3]+' '+repr(p))
+  p[0] = p[1]
+
+def p_semicollist_1(p):
+  "semicollist : semicollist ';' expandlist"
+  p[0] = p[1] + [p[3]]
+def p_semicollist_2(p):
+  "semicollist : expandlist ';' expandlist"
+  p[0] = alist(';', [p[1], p[3]])
+
+
+def p_expandlist(p):
+  '''
+  expandlist : collist
+             | conjlist
+  '''
+  p[0] = p[1]
+
+def p_collist_1(p):
+  "collist : collist SEPCOL conjlist"
+  p[0] = p[1] + [p[3]]
+def p_collist_2(p):
+  "collist : conjlist SEPCOL conjlist"
+  p[0] = alist(':', [p[1], p[3]])
+
+def p_conjlist(p):
+  '''
+  conjlist : commalist
+           | elist
+  '''
+  p[0] = p[1]
+
+def p_commalist_1(p):
+  "commalist : commalist ',' elist"
+  p[0] = p[1] + [p[3]]
+def p_commalist_2(p):
+  "commalist : elist ',' elist"
+  p[0] = alist(',', [p[1], p[3]])
+
+def p_elist_1(p):
+  'elist : eterm elist'
+  p[0] = [p[1]] + p[2]
+def p_elist_2(p):
+  'elist : eterm'
+  p[0] = [p[1]]
 
 def p_eterm_1(p):
   '''
-  eterm : '(' seplist ')'
-        | '{' seplist '}'
-        | '[' seplist ']'
+  eterm : '(' disjlist ')'
+        | '{' disjlist '}'
+        | '[' disjlist ']'
   '''
   p[0] = alist(p[1], p[2])
 
 def p_eterm_2(p):
+  '''
+  eterm : '(' ')'
+        | '[' ']'
+        | '{' '}'
+  '''
+  p[0] = alist(p[1], [])
+
+def p_eterm_3(p):
   '''
   eterm : STRING
         | INTEGER
@@ -142,34 +173,56 @@ def p_error(p):
 
 myparser = yacc.yacc()
 
-def lexit(content):
-  mylexer.input(content)
-  return [tok for tok in mylexer]
-
 def parse(content):
-  return myparser.parse(content, lexer=mylexer, debug=DEBUG)
+  return myparser.parse(content, lexer=mylexer, debug=False)
 
 if __name__ == '__main__':
-  import os, traceback
+  import os, traceback, logging
+  logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(filename)10s:%(lineno)4d:%(message)s",
+    stream=sys.stderr
+  )
+  dbglog = logging.getLogger()
   TESTSDIR='../tests/'
-  for t in ['setminuspartial2.hex']:
-  #for t in os.listdir(TESTSDIR):
+  lok, pok, lfail, pfail = 0, 0, 0, 0
+  #for t in ['setminuspartial2.hex']:
+  for t in os.listdir(TESTSDIR):
     if t.endswith('.hex'):
       s = open(TESTSDIR+t, 'r').read()
       try:
-        toks = lexit(s)
-        print('LOK: '+t)
-        if DEBUG:
-          print('===\n'+s+'\n===')
-          print('LRES: '+repr(toks))
-
-        r = parse(s)
-        print('POK: '+t)
-        if DEBUG:
-          print('===\n'+s+'\n===')
-        print('PRES: '+repr(r))
+        mylexer.input(s)
+        toks = [tok for tok in mylexer]
+        message('LOK: '+t)
+        lok += 1
+        #if DEBUG:
+        #  print('LRES: '+repr(toks))
       except:
-        print('FAIL: '+t)
+        message('LFAIL: '+t)
+        lfail += 1
         if DEBUG:
-          print('===\n'+s+'\n===')
-        print('EXC: '+traceback.format_exc())
+          message('===\n'+s+'\n===')
+          try:
+            mylexer.lex(s, lexer=mylexer, debug=dbglog)
+          except:
+            pass
+        message('EXC: '+traceback.format_exc())
+
+      try:
+        r = parse(s)
+        pok += 1
+        message('POK: '+t)
+        #if DEBUG:
+        #  message('===\n'+s+'\n===')
+        message('PRES: '+repr(r))
+      except:
+        message('FAIL: '+t)
+        pfail += 1
+        if DEBUG:
+          message('===\n'+s+'\n===')
+          try:
+            myparser.parse(s, lexer=mylexer, debug=dbglog)
+          except:
+            pass
+        message('EXC: '+traceback.format_exc())
+  message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
