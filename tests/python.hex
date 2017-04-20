@@ -1,0 +1,20 @@
+p(test, xyz) v p(x,y).
+p(bla).
+p(foo).
+
+compute(X) :- &multiply[2, 3](X).
+res(X, Y) :- &test[p, t, 2](X, Y).
+fib(X) :- &fibonacci[10](X).
+
+dom(a).
+dom(b).
+dom(c).
+dom(d).
+dom(e).
+dom(f).
+s(X) :- dom(X), &testSetMinus[dom, n](X). %<monotonic dom, antimonotonic n>.
+n(X) :- dom(X), &testSetMinus[dom, s](X). %<monotonic dom, antimonotonic s>.
+
+cc(X) :- &concat[a,b,c,d](X).
+
+date(T) :- &date[](T).

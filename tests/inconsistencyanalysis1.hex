@@ -1,0 +1,30 @@
+a.b.c.
+explain(a) :- a.
+explain(b) :- b.
+explain(c) :- c.
+%explain(c).
+%a v b.
+%x :- explain(a), a.
+%y :- explain(b), a.
+%:- x, y, explain(a).
+z :- &id[explain](Z)<tuplelevellinear>.
+%:- not explain(c).
+:- &id[explain](a)<tuplelevellinear>.
+
+
+
+% Input:
+% i.
+% x :- i.
+% :- x.
+
+
+%explain(a) :- not explain(b).
+%explain(b) :- not explain(a).
+%:- explain(a).
+%:- explain(b).
+
+%a v b.
+%a :- b.
+%b :- a.
+%:- a, b.
