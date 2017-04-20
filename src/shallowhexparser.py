@@ -1,3 +1,7 @@
+#
+# author: Peter Schuller <schueller.p@gmail.com>
+#
+
 """
 this parser can be used as follows:
 
@@ -14,7 +18,6 @@ in the structure only the following structural elements:
  * an elist is a nonempty sequence of elements
  * an element is a string, integer, or other token,
               or a bracket around a seplist
-
 """
 
 import ply.lex as lex
@@ -23,8 +26,6 @@ import ply.yacc as yacc
 import sys
 import inspect
 
-DEBUG=True
-
 literals = ('(', ')', '[', ']', '{', '}', ',', ';')
 tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER')
 
@@ -32,10 +33,22 @@ def message(s):
   sys.stderr.write(s+'\n')
 
 class alist(list):
+  '''
+  a generic list with a special tag stored in the first element
+  used to store lists separated by ',' or ':' or ';'
+  used to store lists enclosed with '()' or '[]' or '{}'
+  '''
   def __init__(self, what, content):
+    assert(isinstance(content, list))
     list.__init__(self, [what]+content)
+  def __add__(self, other):
+    # preserve list property
+    if isinstance(other, alist):
+      assert(other[0] == self[0])
+      other = other[1:]
+    return alist(self[0], self[1:] + other)
   def __repr__(self):
-    return 'alist_{}_{}'.format(self[0], repr(self[1:]))
+    return '<{}<{}>>'.format(self[0], repr(self[1:]))
   __str__ = __repr__
 
 # count line numbers and ignore them
@@ -82,7 +95,7 @@ def p_statement(p):
             | disjlist STOP
   '''
   if len(p) == 6:
-    p[0] = p[1] + alist('[', p[4])
+    p[0] = p[1] + [alist('[', [p[4]])]
   else:
     p[0] = p[1]
 
@@ -149,7 +162,9 @@ def p_eterm_1(p):
         | '{' disjlist '}'
         | '[' disjlist ']'
   '''
-  p[0] = alist(p[1], p[2])
+  message('got '+repr(p[2]))
+  p[0] = alist(p[1], [p[2]])
+  message('produced '+repr(p[0]))
 
 def p_eterm_2(p):
   '''
@@ -174,10 +189,15 @@ def p_error(p):
 myparser = yacc.yacc()
 
 def parse(content):
+  '''
+  this is the only method in this module
+  that you should use from outside the module!
+  '''
   return myparser.parse(content, lexer=mylexer, debug=False)
 
 if __name__ == '__main__':
-  import os, traceback, logging
+  DEBUG=False
+  import os, traceback, logging, pprint
   logging.basicConfig(
     level=logging.DEBUG,
     format="%(filename)10s:%(lineno)4d:%(message)s",
@@ -212,8 +232,9 @@ if __name__ == '__main__':
         r = parse(s)
         pok += 1
         message('POK: '+t)
-        #if DEBUG:
-        #  message('===\n'+s+'\n===')
+        if DEBUG:
+          #message('===\n'+s+'\n===')
+          message(pprint.pformat(r))
         message('PRES: '+repr(r))
       except:
         message('FAIL: '+t)
