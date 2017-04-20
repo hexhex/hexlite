@@ -30,25 +30,36 @@ literals = ('(', ')', '[', ']', '{', '}', ',', ';')
 tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER')
 
 def message(s):
-  sys.stderr.write(s+'\n')
+  logging.info(s)
 
 class alist(list):
   '''
-  a generic list with a special tag stored in the first element
+  a generic list with some special properties
   used to store lists separated by ',' or ':' or ';'
   used to store lists enclosed with '()' or '[]' or '{}'
   '''
-  def __init__(self, what, content):
+  def __init__(self, content, left=None, right=None, sep=None):
     assert(isinstance(content, list))
-    list.__init__(self, [what]+content)
+    list.__init__(self, content)
+    self.left = left
+    self.right = right
+    self.sep = sep
   def __add__(self, other):
     # preserve list property
     if isinstance(other, alist):
-      assert(other[0] == self[0])
-      other = other[1:]
-    return alist(self[0], self[1:] + other)
+      assert(other.left == self.left and other.right == self.right and other.sep == self.sep)
+    return alist(list.__add__(self, other), self.left, self.right, self.sep)
   def __repr__(self):
-    return '<{}<{}>>'.format(self[0], repr(self[1:]))
+    left = '<'
+    if self.left:
+      left = self.left
+    right = '>'
+    if self.right:
+      right = self.right
+    sep = ' '
+    if self.sep:
+      sep = self.sep
+    return '<{}{}{}>'.format(left, sep.join([repr(s) for s in self]), right)
   __str__ = __repr__
 
 # count line numbers and ignore them
@@ -95,16 +106,16 @@ def p_statement(p):
             | disjlist STOP
   '''
   if len(p) == 6:
-    p[0] = p[1] + [alist('[', [p[4]])]
+    p[0] = p[1] + [alist([p[4]], left='[', right=']')]
   else:
     p[0] = p[1]
 
 def p_rule_1(p):
   'rule : disjlist SEPRULE disjlist'
-  p[0] = alist(p[2], [p[1], p[3]])
+  p[0] = alist([p[1], p[3]], sep=p[2])
 def p_rule_2(p):
   'rule : SEPRULE disjlist'
-  p[0] = alist(p[1], [None, p[2]])
+  p[0] = alist([None, p[2]], sep=p[1])
 
 def p_disjlist(p):
   '''
@@ -118,7 +129,7 @@ def p_semicollist_1(p):
   p[0] = p[1] + [p[3]]
 def p_semicollist_2(p):
   "semicollist : expandlist ';' expandlist"
-  p[0] = alist(';', [p[1], p[3]])
+  p[0] = alist([p[1], p[3]], sep=';')
 
 
 def p_expandlist(p):
@@ -133,7 +144,7 @@ def p_collist_1(p):
   p[0] = p[1] + [p[3]]
 def p_collist_2(p):
   "collist : conjlist SEPCOL conjlist"
-  p[0] = alist(':', [p[1], p[3]])
+  p[0] = alist([p[1], p[3]], sep=':')
 
 def p_conjlist(p):
   '''
@@ -147,7 +158,7 @@ def p_commalist_1(p):
   p[0] = p[1] + [p[3]]
 def p_commalist_2(p):
   "commalist : elist ',' elist"
-  p[0] = alist(',', [p[1], p[3]])
+  p[0] = alist([p[1], p[3]], sep=',')
 
 def p_elist_1(p):
   'elist : eterm elist'
@@ -162,9 +173,7 @@ def p_eterm_1(p):
         | '{' disjlist '}'
         | '[' disjlist ']'
   '''
-  message('got '+repr(p[2]))
-  p[0] = alist(p[1], [p[2]])
-  message('produced '+repr(p[0]))
+  p[0] = alist([p[2]], left=p[1], right=p[3])
 
 def p_eterm_2(p):
   '''
@@ -172,7 +181,7 @@ def p_eterm_2(p):
         | '[' ']'
         | '{' '}'
   '''
-  p[0] = alist(p[1], [])
+  p[0] = alist([], left=p[1], right=p[2])
 
 def p_eterm_3(p):
   '''
@@ -195,18 +204,11 @@ def parse(content):
   '''
   return myparser.parse(content, lexer=mylexer, debug=False)
 
-if __name__ == '__main__':
+def testparse():
   DEBUG=False
-  import os, traceback, logging, pprint
-  logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(filename)10s:%(lineno)4d:%(message)s",
-    stream=sys.stderr
-  )
   dbglog = logging.getLogger()
   TESTSDIR='../tests/'
   lok, pok, lfail, pfail = 0, 0, 0, 0
-  #for t in ['setminuspartial2.hex']:
   for t in os.listdir(TESTSDIR):
     if t.endswith('.hex'):
       s = open(TESTSDIR+t, 'r').read()
@@ -247,3 +249,33 @@ if __name__ == '__main__':
             pass
         message('EXC: '+traceback.format_exc())
   message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
+
+def shallowprint(prog):
+  if isinstance(prog, alist):
+    pass
+  if isinstance(prog, list):
+    pass
+  for r in prog:
+    message(pprint.pformat(r))
+
+def testprint():
+  TESTSDIR='../tests/'
+  for t in os.listdir(TESTSDIR):
+    if t.endswith('.hex'):
+      s = open(TESTSDIR+t, 'r').read()
+      r = parse(s)
+      message('===\n'+shallowprint(r)+'\n===')
+
+def main():
+  logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(filename)10s:%(lineno)4d:%(message)s",
+    stream=sys.stderr
+  )
+  testparse()
+  #testprint()
+
+if __name__ == '__main__':
+  import os, traceback, logging, pprint
+  main()
+
