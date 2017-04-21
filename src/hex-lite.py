@@ -1,12 +1,18 @@
 #!/usr/bin/python3
 
-import os, sys, logging, argparse, traceback, pprint
+import sys, logging
+# initially log everything
+logging.basicConfig(level=logging.NOTSET, format="%(filename)10s:%(lineno)4d:%(message)s", stream=sys.stderr)
+
+# load rest after configuring logging
+import os, argparse, traceback, pprint
 import shallowhexparser as shp
+import dlvhex
 
 class Plugin:
   def __init__(self, mname, pmodule):
-    self._mname = mname
-    self._pmodule = pmodule
+    self.mname = mname
+    self.pmodule = pmodule
 
 def flatten(listoflists):
   return [x for y in listoflists for x in y]
@@ -16,6 +22,12 @@ def loadPlugin(mname):
   logging.info('loading plugin '+repr(mname))
   # XXX maybe we need to give some other globals or locals here
   pmodule = __import__(mname, globals(), locals(), [], 0)
+  logging.info('configuring dlvhex module for registering module '+repr(mname))
+  # tell dlvhex module which other module is registering its atoms
+  dlvhex.startRegistration(pmodule)
+  logging.info('calling register() for '+repr(mname))
+  pmodule.register()
+  logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.atoms.keys())))
   return Plugin(mname, pmodule)
 
 def loadProgram(hexfiles):
@@ -29,6 +41,7 @@ def loadProgram(hexfiles):
 
 def rewrite(program, plugins):
   logging.error('TODO rewrite')
+  #"testConcat", (dlvhex.TUPLE,), 1, prop)
   return rewritten
 
 def execute(rewritten, plugins):
@@ -56,11 +69,13 @@ def interpretArguments(argv):
   return args
 
 def setupLogging(args):
+  level = logging.WARNING
   if args.verbose:
-    logging.basicConfig(level=logging.INFO)
+    level=logging.INFO
   if args.debug:
-    logging.basicConfig(level=logging.DEBUG)
-  logging.basicConfig(format="%(filename)10s:%(lineno)4d:%(message)s")
+    level=logging.DEBUG
+  # call only once
+  logging.getLogger().setLevel(level)
   
 def main():
   try:

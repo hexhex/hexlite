@@ -1,5 +1,5 @@
 ./hex-lite.py \
-  --debug \
+  --verbose --debug \
   --pluginpath=../plugins/ \
   --plugin=stringplugin --plugin=testplugin \
   ../tests/extatom2.hex
