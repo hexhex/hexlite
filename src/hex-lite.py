@@ -41,6 +41,25 @@ def loadProgram(hexfiles):
 def rewrite(program, plugins):
   logging.error('TODO rewrite')
   #"testConcat", (dlvhex.TUPLE,), 1, prop)
+  '''
+  go over all rules of program
+  for each rule find external atoms and handle them with EAtomHandler
+  (this can change the rule and create new rules)
+  '''
+  for statement in program:
+    logging.debug('RWR '+pprint.pformat(statement, width=1000)
+    eatoms = findExternalAtoms(statement)
+    logging.debug('RWR eatoms='+repr(eatoms))
+    safeVars = findSafeVariables(statement)
+    while len(eatoms) > 0:
+      logging.debug('RWR safeVars='+repr(safeVars))
+      safeEatm = findSafeExternalAtom(statement, eatoms, safeVars)
+      logging.debug('RWR safeEatm='+repr(safeEatm))
+      if safeEatm:
+        newRules = transformExternalAtomInStatement(statement, safeEatm)
+        logging.debug('RWR safeEatm='+repr(safeEatm))
+      else:
+        break
   return rewritten
 
 def execute(rewritten, plugins):
