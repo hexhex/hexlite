@@ -1,8 +1,8 @@
 import dlvhex;
 
-def id(p):
-	for x in dlvhex.getTrueInputAtoms():
-		dlvhex.output((x.tuple()[1], ))
+#def id(p):
+#	for x in dlvhex.getTrueInputAtoms():
+#		dlvhex.output((x.tuple()[1], ))
 
 def testConcat(strs):
 	needquote = any(['"' in s for s in strs])
@@ -13,7 +13,7 @@ def testConcat(strs):
 	dlvhex.output((result,))
 
 def register():
-	dlvhex.addAtom("id", (dlvhex.PREDICATE, ), 1)
+#	dlvhex.addAtom("id", (dlvhex.PREDICATE, ), 1)
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.addFiniteOutputDomain(0)

@@ -20,7 +20,6 @@ def flatten(listoflists):
 def loadPlugin(mname):
   # returns plugin info
   logging.info('loading plugin '+repr(mname))
-  # XXX maybe we need to give some other globals or locals here
   pmodule = __import__(mname, globals(), locals(), [], 0)
   logging.info('configuring dlvhex module for registering module '+repr(mname))
   # tell dlvhex module which other module is registering its atoms
@@ -51,6 +50,45 @@ def execute(rewritten, plugins):
   logging.error('TODO run with clingo API and propagator')
   logging.error('TODO transform answer sets and return')
   return code
+
+
+class EAtomHandlerBase:
+  def __init__(self, holder):
+    assert(isinstance(holder, dlvhex.ExternalAtomHolder))
+    self.holder = holder
+
+class NoOutputEAtomHandler(EAtomHandlerBase):
+  def __init__(self, holder):
+    EAtomHandlerBase.__init__(self, holder)
+
+class ConstantInputEAtomHandler(EAtomHandlerBase):
+  def __init__(self, holder):
+    EAtomHandlerBase.__init__(self, holder)
+
+def classifyExternalAtoms():
+  '''
+  For now we can only handle the following:
+  * NoOutputEAtomHandler:
+    external atom has no output and arbitrary input
+    -> we transform this atom into an input/guessing rule as in dlvhex2
+    -> we use a propagator to evaluate during solving
+  * ConstantInputEAtomHandler:
+    external atom has only constant/tuple input(s)
+    -> we transform this atom into a gringo external
+    -> we do not (need to) consider it during solving
+  '''
+  for name, holder in dlvhex.atoms.items():
+    # uses ConstantInputEAtomHandler if possible (even if output is 0)
+    # (external atom functions cannot change during evaluation,
+    # hence it is safe to evaluate these atoms in grounding)
+    inspec_types = set(holder.inspec)
+    if dlvhex.PREDICATE not in inspec_types:
+      holder.executionHandler = ConstantInputEAtomHandler(holder)
+    elif holder.outnum == 0:
+      holder.executionHandler = NoOutputEAtomHandler(holder)
+    else:
+      raise Exception("cannot handle external atom '{}' from plugin '{}' because of input signature {} and nonempty ({}) output signature (please use dlvhex2)".format(
+        name, holder.module.__name__, repr(dlvhex.humanReadableSpec(holder.inspec)), holder.outnum))
 
 def interpretArguments(argv):
   parser = argparse.ArgumentParser(
@@ -96,6 +134,7 @@ def loadPlugins(plugins):
     pi = loadPlugin(p)
     logging.debug('for plugin '+p+' got plugin info '+repr(pi))
     ret.append(pi)
+  classifyExternalAtoms()
   return ret
 
 def setPaths(paths):
