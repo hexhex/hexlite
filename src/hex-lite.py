@@ -29,6 +29,8 @@ import dlvhex
 # clingo python API
 import clingo
 
+AUXPREFIX = 'aux_'
+
 class Plugin:
   def __init__(self, mname, pmodule):
     self.mname = mname
@@ -347,7 +349,10 @@ class GroundProgramObserver:
     return Generic(name)
 
 def onModel(mdl):
-  logging.warning("got model "+repr(mdl))
+  syms = mdl.symbols(atoms=True,terms=True)
+  strsyms = [ str(s) for s in syms ]
+  filt = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
+  sys.stdout.write('{'+','.join(filt)+'}\n')
 
 def execute(rewritten, plugins):
   #cmdlineargs = ['--opt-mode=usc,9']
@@ -357,21 +362,16 @@ def execute(rewritten, plugins):
   logging.info('sending nonground program to clingo control')
   cc = clingo.Control(cmdlineargs)
   cc.add('base', (), shp.shallowprint(rewritten))
-
-  cc.register_observer(GroundProgramObserver(), False)
+  #cc.register_observer(GroundProgramObserver(), False)
 
   logging.info('grounding with gringo context')
   ccc = GringoContext()
   cc.ground([('base',())], ccc)
 
-
-  logging.error('TODO prepare propagator')
-  logging.error('TODO run with clingo API and propagator')
+  logging.error('TODO prepare/register propagator')
   cc.solve(on_model=onModel)
-
-  logging.error('TODO transform answer sets and return')
-  return code
-
+  # TODO return code for unsat/sat/opt
+  return 0
 
 class EAtomHandlerBase:
   def __init__(self, holder):
@@ -469,6 +469,12 @@ def interpretArguments(argv):
     help='Paths to search for python modules.')
   parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
     help='Names of python modules to load as external atoms.')
+  parser.add_argument('--liberalsafety', action='store_true', default=False,
+    help='Whether liberal safety is requested (ignore).')
+  parser.add_argument('--nofacts', action='store_true', default=False,
+    help='Whether to output given facts in answer set.')
+  #parser.add_argument('--solver', nargs='?', metavar='BACKEND', action='store', default=[],
+  #  help='Names of solver backend to use (supported: clingo).')
   parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
   parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
   args = parser.parse_args(argv)
