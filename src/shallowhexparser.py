@@ -78,13 +78,14 @@ class alist(list):
         return first
       else:
         raise MyError()
-    if isinstance(content, alist):
-      # incorporate list (if possible)
+    # collapse one-element-alists if left, right, sep can be merged without losing information
+    if not isinstance(content, alist) and len(content) == 1 and isinstance(content[0], alist):
       try:
-        self.left = takeOrThrow(left, content.left)
-        self.right = takeOrThrow(right, content.right)
-        self.sep = takeOrThrow(sep, content.sep)
-        list.__init__(self, content)
+        self.left = takeOrThrow(left, content[0].left)
+        self.right = takeOrThrow(right, content[0].right)
+        self.sep = takeOrThrow(sep, content[0].sep)
+        list.__init__(self,[ x for x in content[0] ])
+        #logging.debug("alist.__init__ incorporated {} {} {} {}".format(repr(content), left, sep, right))
         return
       except MyError:
         # if not possible continue with normal constructor
