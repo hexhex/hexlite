@@ -97,5 +97,3 @@ _specToString = {
 }
 def humanReadableSpec(spec):
   return [ _specToString[s] for s in spec ]
-
-logging.debug('loaded (internal) dlvhex module')
