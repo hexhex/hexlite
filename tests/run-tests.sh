@@ -1,5 +1,10 @@
 #!/bin/bash
 
+DLVHEX="python2 ../src/hex-lite.py --pluginpath=../plugins/ --plugin=testplugin"
+EXAMPLESDIR="./"
+OUTDIR="./outputs/"
+TESTS="suites/complete.test"
+
 #
 # brief documentation of this script
 #
@@ -54,11 +59,6 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA.
 #
-
-DLVHEX="python2 ../src/hex-lite.py --pluginpath=../plugins/ --plugin=testplugin"
-EXAMPLESDIR="./"
-OUTDIR="./outputs/"
-TESTS="suites/dlvbackend.test suites/genuinegcbackend.test suites/genuineiibackend.test suites/libclingobackend.test"
 
 test "x${DLVHEX}" != "x" || { echo "need DLVHEX variable to be set!"; exit -1; }
 test "x${EXAMPLESDIR}" != "x" || { echo "need EXAMPLESDIR variable to be set!"; exit -1; }
