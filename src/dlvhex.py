@@ -45,17 +45,35 @@ def addAtom(name, inargumentspec, outargumentnum, props=None):
     props = ExtSourceProperties()
   atoms[name] = ExternalAtomHolder(name, inargumentspec, outargumentnum, props, callingModule, func)
 
+def output(tpl):
+  global currentOutput
+  currentOutput.append(tpl)
+
 #
 # used by engine
 #
 
+# key = eatom name, value = ExternalAtomHolder instance
 atoms = {}
+# plugin module that is currently registering atoms
 callingModule = None
+# tuples returned by the current/previously called external atom
+currentOutput = []
 
+# called by engine before calling <pluginmodule>.register()
 def startRegistration(caller):
-  # store who is registering next
   global callingModule
   callingModule = caller
+
+# called by engine before calling external atom function
+def startExternalAtomCall():
+  global currentOutput
+  currentOutput = []
+
+# called by engine after calling external atom function
+def cleanupExternalAtomCall():
+  global currentOutput
+  currentOutput = []
 
 class ExternalAtomHolder:
   def __init__(self, name, inspec, outnum, props, module, func):

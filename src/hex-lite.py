@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
+# needs clingo to be built with correct python version, this software supports python2 and python3
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
@@ -24,6 +25,9 @@ logging.basicConfig(level=logging.NOTSET, format="%(filename)10s:%(lineno)4d:%(m
 import os, argparse, traceback, pprint
 import shallowhexparser as shp
 import dlvhex
+
+# clingo python API
+import clingo
 
 class Plugin:
   def __init__(self, mname, pmodule):
@@ -91,17 +95,17 @@ class ProgramRewriter:
     ret = []
     for stm in self.shallowprog:
       dbgstm = pprint.pformat(stm, width=1000)
-      logging.debug('ASR '+dbgstm)
+      #logging.debug('ASR '+dbgstm)
       if isinstance(stm, shp.alist):
         sig = (stm.left, stm.sep, stm.right)
-        logging.debug('ASR alist {}'.format(repr(sig)))
+        #logging.debug('ASR alist {}'.format(repr(sig)))
         if sig == (None, None, '.'):
           # fact
-          logging.info('ASR fact/passthrough '+dbgstm)
+          #logging.info('ASR fact/passthrough '+dbgstm)
           ret.append(StatementRewriterPassthrough(self, stm))
         elif sig == (None, ':-', '.'):
           # rule/constraint
-          logging.info('ASR rule/rulecstr '+dbgstm)
+          #logging.info('ASR rule/rulecstr '+dbgstm)
           ret.append(StatementRewriterRuleCstr(self, stm))
         else:
           # unclassified
@@ -261,11 +265,110 @@ def deepCollectAtDepth(liststructure, depthfilter, condition):
   recursiveCollectAtDepth(liststructure, 0)
   return out
 
+def convertClingoToHex(term):
+  assert(isinstance(term, clingo.Symbol))
+  if term.type is clingo.SymbolType.Number:
+    ret = term.number
+  elif term.type in [clingo.SymbolType.String, clingo.SymbolType.Function]:
+    ret = str(term)
+  else:
+    raise Exception("cannot convert clingo term {} of type {} to external atom term!".format(
+      repr(term), str(term.type)))
+  return ret
+
+def convertHexToClingo(term):
+  if isinstance(term, str):
+    if term[0] == '"':
+      ret = clingo.String(term[1:-1])
+    else:
+      ret = clingo.parse_term(term)
+  elif isinstance(term, int):
+    ret = clingo.Number(term)
+  else:
+    raise Exception("cannot convert external atom term {} to clingo term!".format(repr(term)))
+  return ret
+
+class GringoContext:
+  class ExternalAtomCall:
+    def __init__(self, holder):
+      self.holder = holder
+    def __call__(self, *arguments):
+      logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
+      dlvhex.startExternalAtomCall()
+      # prepare arguments
+      plugin_arguments = []
+      for spec_idx, inp in enumerate(self.holder.inspec):
+        if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
+          arg = convertClingoToHex(arguments[spec_idx])
+          plugin_arguments.append(arg)
+        elif inp == dlvhex.TUPLE:
+          if (spec_idx + 1) != len(self.holder.inspec):
+            raise Exception("got TUPLE type which is not in final argument position")
+          # give all remaining arguments as one tuple
+          args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
+          plugin_arguments.append(tuple(args))
+        else:
+          raise Exception("unknown input type "+repr(inp))
+      # call external atom in plugin
+      #logging.debug('calling plugin with arguments '+repr(plugin_arguments))
+      self.holder.func(*plugin_arguments)
+      if self.holder.outnum == 1:
+        # list of terms
+        out = [ convertHexToClingo(_tuple[0]) for _tuple in dlvhex.currentOutput ]
+      else:
+        # list of tuple of terms
+        assert(self.holder.outnum != 0) # TODO will it work for 0 terms?
+        out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+      logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
+      dlvhex.cleanupExternalAtomCall()
+      return out
+      
+  def __init__(self):
+    pass
+  def __getattr__(self, attr):
+    #logging.debug('GC.%s called',attr)
+    return self.ExternalAtomCall(dlvhex.atoms[attr])
+
+class Generic:
+  def __init__(self, name):
+    self.name = name
+  def __call__(self, *arguments):
+    logging.debug("GPGeneric {} {}".format(self.name, repr(arguments)))
+
+class GroundProgramObserver:
+  def rule(self, choice, head, body):
+    logging.debug("GPRule ch={} hd={} b={}".format(repr(choice), repr(head), repr(body)))
+  def output_atom(self, symbol, atom):
+    logging.debug("GPAtom symb={} atm={}".format(repr(symbol), repr(atom)))
+  def output_term(self, symbol, condition):
+    logging.debug("GPAtom symb={} cond={}".format(repr(symbol), repr(condition)))
+  def __getattr__(self, name):
+    #logging.debug("GP getattr {}".format(name))
+    return Generic(name)
+
+def onModel(mdl):
+  logging.warning("got model "+repr(mdl))
+
 def execute(rewritten, plugins):
-  logging.error('TODO prepare gringo context')
-  logging.error('TODO ground with gringo context')
+  #cmdlineargs = ['--opt-mode=usc,9']
+  # XXX get settings from commandline
+  cmdlineargs = []
+
+  logging.info('sending nonground program to clingo control')
+  cc = clingo.Control(cmdlineargs)
+  cc.add('base', (), shp.shallowprint(rewritten))
+
+  cc.register_observer(GroundProgramObserver(), False)
+
+  logging.info('grounding with gringo context')
+  ccc = GringoContext()
+  cc.ground([('base',())], ccc)
+
+
   logging.error('TODO prepare propagator')
   logging.error('TODO run with clingo API and propagator')
+  cc.solve(on_model=onModel)
+
   logging.error('TODO transform answer sets and return')
   return code
 
@@ -311,10 +414,16 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
       @foo(bar,baz) = (bam,ban)
     '''
     #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
-    replacement = [
-      ['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')],
-       '=',
-       shp.alist(eatom['outputs'], '(', ')', ',')]
+    replacement = [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
+    if len(eatom['outputs']) == 1:
+      # for 1 output: no tuple (it will not work correctly)
+      replacement.append('=')
+      replacement.append(eatom['outputs'][0])
+    else:
+      # for 0 and >1 outputs: use tuple
+      assert(len(eatom['outputs']) != 0) # TODO will it work correctly for 0?
+      replacement.append('=')
+      replacement.append(shp.alist(eatom['outputs'], '(', ')', ','))
     # find position of eatom in body list
     posInStatement = statement[1].index(eatom['shallow'])
     logging.info('PIEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))

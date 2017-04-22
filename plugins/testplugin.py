@@ -1,10 +1,13 @@
 import dlvhex;
 
+import logging
+
 #def id(p):
 #	for x in dlvhex.getTrueInputAtoms():
 #		dlvhex.output((x.tuple()[1], ))
 
 def testConcat(strs):
+	logging.debug('testConcat got '+repr(strs)+' '+str(strs.__class__)+' '+str(strs[0].__class__))
 	needquote = any(['"' in s for s in strs])
 	unquoted = [s.strip('"') for s in strs]
 	result = ''.join(unquoted)
