@@ -1,0 +1,11 @@
+prefix("test:").
+more("a","b","c").
+complete(F) :- more(X,Y,Z),prefix(S),
+                not bar(X,Y),
+                  &testConcat[S," "](A),
+                  &testConcat[A,X](B),
+                  &testConcat[B," "](C),
+                  not &testConcat["foo",f(B,g)," "](B),
+                  &testConcat[C,Y](D),
+                  &testConcat[D," "](E),
+                  &testConcat[E,Z](F).
