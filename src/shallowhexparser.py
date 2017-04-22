@@ -39,6 +39,7 @@ import ply.yacc as yacc
 
 import sys
 import inspect
+import logging
 
 literals = ('(', ')', '[', ']', '{', '}', ',', ';')
 tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER', 'OPERATOR')
@@ -68,7 +69,8 @@ class alist(list):
     else:
       return ''
   def __init__(self, content, left=None, right=None, sep=None):
-    assert(isinstance(content, list))
+    #logging.debug("alist.__init__ {} {} {} {}".format(repr(content), left, right, sep))
+    assert(isinstance(content, list) and not isinstance(content, alist))
     class MyError(Exception):
       pass
     def takeOrThrow(first, second):
@@ -94,24 +96,17 @@ class alist(list):
     self.left = left
     self.right = right
     self.sep = sep
+
   def __add__(self, other):
     # preserve list property
     if isinstance(other, alist):
       assert(other.left == self.left and other.right == self.right and other.sep == self.sep)
     return alist(list.__add__(self, other), self.left, self.right, self.sep)
+
   def __repr__(self):
-    if self.left:
-      left = '<'+self.left+'<'
-    else:
-      left = '<<'
-    if self.right:
-      right = '>'+self.right+'>'
-    else:
-      right = '>>'
-    sep = ' '
-    if self.sep:
-      sep = self.sep
-    return '{}{}{}'.format(left, sep.join([repr(s) for s in self]), right)
+    left = 'alist<{}^{}^{}<'.format(self.left, self.sep, self.right)
+    right = '>>'
+    return '{}{}{}'.format(left, list.__repr__(self), right)
   __str__ = __repr__
 
 # count line numbers and ignore them
@@ -159,9 +154,9 @@ def p_statement(p):
             | disjlist STOP
   '''
   if len(p) == 6:
-    p[0] = [alist(p[1], right='.'), alist([p[4]], left='[', right=']')]
+    p[0] = [alist([p[1]], right='.'), alist([p[4]], left='[', right=']')]
   else:
-    p[0] = alist(p[1], right='.')
+    p[0] = alist([p[1]], right='.')
 
 def p_rule_1(p):
   'rule : disjlist SEPRULE disjlist'
@@ -351,6 +346,6 @@ def main():
   testprint()
 
 if __name__ == '__main__':
-  import os, traceback, logging, pprint, subprocess
+  import os, traceback, pprint, subprocess
   main()
 
