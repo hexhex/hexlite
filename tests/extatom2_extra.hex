@@ -1,5 +1,6 @@
 prefix("test:").
 more("a","b","c").
+foo(A) :- prefix(S), &testConcat[S," "](A).
 complete(F) :- more(X,Y,Z),prefix(S),
                 not bar(X,Y),
                   &testConcat[S," "](A),

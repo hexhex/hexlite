@@ -414,7 +414,7 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
       @foo(bar,baz) = (bam,ban)
     '''
     #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
-    replacement = [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
+    replacement = eatom['prefix'] + [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
     if len(eatom['outputs']) == 1:
       # for 1 output: no tuple (it will not work correctly)
       replacement.append('=')
