@@ -2,4 +2,4 @@
   --verbose --debug \
   --pluginpath=../plugins/ \
   --plugin=stringplugin --plugin=testplugin \
-  ../tests/extatom2.hex
+  ../tests/extatom2_extra.hex
