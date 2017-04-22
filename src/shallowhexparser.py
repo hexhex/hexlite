@@ -27,7 +27,7 @@ import sys
 import inspect
 
 literals = ('(', ')', '[', ']', '{', '}', ',', ';')
-tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER')
+tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER', 'OPERATOR')
 
 def message(s):
   logging.info(s)
@@ -118,6 +118,7 @@ t_SEPRULE = r':[~-]'
 t_SEPCOL = r':(?![~-])'
 t_STRING = r'"[^"]*"'
 t_INTEGER = r'[0-9]+'
+t_OPERATOR = r'(==|=|!=|<=|>=|<>|<|>)'
 t_OTHER = r'[^()\[\]{},:;.?\r\n\t" ]+'
 
 def t_error(t):
@@ -224,6 +225,7 @@ def p_eterm_3(p):
   '''
   eterm : STRING
         | INTEGER
+        | OPERATOR
         | OTHER
   '''
   p[0] = p[1]

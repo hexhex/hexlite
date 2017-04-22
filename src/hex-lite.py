@@ -39,28 +39,162 @@ def loadProgram(hexfiles):
   return ret
 
 def rewrite(program, plugins):
-  logging.error('TODO rewrite')
-  #"testConcat", (dlvhex.TUPLE,), 1, prop)
   '''
   go over all rules of program
   for each rule find external atoms and handle them with EAtomHandler
   (this can change the rule and create new rules)
   '''
-  for statement in program:
-    logging.debug('RWR '+pprint.pformat(statement, width=1000)
-    eatoms = findExternalAtoms(statement)
-    logging.debug('RWR eatoms='+repr(eatoms))
-    safeVars = findSafeVariables(statement)
+  pr = ProgramRewriter(program, plugins)
+  return pr.rewrite()
+
+class ProgramRewriter:
+  def __init__(self, shallowprogram, plugins):
+    self.shallowprog = shallowprogram
+    self.plugins = plugins
+    self.srprog = self.__annotateWithStatementRewriters()
+    self.rewritten = []
+
+  def rewrite(self):
+    # rewriters append to self.rewritten
+    for stm in self.srprog:
+      stm.rewrite()
+    return rewritten
+
+  def addRewrittenRule(self, stm):
+    'called by child statement rewriters to register rules'
+    # XXX handle duplicate rules here
+    self.rewritten.append(stm)
+
+  def __annotateWithStatementRewriters(self):
+    '''
+    collect statements from shallowprog
+    * mostly one item is one statement
+    * exceptions might apply
+    '''
+    ret = []
+    for stm in self.shallowprog:
+      dbgstm = pprint.pformat(stm, width=1000)
+      logging.debug('ASR '+dbgstm)
+      if isinstance(stm, shp.alist):
+        sig = (stm.left, stm.sep, stm.right)
+        logging.debug('ASR alist {}'.format(repr(sig)))
+        if sig == (None, None, '.'):
+          # fact
+          logging.info('ASR fact/passthrough '+dbgstm)
+          ret.append(StatementRewriterPassthrough(self, stm))
+        elif sig == (None, ':-', '.'):
+          # rule/constraint
+          logging.info('ASR rule/rulecstr '+dbgstm)
+          ret.append(StatementRewriterRuleCstr(self, stm))
+        else:
+          # unclassified
+          logging.warning('ASR unclassified/passthrough '+dbgstm)
+          ret.append(StatementRewriterPassthrough(self, stm))
+    return ret
+
+class StatementRewriterBase:
+  def __init__(self, pr, statement):
+    '''
+    pr is the program rewriter
+    statement is the shallow parse of the statement
+    '''
+    self.pr = pr
+    self.statement = statement
+
+  def rewrite(self):
+    '''
+    appends to self.pr.rewritten
+    '''
+    raise Exception('should be implemented in child class')
+
+class StatementRewriterPassthrough(StatementRewriterBase):
+  'just outputs the statement as it comes in'
+  def __init__(self, pr, statement):
+    StatementRewriterBase.__init__(self, pr, statement)
+
+  def rewrite(self):
+    self.pr.addRewrittenRule(self.statement)
+
+class StatementRewriterHash(StatementRewriterBase):
+  def __init__(self, pr, statement):
+    StatementRewriterBase.__init__(self, pr, statement)
+
+  def rewrite(self):
+    logging.error('TODO')
+
+class StatementRewriterRuleCstr(StatementRewriterBase):
+  def __init__(self, pr, statement):
+    StatementRewriterBase.__init__(self, pr, statement)
+
+  def rewrite(self):
+    logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
+    eatoms = self.findExternalAtoms(self.statement)
+    logging.debug('SRRC eatoms='+repr(eatoms))
+    safeVars = self.findBasicSafeVariables(self.statement[1])
+    #"testConcat", (dlvhex.TUPLE,), 1, prop)
     while len(eatoms) > 0:
-      logging.debug('RWR safeVars='+repr(safeVars))
+      logging.debug('RWR safeVars='+pprint.pformat(safeVars))
       safeEatm = findSafeExternalAtom(statement, eatoms, safeVars)
-      logging.debug('RWR safeEatm='+repr(safeEatm))
+      logging.debug('RWR safeEatm='+pprint.pformat(safeEatm))
       if safeEatm:
         newRules = transformExternalAtomInStatement(statement, safeEatm)
+        for r in newRules:
+          self.pr.addRewrittenRule(r)
         logging.debug('RWR safeEatm='+repr(safeEatm))
       else:
         break
-  return rewritten
+
+  def findSafeExternalAtom(self, statement, eatoms, safeVars):
+    pass
+
+  def findBasicSafeVariables(self, body):
+    '''
+    find all variables safe due to non-hex body literals
+
+    currently:
+    * finds all variables in arguments of positive body literals
+    * XXX there are some other cases that make variables safe (e.g., assignments)
+    '''
+    safetyGivingAtoms = deepCollectAtDepth(body, lambda d: d == 1,
+      lambda x:
+        x[0] != 'not' and # NAF
+        not (isinstance(x[0],str) and x[0][0] == '&') # external atoms
+      )
+    #logging.debug('RWR safetyGivingAtoms='+pprint.pformat(safetyGivingAtoms))
+    safeVars = deepCollect(safetyGivingAtoms, lambda x:
+        isinstance(x, str) and x[0].isupper()
+      )
+    return set(safeVars)
+
+  def findExternalAtoms(self, stm):
+    'return a list of items in statement that are external atoms'
+    return deepCollect(stm, lambda x:
+        isinstance(x, list) and isinstance(x[0], str) and x[0][0].startswith('&')
+      )
+
+def deepCollect(liststructure, condition):
+  'recursively traverses liststructure and retrieves items where condition is true'
+  out = []
+  def recursiveCollect(structure):
+    if condition(structure):
+      out.append(structure)
+    if isinstance(structure, list):
+      for elem in structure:
+        recursiveCollect(elem)
+  recursiveCollect(liststructure)
+  return out
+
+def deepCollectAtDepth(liststructure, depthfilter, condition):
+  'recursively traverses liststructure and retrieves items where condition is true at depth in depthfilter'
+  out = []
+  def recursiveCollectAtDepth(structure, depth):
+    if depthfilter(depth) and condition(structure):
+      out.append(structure)
+    if isinstance(structure, list):
+      for elem in structure:
+        recursiveCollectAtDepth(elem, depth+1)
+  recursiveCollectAtDepth(liststructure, 0)
+  return out
 
 def execute(rewritten, plugins):
   logging.error('TODO prepare gringo context')
