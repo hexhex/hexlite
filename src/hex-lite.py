@@ -74,11 +74,12 @@ class ProgramRewriter:
     # rewriters append to self.rewritten
     for stm in self.srprog:
       stm.rewrite()
-    return rewritten
+    return self.rewritten
 
   def addRewrittenRule(self, stm):
     'called by child statement rewriters to register rules'
     # XXX handle duplicate rules here
+    logging.info("adding rewritten rule "+shp.shallowprint(stm))
     self.rewritten.append(stm)
 
   def __annotateWithStatementRewriters(self):
@@ -143,25 +144,35 @@ class StatementRewriterRuleCstr(StatementRewriterBase):
     StatementRewriterBase.__init__(self, pr, statement)
 
   def rewrite(self):
-    logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
-    eatoms = self.findExternalAtoms(self.statement)
-    logging.debug('SRRC eatoms='+repr(eatoms))
-    safeVars = self.findBasicSafeVariables(self.statement[1])
-    #"testConcat", (dlvhex.TUPLE,), 1, prop)
-    while len(eatoms) > 0:
-      logging.debug('RWR safeVars='+pprint.pformat(safeVars))
-      safeEatm = findSafeExternalAtom(statement, eatoms, safeVars)
-      logging.debug('RWR safeEatm='+pprint.pformat(safeEatm))
-      if safeEatm:
-        newRules = transformExternalAtomInStatement(statement, safeEatm)
-        for r in newRules:
-          self.pr.addRewrittenRule(r)
-        logging.debug('RWR safeEatm='+repr(safeEatm))
-      else:
-        break
+    #logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
+    head, body = self.statement
+    safeVars = self.findBasicSafeVariables(body)
+    pendingEatoms = self.extractExternalAtoms(body)
+    while len(pendingEatoms) > 0:
+      #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
+      #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
+      safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
+      pendingEatoms.remove(safeEatm)
+      #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
+      eatomname = safeEatm['eatom'][0][1:]
+      handler = dlvhex.atoms[eatomname].executionHandler
+      resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
+      for r in resultRules:
+        self.pr.addRewrittenRule(r)
+      safeVars |= makesSafe
 
-  def findSafeExternalAtom(self, statement, eatoms, safeVars):
-    pass
+  def pickSafeExternalAtom(self, pendingEatoms, safeVars):
+    '''
+    find some external atom A that is safe given safe variables in safeVars
+     * return A, variables made safe by A
+    '''
+    for eatom in pendingEatoms:
+      if eatom['inputvars'].issubset(safeVars):
+        return eatom, eatom['outputvars']
+    raise Exception("could not find safe external atom:\n"+
+      "remaining atoms to resolve: "+shp.shallowprint(pendingEatoms)+"\n"+
+      "safe variables in rule: "+repr(safeVars)+"\n"+
+      "rule: "+shp.shallowprint(self.statement))
 
   def findBasicSafeVariables(self, body):
     '''
@@ -177,16 +188,54 @@ class StatementRewriterRuleCstr(StatementRewriterBase):
         not (isinstance(x[0],str) and x[0][0] == '&') # external atoms
       )
     #logging.debug('RWR safetyGivingAtoms='+pprint.pformat(safetyGivingAtoms))
-    safeVars = deepCollect(safetyGivingAtoms, lambda x:
-        isinstance(x, str) and x[0].isupper()
-      )
+    safeVars = findVariables(safetyGivingAtoms)
     return set(safeVars)
 
-  def findExternalAtoms(self, stm):
-    'return a list of items in statement that are external atoms'
-    return deepCollect(stm, lambda x:
-        isinstance(x, list) and isinstance(x[0], str) and x[0][0].startswith('&')
-      )
+  def extractExternalAtoms(self, body):
+    '''
+    return a list of dicts containing external atoms plus supporting information:
+    * key shallow: shallow parse of the original eatom
+    * key prefix: things before the eatom (NAF)
+    * key eatom: the eatom on its own
+    * key inputs: shallow parse of input list of the eatom
+    * key inputvars: variables in the input of the eatom
+    * key outputs: shallow parse of output list of the eatom
+    * key outputvars: variables in the output of the eatom
+    '''
+    #logging.debug('body='+pprint.pformat(body))
+    def splitPrefixEatom(x):
+      assert(isinstance(x,list) and not isinstance(x,shp.alist))
+      checkIdx = 0
+      # skip over not's
+      while len(x) > checkIdx and x[checkIdx] == 'not':
+        checkIdx += 1
+      if len(x) > checkIdx and isinstance(x[checkIdx], str) and x[checkIdx][0].startswith('&'):
+        return x[:checkIdx], x[checkIdx:]
+      else:
+        return None
+    eatoms = [ splitPrefixEatom(x) for x in body ]
+    #logging.debug('eatoms1='+pprint.pformat(eatoms))
+    eatoms = [ {'shallow': p_e[0] + p_e[1], 'prefix': p_e[0], 'eatom': p_e[1] }
+               for p_e in eatoms if p_e is not None ]
+    #logging.debug('eatoms2='+pprint.pformat(eatoms))
+    def enrich(eatom):
+      #assert(logging.debug('enrich eatom='+pprint.pformat(eatom)) or True)
+      inplist = [ x for x in eatom['eatom'] if isinstance(x,shp.alist) and x.left == '[' ]
+      assert(len(inplist) <= 1)
+      #assert(logging.debug('enrich inplist ='+pprint.pformat(inplist)) or True)
+      outplist = [ x for x in eatom['eatom'] if isinstance(x,shp.alist) and x.left == '(' ]
+      assert(len(outplist) <= 1)
+      #assert(logging.debug('enrich outplist='+pprint.pformat(outplist)) or True)
+      eatom['inputs'] = list(inplist[0])
+      eatom['inputvars'] = set(findVariables(inplist))
+      eatom['outputs'] = list(outplist[0])
+      eatom['outputvars'] = set(findVariables(outplist))
+      return eatom
+    return [ enrich(x) for x in eatoms ]
+
+def findVariables(structure):
+  return deepCollect(structure,
+    lambda x: isinstance(x, str) and x[0].isupper())
 
 def deepCollect(liststructure, condition):
   'recursively traverses liststructure and retrieves items where condition is true'
@@ -225,14 +274,57 @@ class EAtomHandlerBase:
   def __init__(self, holder):
     assert(isinstance(holder, dlvhex.ExternalAtomHolder))
     self.holder = holder
+  def transformEAtomInStatement(self, eatom, statement, safevars):
+    '''
+    transforms eatom in self.holder in statement
+    * potentially modifies statement
+    * returns set of rules necessary for rewriting
+      (returns statement only if last eatom in statement was rewritten)
+    '''
+    logging.error("TODO implement in child class")
+    return []
 
 class NoOutputEAtomHandler(EAtomHandlerBase):
   def __init__(self, holder):
     EAtomHandlerBase.__init__(self, holder)
+  def transformEAtomInStatement(self, eatom, statement, safevars):
+    '''
+    * creates a rule for instantiating the input tuple from the statement body
+      - input tuple is instantiated in an auxiliary predicate
+      - body of this rule contains all elements in statement that use only variables in safevars
+      - this is also done for empty input tuple! (because guessing the atom is not necessary if the body is false)
+    * transforms eatom in statement into auxiliary atom with all inputs and outputs
+    * creates a rule for guessing truth of the auxiliary eatom based on the auxiliary input tuple
+    '''
+    logging.error("TODO implement")
+    return []
 
-class ConstantInputEAtomHandler(EAtomHandlerBase):
+class PureInstantiationEAtomHandler(EAtomHandlerBase):
   def __init__(self, holder):
     EAtomHandlerBase.__init__(self, holder)
+  def transformEAtomInStatement(self, eatom, statement, safevars):
+    '''
+    transforms eatom in statement into gringo external
+    with all inputs as inputs and all outputs as equivalent tuple:
+      &foo[bar,baz](bam,ban)
+    becomes
+      @foo(bar,baz) = (bam,ban)
+    '''
+    #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
+    replacement = [
+      ['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')],
+       '=',
+       shp.alist(eatom['outputs'], '(', ')', ',')]
+    # find position of eatom in body list
+    posInStatement = statement[1].index(eatom['shallow'])
+    logging.info('PIEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
+    statement[1][posInStatement] = replacement
+    remainingEatoms = deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
+    #assert(logging.debug('PIEAH remainingEatoms='+repr(remainingEatoms)) or True)
+    if len(remainingEatoms) == 0:
+      return [statement]
+    else:
+      return []
 
 def classifyExternalAtoms():
   '''
@@ -241,18 +333,18 @@ def classifyExternalAtoms():
     external atom has no output and arbitrary input
     -> we transform this atom into an input/guessing rule as in dlvhex2
     -> we use a propagator to evaluate during solving
-  * ConstantInputEAtomHandler:
+  * PureInstantiationEAtomHandler:
     external atom has only constant/tuple input(s)
     -> we transform this atom into a gringo external
     -> we do not (need to) consider it during solving
   '''
   for name, holder in dlvhex.atoms.items():
-    # uses ConstantInputEAtomHandler if possible (even if output is 0)
+    # uses PureInstantiationEAtomHandler if possible (even if output is 0)
     # (external atom functions cannot change during evaluation,
     # hence it is safe to evaluate these atoms in grounding)
     inspec_types = set(holder.inspec)
     if dlvhex.PREDICATE not in inspec_types:
-      holder.executionHandler = ConstantInputEAtomHandler(holder)
+      holder.executionHandler = PureInstantiationEAtomHandler(holder)
     elif holder.outnum == 0:
       holder.executionHandler = NoOutputEAtomHandler(holder)
     else:
