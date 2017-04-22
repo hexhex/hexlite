@@ -9,7 +9,7 @@ The intention is to provide a lightweight system for an easy start with HEX.
 The vision is that HEXLite can use existing Python plugins and runs based on
 the Clingo or WASP python interface, without realizing the full power of HEX.
 
-The system is currently under development.
+The system is currently under development and *does not work yet*.
 
 A manuscript about the system is under preparation.
 
