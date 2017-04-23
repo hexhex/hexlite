@@ -369,7 +369,7 @@ class ModelReceiver:
     if self.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
     strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
-    sys.stdout.write('{'+','.join(filt)+'}\n')
+    sys.stdout.write('{'+','.join(strsyms)+'}\n')
 
   def _normalizeFacts(self, facts):
     def normalize(x):
