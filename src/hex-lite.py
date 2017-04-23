@@ -447,6 +447,8 @@ def execute(rewritten, facts, plugins, args):
   #cmdlineargs = ['--opt-mode=usc,9']
   # XXX get settings from commandline
   cmdlineargs = []
+  if args.number != 1:
+    cmdlineargs.append(str(args.number))
 
   logging.info('sending nonground program to clingo control')
   cc = clingo.Control(cmdlineargs)
@@ -565,6 +567,8 @@ def interpretArguments(argv):
     help='Names of python modules to load as external atoms.')
   parser.add_argument('--liberalsafety', action='store_true', default=False,
     help='Whether liberal safety is requested (ignore).')
+  parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
+    help='Number of models to enumerate.')
   parser.add_argument('--nofacts', action='store_true', default=False,
     help='Whether to output given facts in answer set.')
   #parser.add_argument('--solver', nargs='?', metavar='BACKEND', action='store', default=[],
