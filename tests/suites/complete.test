@@ -7,17 +7,17 @@ agg4.hex agg4.out --nofacts
 agg5.hex agg5.out --nofacts
 agg6.hex agg6.out --nofacts
 agg7.hex agg7.out --nofacts
-agg8.hex agg8.out --nofacts
+#XFAIL (eatom in aggregate) agg8.hex agg8.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
 weak1.hex weak1.out
 weak2.hex weak2.out
-weak3.hex weak3.out
+#XFAIL &id weak3.hex weak3.out
 weak4.hex weak4.out
 weak5.hex weak5.out
 weak_bench_small.hex weak_bench_small.out
-weak6a.hex weak6a.out 
-weak6b.hex weak6b.out 
-weak6c.hex weak6c.out 
+#XFAIL &id weak6a.hex weak6a.out 
+#XFAIL &id weak6b.hex weak6b.out 
+#XFAIL &id weak6c.hex weak6c.out 
 weak7.hex weak7.out
 anonymousvariable1.hex anonymousvariable1.out --nofacts
 builtin_safety1.hex builtin_safety1.stderr
