@@ -1,7 +1,7 @@
 3col.hex 3col.out
 csv1.hex csv1.out --csvinput=p,/home/ps/_science/projects/hex/core/examples/csv1.csv --csvoutput=q
 agg1.hex agg1.out
-agg2.hex agg2.out
+#XFAIL agg2.hex agg2.out
 agg3.hex agg3.out --nofacts
 agg4.hex agg4.out --nofacts
 agg5.hex agg5.out --nofacts
@@ -31,18 +31,18 @@ duplicaterule.asp duplicaterule.out
 equality.hex equality.out
 nonmoncycle.hex nonmoncycle.out
 nonmoncycle2.hex nonmoncycle2.out
-extatom1.hex extatom1.out
-extatom1simple.hex extatom1simple.out
+#XFAIL extatom1.hex extatom1.out
+#XFAIL extatom1simple.hex extatom1simple.out
 extatom2.hex extatom2.out
 extatom2safety.hex extatom2.out
-extatom3.hex extatom3.out --nofacts
-extatom3.hex extatom3_faultya.stderr --nofacts
-extatom3.hex extatom3_faultyb.stderr --nofacts
-extatom4.hex extatom4.out
-extatom5.hex extatom5.out
-extatom6.hex extatom6.out
+#XFAIL extatom3.hex extatom3.out --nofacts
+#XFAIL extatom3.hex extatom3_faultya.stderr --nofacts
+#XFAIL extatom3.hex extatom3_faultyb.stderr --nofacts
+#XFAIL extatom4.hex extatom4.out
+#XFAIL extatom5.hex extatom5.out
+#XFAIL extatom6.hex extatom6.out
 extatom7.hex extatom7.out --nofacts
-extatom8.hex extatom8.out --nofacts
+#XFAIL extatom8.hex extatom8.out --nofacts
 extatom9.hex extatom9.out
 extatom10.hex extatom10.out
 auxinput.hex auxinput.out
