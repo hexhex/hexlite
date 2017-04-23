@@ -31,6 +31,14 @@ class ExtSourceProperties:
     pass
   def addFiniteOutputDomain(self, argidx):
     pass
+  def __getattr__(self, name):
+    class Generic:
+      def __init__(self, name):
+        self.name = name
+      def __call__(self, *arguments):
+        logging.warning("not implemented: ExtSourceProperties.{}({})".format(
+          self.name, ','.join([repr(x) for x in arguments])))
+    return Generic(name)
 
 def addAtom(name, inargumentspec, outargumentnum, props=None):
   global callingModule, atoms
