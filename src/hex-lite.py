@@ -60,7 +60,7 @@ def loadProgram(hexfiles):
       ret += prog
   return ret
 
-def rewrite(program, plugins):
+def rewriteProgram(program, plugins):
   '''
   go over all rules of program
   for each rule find external atoms and handle them with EAtomHandler
@@ -73,14 +73,17 @@ class ProgramRewriter:
   def __init__(self, shallowprogram, plugins):
     self.shallowprog = shallowprogram
     self.plugins = plugins
-    self.srprog = self.__annotateWithStatementRewriters()
+    self.srprog, self.facts = self.__annotateWithStatementRewriters()
     self.rewritten = []
 
   def rewrite(self):
+    '''
+    returns rewritten_program, facts
+    '''
     # rewriters append to self.rewritten
     for stm in self.srprog:
       stm.rewrite()
-    return self.rewritten
+    return self.rewritten, self.facts
 
   def addRewrittenRule(self, stm):
     'called by child statement rewriters to register rules'
@@ -93,8 +96,10 @@ class ProgramRewriter:
     collect statements from shallowprog
     * mostly one item is one statement
     * exceptions might apply
+    * facts are returned separately
     '''
     ret = []
+    facts = []
     for stm in self.shallowprog:
       dbgstm = pprint.pformat(stm, width=1000)
       #logging.debug('ASR '+dbgstm)
@@ -105,6 +110,7 @@ class ProgramRewriter:
           # fact
           #logging.info('ASR fact/passthrough '+dbgstm)
           ret.append(StatementRewriterPassthrough(self, stm))
+          facts.append(stm)
         elif sig == (None, ':-', '.'):
           # rule/constraint
           #logging.info('ASR rule/rulecstr '+dbgstm)
@@ -113,7 +119,7 @@ class ProgramRewriter:
           # unclassified
           logging.warning('ASR unclassified/passthrough '+dbgstm)
           ret.append(StatementRewriterPassthrough(self, stm))
-    return ret
+    return ret, facts
 
 class StatementRewriterBase:
   def __init__(self, pr, statement):
@@ -154,18 +160,21 @@ class StatementRewriterRuleCstr(StatementRewriterBase):
     head, body = self.statement
     safeVars = self.findBasicSafeVariables(body)
     pendingEatoms = self.extractExternalAtoms(body)
-    while len(pendingEatoms) > 0:
-      #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
-      #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
-      safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
-      pendingEatoms.remove(safeEatm)
-      #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
-      eatomname = safeEatm['eatom'][0][1:]
-      handler = dlvhex.atoms[eatomname].executionHandler
-      resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
-      for r in resultRules:
-        self.pr.addRewrittenRule(r)
-      safeVars |= makesSafe
+    if len(pendingEatoms) == 0:
+      self.pr.addRewrittenRule(self.statement)
+    else:
+      while len(pendingEatoms) > 0:
+        #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
+        #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
+        safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
+        pendingEatoms.remove(safeEatm)
+        #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
+        eatomname = safeEatm['eatom'][0][1:]
+        handler = dlvhex.atoms[eatomname].executionHandler
+        resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
+        for r in resultRules:
+          self.pr.addRewrittenRule(r)
+        safeVars |= makesSafe
 
   def pickSafeExternalAtom(self, pendingEatoms, safeVars):
     '''
@@ -348,13 +357,37 @@ class GroundProgramObserver:
     #logging.debug("GP getattr {}".format(name))
     return Generic(name)
 
-def onModel(mdl):
-  syms = mdl.symbols(atoms=True,terms=True)
-  strsyms = [ str(s) for s in syms ]
-  filt = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
-  sys.stdout.write('{'+','.join(filt)+'}\n')
 
-def execute(rewritten, plugins):
+class ModelReceiver:
+  def __init__(self, facts, nofacts=False):
+    self.facts = set(self._normalizeFacts(facts))
+    self.nofacts = nofacts
+
+  def __call__(self, mdl):
+    syms = mdl.symbols(atoms=True,terms=True)
+    strsyms = [ str(s) for s in syms ]
+    if self.nofacts:
+      strsyms = [ s for s in strsyms if s not in self.facts ]
+    strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
+    sys.stdout.write('{'+','.join(filt)+'}\n')
+
+  def _normalizeFacts(self, facts):
+    def normalize(x):
+      if isinstance(x, shp.alist):
+        if x.right == '.':
+          assert(x.left == None and x.sep == None and len(x) == 1)
+          ret = normalize(x[0])
+        else:
+          ret = x.sleft()+x.ssep().join([normalize(y) for y in x])+x.sright()
+      elif isinstance(x, list):
+        ret = ''.join([normalize(y) for y in x])
+      else:
+        ret = str(x)
+      logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
+      return ret
+    return [normalize(f) for f in facts]
+
+def execute(rewritten, facts, plugins, args):
   #cmdlineargs = ['--opt-mode=usc,9']
   # XXX get settings from commandline
   cmdlineargs = []
@@ -368,8 +401,9 @@ def execute(rewritten, plugins):
   ccc = GringoContext()
   cc.ground([('base',())], ccc)
 
-  logging.error('TODO prepare/register propagator')
-  cc.solve(on_model=onModel)
+  logging.warning('TODO prepare/register propagator')
+  mr = ModelReceiver(facts, args.nofacts)
+  cc.solve(on_model=mr)
   # TODO return code for unsat/sat/opt
   return 0
 
@@ -497,8 +531,8 @@ def main():
     setPaths(flatten(args.pluginpath))
     plugins = loadPlugins(flatten(args.plugin))
     program = loadProgram(flatten(args.hexfiles))
-    rewritten = rewrite(program, plugins)
-    code = execute(rewritten, plugins)
+    rewritten, facts = rewriteProgram(program, plugins)
+    code = execute(rewritten, facts, plugins, args)
     return code
   except:
     logging.error('Exception: '+traceback.format_exc())
