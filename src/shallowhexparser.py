@@ -170,12 +170,23 @@ def p_statement(p):
   else:
     p[0] = alist([p[1]], right='.')
 
-def p_rule_1(p):
-  'rule : disjlist SEPRULE disjlist'
-  p[0] = alist([p[1], p[3]], sep=p[2])
-def p_rule_2(p):
-  'rule : SEPRULE disjlist'
-  p[0] = alist([None, p[2]], sep=p[1])
+def p_rule(p):
+  '''
+  rule : disjlist SEPRULE disjlist
+       | SEPRULE disjlist
+  '''
+  if len(p) == 4:
+    head = p[1]
+    sep = p[2]
+    body = p[3]
+  else:
+    head = None
+    sep = p[1]
+    body = p[2]
+  if not isinstance(body, alist) or body.sep != ',':
+    # make sure every rule body is a conjunction
+    body = alist([body], sep=',')
+  p[0] = alist([head, body], sep=sep)
 
 def p_disjlist(p):
   '''
