@@ -68,7 +68,7 @@ class alist(list):
       return self.sep
     else:
       return ''
-  def __init__(self, content, left=None, right=None, sep=None):
+  def __init__(self, content=[], left=None, right=None, sep=None):
     #logging.debug("alist.__init__ {} {} {} {}".format(repr(content), left, right, sep))
     assert(isinstance(content, list) and not isinstance(content, alist))
     class MyError(Exception):
@@ -96,6 +96,18 @@ class alist(list):
     self.left = left
     self.right = right
     self.sep = sep
+
+  def dupModify(self, content=None, left=None, right=None, sep=None):
+    out = alist(self.content, self.left, right.left, sep=sep)
+    if content:
+      out.content = content
+    if left:
+      out.left = left
+    if right:
+      out.right = right
+    if sep:
+      out.sep = sep
+    return out
 
   def __add__(self, other):
     # preserve list property
