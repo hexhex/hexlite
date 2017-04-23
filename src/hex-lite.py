@@ -137,7 +137,10 @@ class StatementRewriterBase:
     raise Exception('should be implemented in child class')
 
 class StatementRewriterPassthrough(StatementRewriterBase):
-  'just outputs the statement as it comes in'
+  '''
+  just outputs the statement as it comes in
+  (used for things we do not know how to handle otherwise)
+  '''
   def __init__(self, pr, statement):
     StatementRewriterBase.__init__(self, pr, statement)
 
@@ -145,15 +148,60 @@ class StatementRewriterPassthrough(StatementRewriterBase):
     self.pr.addRewrittenRule(self.statement)
 
 class StatementRewriterHash(StatementRewriterBase):
+  '''
+  (unused)
+  '''
   def __init__(self, pr, statement):
     StatementRewriterBase.__init__(self, pr, statement)
 
   def rewrite(self):
     logging.error('TODO')
 
-class StatementRewriterRuleCstr(StatementRewriterBase):
+class StatementRewriterHead(StatementRewriterBase):
+  '''
+  rewriting heads (of rules or facts)
+  (used for facts, derived for rules)
+  '''
   def __init__(self, pr, statement):
     StatementRewriterBase.__init__(self, pr, statement)
+  def rewrite(self):
+    logging.debug('SRH stm='+pprint.pformat(self.statement))
+    assert(isinstance(self.statement, shp.alist))
+    assert(len(self.statement) == 1) # we have no body (otherwise use StatementRewriterRuleCstr)
+    head = self.statement[0]
+    TODO use dup?
+    out = shp.alist([self.rewriteDisjunctiveHead(head), None], right=self.statement.right)
+    self.pr.addRewrittenRule(out)
+  def rewriteDisjunctiveHead(head):
+    logging.debug('SRH head='+pprint.pformat(head))
+    # if head is a normal list that contains more than 2 elements and some 'v' items on top level,
+    # transform it into an alist with separator '|' instead of 'v'
+    ret = head
+    if isinstance(head, list) and not isinstance(head, shp.alist) and len(head) > 2:
+      # collect parts between top-level 'v'
+      parts = []
+      current = []
+      for elem in head:
+        if elem == 'v':
+          if len(current) != 0:
+            parts.append(current)
+            current = []
+          else:
+            current.append(elem)
+        else:
+          current.append(elem)
+      parts.append(current)
+      if len(parts) > 1:
+        ret = shp.alist(parts, sep='|')
+    logging.debug('SRH ret='+pprint.pformat(ret))
+    return ret
+
+class StatementRewriterRuleCstr(StatementRewriterHead):
+  '''
+  rewriting rules with nonempty body and constraints
+  '''
+  def __init__(self, pr, statement):
+    StatementRewriterHead.__init__(self, pr, statement)
 
   def rewrite(self):
     #logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
