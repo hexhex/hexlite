@@ -10,7 +10,13 @@ def testZeroArity0():
 	pass
 
 def testZeroArity1():
-	dlvhex.output(tuple())
+	dlvhex.output(())
+
+def testEven():
+	true = [x for x in dlvhex.getTrueInputAtoms()]
+	num = len(true)
+	if num % 2 == 0:
+		dlvhex.output(())
 
 def testSubstr(string, start, length):
 	if not isinstance(string, str) or not isinstance(start, int) or not isinstance(length, int):
@@ -28,6 +34,123 @@ def testConcat(strs):
 		result = '"'+result+'"'
 	dlvhex.output((result,))
 
+def isEmpty(assignment):
+
+	true = 0
+	false = 0
+	unknown = 0
+
+	premisse = ()
+	for x in dlvhex.getInputAtoms():
+		if x.isTrue():
+			true = true + 1
+		elif x.isFalse():
+			false = false + 1
+		else:
+			unknown = unknown + 1
+
+	if true > 0:
+		# external atom is true
+		dlvhex.output(())
+	elif (true + unknown) > 0:
+		# external atom can be true
+		dlvhex.outputUnknown(())
+	else:
+		# else case applies: (true + unknown) < min.intValue() or true > max.intValue()
+		#
+		# external atom is certainly not true
+		v = 0
+
+def numberOfBalls(assignment, min, max):
+
+	true = 0
+	false = 0
+	unknown = 0
+
+	premisse = ()
+	for x in dlvhex.getInputAtoms():
+		if x.isTrue():
+			true = true + 1
+		elif x.isFalse():
+			false = false + 1
+		else:
+			unknown = unknown + 1
+			v = 0
+
+	if true >= min.intValue() and (true + unknown) <= max.intValue():
+		# external atom is true
+		dlvhex.output(())
+	elif (true + unknown) >= min.intValue() and true <= max.intValue():
+		# external atom can be true
+		dlvhex.outputUnknown(())
+	else:
+		# else case applies: (true + unknown) < min.intValue() or true > max.intValue()
+		#
+		# external atom is certainly not true
+		v = 0
+
+def numberOfBallsSE(assignment, max):
+
+	true = 0
+	false = 0
+	unknown = 0
+
+	premisse = ()
+	for x in dlvhex.getInputAtoms():
+		if x.isTrue():
+			true = true + 1
+		elif x.isFalse():
+			false = false + 1
+		else:
+			unknown = unknown + 1
+			v = 0
+
+	if (true + unknown) <= max.intValue():
+		# external atom is true
+		dlvhex.output(())
+	elif true <= max.intValue():
+		# external atom can be true
+		dlvhex.outputUnknown(())
+	else:
+		# else case applies: if true > max.intValue()
+		#
+		# external
+		v = 0
+
+def numberOfBallsGE(assignment, min):
+
+	true = 0
+	false = 0
+	unknown = 0
+
+	premisse = ()
+	for x in dlvhex.getInputAtoms():
+		if x.isTrue():
+			true = true + 1
+		elif x.isFalse():
+			false = false + 1
+		else:
+			unknown = unknown + 1
+			v = 0
+
+	if true >= min.intValue():
+		# external atom is true
+		dlvhex.output(())
+	elif (true + unknown) >= min.intValue():
+		# external atom can be true
+		dlvhex.outputUnknown(())
+	else:
+		# else case applies: if (true + unknown) < min.intValue()
+		#
+		# external
+		v = 0
+
+# no native implementations for these, so let's use the non-native ones
+testIsEmpty = isEmpty
+testNumberOfBalls = numberOfBalls
+testNumberOfBallsSE = numberOfBallsSE
+testNumberOfBallsGE = numberOfBallsGE
+
 def register():
 	#XFAIL = expected failure (out of fragment)
 	#XFAIL dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
@@ -43,11 +166,46 @@ def register():
 	#unused dlvhex.addAtom("testListHalf", (dlvhex.CONSTANT,), 2)
 	#unused dlvhex.addAtom("testListMerge", (dlvhex.CONSTANT,dlvhex.CONSTANT,dlvhex.CONSTANT), 2)
 	dlvhex.addAtom("testSubstr", (dlvhex.CONSTANT,dlvhex.CONSTANT,dlvhex.CONSTANT), 1)
+	dlvhex.addAtom("testEven", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
+	#unused dlvhex.addAtom("testOdd", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
+	#unused dlvhex.addAtom("testLessThan", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
+	#unused dlvhex.addAtom("testEqual", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
+	#XFAIL dlvhex.addAtom("id", (dlvhex.PREDICATE,), 1)
+	#TODO testCautiousQuery
+	#XFAIL (TODO) testSetMinus
+
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	dlvhex.addAtom("isEmpty", (dlvhex.PREDICATE, ), 0, prop)
+	dlvhex.addAtom("testIsEmpty", (dlvhex.PREDICATE, ), 0, prop)
+
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	dlvhex.addAtom("numberOfBalls", (dlvhex.PREDICATE, dlvhex.CONSTANT, dlvhex.CONSTANT), 0, prop)
+	dlvhex.addAtom("testNumberOfBalls", (dlvhex.PREDICATE, dlvhex.CONSTANT, dlvhex.CONSTANT), 0, prop)
+
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	prop.addAntimonotonicInputPredicate(0)
+	dlvhex.addAtom("numberOfBallsSE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
+	dlvhex.addAtom("testNumberOfBallsSE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
+
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	prop.addMonotonicInputPredicate(0)
+	dlvhex.addAtom("numberOfBallsGE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
+	dlvhex.addAtom("testNumberOfBallsGE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
+
+	#XFAIL (TODO) sumD0
+	#XFAIL getreq
+	#unused mapping
+	#unused getSizes
+	#unused getSizesRestr
+	#XFAIL getDiagnoses
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.addFiniteOutputDomain(0)
 	dlvhex.addAtom("testConcat", (dlvhex.TUPLE,), 1, prop)
 
-#	dlvhex.addAtom("id", (dlvhex.PREDICATE, ), 1)
 
 # vim:list:noet:
