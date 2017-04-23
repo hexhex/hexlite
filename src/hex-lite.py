@@ -168,11 +168,9 @@ class StatementRewriterHead(StatementRewriterBase):
     logging.debug('SRH stm='+pprint.pformat(self.statement))
     assert(isinstance(self.statement, shp.alist))
     assert(len(self.statement) == 1) # we have no body (otherwise use StatementRewriterRuleCstr)
-    head = self.statement[0]
-    TODO use dup?
-    out = shp.alist([self.rewriteDisjunctiveHead(head), None], right=self.statement.right)
-    self.pr.addRewrittenRule(out)
-  def rewriteDisjunctiveHead(head):
+    self.statement[0] = self.rewriteDisjunctiveHead(self.statement[0])
+    self.pr.addRewrittenRule(self.statement)
+  def rewriteDisjunctiveHead(self, head):
     logging.debug('SRH head='+pprint.pformat(head))
     # if head is a normal list that contains more than 2 elements and some 'v' items on top level,
     # transform it into an alist with separator '|' instead of 'v'
@@ -206,6 +204,7 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
   def rewrite(self):
     #logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
     head, body = self.statement
+    self.statement[0] = self.rewriteDisjunctiveHead(head)
     safeVars = self.findBasicSafeVariables(body)
     pendingEatoms = self.extractExternalAtoms(body)
     if len(pendingEatoms) == 0:
