@@ -217,6 +217,9 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
         pendingEatoms.remove(safeEatm)
         #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
         eatomname = safeEatm['eatom'][0][1:]
+        if eatomname not in dlvhex.atoms:
+          raise Exception('could not find handler for external atom {}'.format(
+            shp.shallowprint(safeEatm['shallow'])))
         handler = dlvhex.atoms[eatomname].executionHandler
         resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
         for r in resultRules:
@@ -275,15 +278,7 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
         return x[:checkIdx], x[checkIdx:]
       else:
         return None
-    eatoms = []
-    if isinstance(body, shp.alist):
-      # > 1 body atom
-      eatoms += [ splitPrefixEatom(x) for x in body ]
-    else:
-      # 1 body atom
-      eatom = splitPrefixEatom(body)
-      if eatom:
-        eatoms.append(eatom)
+    eatoms = [ splitPrefixEatom(x) for x in body ]
     #logging.debug('eatoms1='+pprint.pformat(eatoms))
     eatoms = [ {'shallow': p_e[0] + p_e[1], 'prefix': p_e[0], 'eatom': p_e[1] }
                for p_e in eatoms if p_e is not None ]
@@ -296,9 +291,15 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
       outplist = [ x for x in eatom['eatom'] if isinstance(x,shp.alist) and x.left == '(' ]
       assert(len(outplist) <= 1)
       #assert(logging.debug('enrich outplist='+pprint.pformat(outplist)) or True)
-      eatom['inputs'] = list(inplist[0])
+      if len(inplist) == 0:
+        eatom['inputs'] = []
+      else:
+        eatom['inputs'] = list(inplist[0])
       eatom['inputvars'] = set(findVariables(inplist))
-      eatom['outputs'] = list(outplist[0])
+      if len(outplist) == 0:
+        eatom['outputs'] = []
+      else:
+        eatom['outputs'] = list(outplist[0])
       eatom['outputvars'] = set(findVariables(outplist))
       return eatom
     return [ enrich(x) for x in eatoms ]
@@ -378,12 +379,17 @@ class GringoContext:
       # call external atom in plugin
       #logging.debug('calling plugin with arguments '+repr(plugin_arguments))
       self.holder.func(*plugin_arguments)
-      if self.holder.outnum == 1:
+      if self.holder.outnum == 0:
+        # 1 or 0
+        if len(dlvhex.currentOutput) > 0:
+          out = 1
+        else:
+          out = 0
+      elif self.holder.outnum == 1:
         # list of terms
         out = [ convertHexToClingo(_tuple[0]) for _tuple in dlvhex.currentOutput ]
       else:
-        # list of tuple of terms
-        assert(self.holder.outnum != 0) # TODO will it work for 0 terms?
+        # list of tuple of terms (maybe empty tuple)
         out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
       dlvhex.cleanupExternalAtomCall()
@@ -453,6 +459,7 @@ def execute(rewritten, facts, plugins, args):
   cc = clingo.Control(cmdlineargs)
   sendprog = shp.shallowprint(rewritten)
   try:
+    logging.debug('sending program ===\n'+sendprog+'\n===')
     cc.add('base', (), sendprog)
   except:
     raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
@@ -510,13 +517,16 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
     '''
     #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
     replacement = eatom['prefix'] + [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
-    if len(eatom['outputs']) == 1:
+    if len(eatom['outputs']) == 0:
+      # add equality with 1
+      replacement.append('=')
+      replacement.append(1)
+    elif len(eatom['outputs']) == 1:
       # for 1 output: no tuple (it will not work correctly)
       replacement.append('=')
       replacement.append(eatom['outputs'][0])
     else:
-      # for 0 and >1 outputs: use tuple
-      assert(len(eatom['outputs']) != 0) # TODO will it work correctly for 0?
+      # for >1 outputs: use tuple
       replacement.append('=')
       replacement.append(shp.alist(eatom['outputs'], '(', ')', ','))
     # find position of eatom in body list
