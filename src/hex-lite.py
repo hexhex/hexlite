@@ -402,7 +402,11 @@ def execute(rewritten, facts, plugins, args):
 
   logging.info('sending nonground program to clingo control')
   cc = clingo.Control(cmdlineargs)
-  cc.add('base', (), shp.shallowprint(rewritten))
+  sendprog = shp.shallowprint(rewritten)
+  try:
+    cc.add('base', (), sendprog)
+  except:
+    raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
   #cc.register_observer(GroundProgramObserver(), False)
 
   logging.info('grounding with gringo context')
