@@ -228,7 +228,15 @@ class StatementRewriterRuleCstr(StatementRewriterBase):
         return x[:checkIdx], x[checkIdx:]
       else:
         return None
-    eatoms = [ splitPrefixEatom(x) for x in body ]
+    eatoms = []
+    if isinstance(body, shp.alist):
+      # > 1 body atom
+      eatoms += [ splitPrefixEatom(x) for x in body ]
+    else:
+      # 1 body atom
+      eatom = splitPrefixEatom(body)
+      if eatom:
+        eatoms.append(eatom)
     #logging.debug('eatoms1='+pprint.pformat(eatoms))
     eatoms = [ {'shallow': p_e[0] + p_e[1], 'prefix': p_e[0], 'eatom': p_e[1] }
                for p_e in eatoms if p_e is not None ]
