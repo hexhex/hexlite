@@ -140,8 +140,8 @@ t_SEPRULE = r':[~-]'
 t_SEPCOL = r':(?![~-])'
 t_STRING = r'"[^"]*"'
 t_INTEGER = r'[0-9]+'
-t_OPERATOR = r'(==|=|!=|<=|>=|<>|<|>)'
-t_OTHER = r'[^()\[\]{},:;.?\r\n\t" ]+'
+t_OPERATOR = r'(==|=|!=|<=|>=|<>|<|>|@)'
+t_OTHER = r'[^()\[\]{}@=!<>,:;.?\r\n\t" ]+'
 
 def t_error(t):
   msg = "unexpected character '{}'\n".format(repr(t))

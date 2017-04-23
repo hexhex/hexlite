@@ -107,18 +107,24 @@ class ProgramRewriter:
         sig = (stm.left, stm.sep, stm.right)
         #logging.debug('ASR alist {}'.format(repr(sig)))
         if sig == (None, None, '.'):
-          # fact
+          # fact (maybe disjunctive)
           #logging.info('ASR fact/passthrough '+dbgstm)
-          ret.append(StatementRewriterPassthrough(self, stm))
+          ret.append(StatementRewriterHead(self, stm))
           facts.append(stm)
+          continue
         elif sig == (None, ':-', '.'):
           # rule/constraint
           #logging.info('ASR rule/rulecstr '+dbgstm)
           ret.append(StatementRewriterRuleCstr(self, stm))
-        else:
-          # unclassified
-          logging.warning('ASR unclassified/passthrough '+dbgstm)
-          ret.append(StatementRewriterPassthrough(self, stm))
+          continue
+      elif isinstance(stm, list) and len(stm) == 2:
+        # weak constraint
+        assert(isinstance(stm[0], shp.alist) and stm[0].sep == ':~')
+        ret.append(StatementRewriterWeakCstr(self, stm))
+        continue
+      # unclassified
+      logging.warning('ASR unclassified/passthrough '+dbgstm)
+      ret.append(StatementRewriterPassthrough(self, stm))
     return ret, facts
 
 class StatementRewriterBase:
@@ -304,6 +310,56 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
       return eatom
     return [ enrich(x) for x in eatoms ]
 
+class StatementRewriterWeakCstr(StatementRewriterRuleCstr):
+  '''
+  rewriting weak constraints
+  '''
+  def __init__(self, pr, statement):
+    assert(isinstance(statement, list) and len(statement) == 2)
+    StatementRewriterRuleCstr.__init__(self, pr, statement[0])
+    self.weak = statement[1]
+
+  def rewrite(self):
+    logging.debug('SRWC stm='+pprint.pformat(self.statement))
+    logging.debug('SRWC weak='+pprint.pformat(self.weak))
+    assert(self.statement[0] == None)
+    body = self.statement[1]
+    safeVars = self.findBasicSafeVariables(body)
+    pendingEatoms = self.extractExternalAtoms(body)
+    if len(pendingEatoms) == 0:
+      self.pr.addRewrittenRule(self.decorateWeak(self.statement, safeVars))
+    else:
+      while len(pendingEatoms) > 0:
+        #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
+        #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
+        safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
+        pendingEatoms.remove(safeEatm)
+        #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
+        eatomname = safeEatm['eatom'][0][1:]
+        if eatomname not in dlvhex.atoms:
+          raise Exception('could not find handler for external atom {}'.format(
+            shp.shallowprint(safeEatm['shallow'])))
+        handler = dlvhex.atoms[eatomname].executionHandler
+        resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
+        for r in resultRules:
+          self.pr.addRewrittenRule(self.decorateWeak(r, safeVars))
+        safeVars |= makesSafe
+
+  def decorateWeak(self, stmt, safeVars):
+    logging.debug('SRWC decorateWeak='+pprint.pformat(self.weak))
+    assert(isinstance(self.weak, shp.alist))
+    assert(self.weak.left == '[' and self.weak.right == ']')
+    if self.weak.sep == ':':
+      # old weak constraint syntax
+      cost = self.weak[0]
+      level = self.weak[1]
+      leveltuple = shp.alist([level]+list(safeVars), sep=',')
+      weakpart = shp.alist([cost, leveltuple], left='[', right=']', sep='@')
+    else:
+      # new syntax, just pass it directly
+      weakpart = self.weak
+    return [stmt, weakpart]
+
 def findVariables(structure):
   return deepCollect(structure,
     lambda x: isinstance(x, str) and x[0].isupper())
@@ -425,12 +481,24 @@ class ModelReceiver:
     self.nofacts = nofacts
 
   def __call__(self, mdl):
+    costs = mdl.cost
+    if len(costs) > 0 and not mdl.optimality_proven:
+      logging.info('not showing suboptimal model (like dlvhex2)!')
+      return
     syms = mdl.symbols(atoms=True,terms=True)
     strsyms = [ str(s) for s in syms ]
     if self.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
     strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
-    sys.stdout.write('{'+','.join(strsyms)+'}\n')
+    if len(costs) > 0:
+      # first entry = highest priority level
+      # last entry = lowest priority level (1)
+      logging.debug('on_model got cost'+repr(costs))
+      pairs = [ '[{}:{}]'.format(p[1], p[0]+1) for p in enumerate(reversed(costs)) if p[1] != 0 ]
+      costs=' <{}>'.format(','.join(pairs))
+    else:
+      costs = ''
+    sys.stdout.write('{'+','.join(strsyms)+'}'+costs+'\n')
 
   def _normalizeFacts(self, facts):
     def normalize(x):
@@ -449,11 +517,13 @@ class ModelReceiver:
     return [normalize(f) for f in facts]
 
 def execute(rewritten, facts, plugins, args):
-  #cmdlineargs = ['--opt-mode=usc,9']
   # XXX get settings from commandline
   cmdlineargs = []
   if args.number != 1:
     cmdlineargs.append(str(args.number))
+  # just in case we need optimization
+  cmdlineargs.append('--opt-mode=optN')
+  cmdlineargs.append('--opt-strategy=usc,9')
 
   logging.info('sending nonground program to clingo control')
   cc = clingo.Control(cmdlineargs)
