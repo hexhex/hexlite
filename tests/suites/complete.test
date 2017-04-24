@@ -121,12 +121,7 @@ functionsymbols2.hex functionsymbols2.out --liberalsafety
 functionsymbols3.hex functionsymbols3.out --liberalsafety
 functionsymbols4.hex functionsymbols4.out 
 functionsymbols5.hex functionsymbols5.out --liberalsafety
-functionsymbols1.hex functionsymbols1.out --liberalsafety 
-functionsymbols2.hex functionsymbols2.out --liberalsafety
-functionsymbols3.hex functionsymbols3.out --liberalsafety
-functionsymbols4.hex functionsymbols4.out 
-functionsymbols5.hex functionsymbols5.out --liberalsafety 
-#functionsymbols6.hex functionsymbols6.stderr --liberalsafety # deactivated, takes too much memory
+#XFAIL (endless loop) functionsymbols6.hex functionsymbols6.stderr --liberalsafety
 non3col.hex non3col.out
 non3col2.hex non3col2.out
 headguard1.hex headguard1.out
