@@ -6,6 +6,9 @@ import logging
 #	for x in dlvhex.getTrueInputAtoms():
 #		dlvhex.output((x.tuple()[1], ))
 
+def idc(c):
+	dlvhex.output((c,))
+
 def testZeroArity0():
 	pass
 
@@ -151,6 +154,37 @@ testNumberOfBalls = numberOfBalls
 testNumberOfBallsSE = numberOfBallsSE
 testNumberOfBallsGE = numberOfBallsGE
 
+def partialTest(assignment):
+
+	true = 0
+	false = 0
+	unknown = 0
+
+	premisse = ()
+	for x in dlvhex.getInputAtoms():
+		if x.isTrue():
+			true = true + 1
+#			premisse = premisse + (x, )
+#			print "true input atom:", x.value()
+		elif x.isFalse():
+			false = false + 1
+#			premisse = premisse + (x.negate(), )
+#			print "false input atom:", x.value()
+		else:
+			unknown = unknown + 1
+#			print "unknown input atom:", x.value()
+			v = 0
+
+	if true > 1:
+#		dlvhex.learn(premisse + (dlvhex.storeOutputAtom((), False).negate(), ))
+		dlvhex.output(())
+	elif true + unknown > 1:
+		dlvhex.outputUnknown(())
+
+def rdf(uri):
+	logging.warning('TODO implement &rdf (and #namespace)')
+	dlvhex.output(('s', 'p', 'o'))
+
 def register():
 	#XFAIL = expected failure (out of fragment)
 	#XFAIL dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
@@ -171,6 +205,7 @@ def register():
 	#unused dlvhex.addAtom("testLessThan", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#unused dlvhex.addAtom("testEqual", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#XFAIL dlvhex.addAtom("id", (dlvhex.PREDICATE,), 1)
+	dlvhex.addAtom("idc", (dlvhex.CONSTANT,), 1)
 	#TODO testCautiousQuery
 	#XFAIL (TODO) testSetMinus
 
@@ -196,6 +231,10 @@ def register():
 	dlvhex.addAtom("numberOfBallsGE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
 	dlvhex.addAtom("testNumberOfBallsGE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
 
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	dlvhex.addAtom("partialTest", (dlvhex.PREDICATE, ), 0, prop)
+
 	#XFAIL (TODO) sumD0
 	#XFAIL getreq
 	#unused mapping
@@ -207,5 +246,6 @@ def register():
 	prop.addFiniteOutputDomain(0)
 	dlvhex.addAtom("testConcat", (dlvhex.TUPLE,), 1, prop)
 
+	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 
 # vim:list:noet:
