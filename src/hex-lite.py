@@ -509,6 +509,24 @@ class GroundProgramObserver:
     #logging.debug("GP getattr {}".format(name))
     return Generic(name)
 
+class ClingoPropagator:
+  def __init__(self):
+    pass
+  def init(self, pinit):
+    # register mapping for solver/grounder atoms!
+    # no need for watches as long as we use only check()
+    logging.info('CP init')
+  # TODO (future) implement propagation on partial assignments
+  def check(self, scontrol):
+    '''
+    * get valueAuxTrue and valueAuxFalse truth values
+    * get predicate input truth values/extension
+    * for each true/false external atom call the plugin and add corresponding nogood
+    '''
+    # called on total assignments (even without watches)
+    logging.info('CP check')
+
+
 
 class ModelReceiver:
   def __init__(self, facts, nofacts=False):
@@ -574,10 +592,15 @@ def execute(rewritten, facts, plugins, args):
   ccc = GringoContext()
   cc.ground([('base',())], ccc)
 
-  logging.warning('TODO prepare/register propagator')
+  logging.info('preparing for search')
+  checkprop = ClingoPropagator()
+  cc.register_propagator(checkprop)
   mr = ModelReceiver(facts, args.nofacts)
+
+  logging.info('starting search')
   cc.solve(on_model=mr)
-  # TODO return code for unsat/sat/opt
+
+  # TODO return code for unsat/sat/opt?
   return 0
 
 class EAtomHandlerBase:
@@ -651,8 +674,10 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
     # auxiliary atoms
     inputAuxPred = 'aux_i{}_{}'.format(len(eatom['inputs']), eatom['name'])
     inputAuxAtom = [ inputAuxPred, shp.alist(eatom['inputs'], left='(', right=')', sep=',') ]
-    valueAuxPred = 'aux_v{}_{}'.format(len(eatom['inputs'])+len(eatom['outputs']), eatom['name'])
-    valueAuxAtom = [ valueAuxPred, shp.alist(eatom['inputs'] + eatom['outputs'], left='(', right=')', sep=',') ]
+    valueAuxPredTrue = 'aux_t{}_{}'.format(len(eatom['inputs'])+len(eatom['outputs']), eatom['name'])
+    valueAuxPredFalse = 'aux_f{}_{}'.format(len(eatom['inputs'])+len(eatom['outputs']), eatom['name'])
+    valueAuxAtomTrue = [ valueAuxPredTrue, shp.alist(eatom['inputs'] + eatom['outputs'], left='(', right=')', sep=',') ]
+    valueAuxAtomFalse = [ valueAuxPredFalse, shp.alist(eatom['inputs'] + eatom['outputs'], left='(', right=')', sep=',') ]
 
     # create input instantiation rule for eatom value based on safeconditions (this also determines if the atom needs to be guessed)
     if len(safeconditions) == 0:
@@ -666,14 +691,14 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
     out.append(inputInstRule)
 
     # create guessing rule for eatom value based on safeconditions
-    valueGuessHead = shp.alist([ valueAuxAtom ], left='{', right='}')
+    valueGuessHead = [ 1, shp.alist([ valueAuxAtomTrue, valueAuxAtomFalse ], left='{', right='}', sep=';'), 1]
     valueGuessRule = shp.alist([ valueGuessHead, shp.alist([inputAuxAtom], sep=',') ], sep=':-', right='.')
     logging.debug('NOEAH valueGuessRule1={}'.format(pprint.pformat(valueGuessRule)))
     logging.debug('NOEAH valueGuessRule2={}'.format(shp.shallowprint(valueGuessRule)))
     out.append(valueGuessRule)
 
     # replace eatom in statement
-    replacement = valueAuxAtom
+    replacement = valueAuxAtomTrue
     # find position of eatom in body list
     posInStatement = statement[1].index(eatom['shallow'])
     logging.info('NOEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
@@ -686,7 +711,6 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
       out.append(statement)
 
     return out
-
 
 def classifyExternalAtoms():
   '''
