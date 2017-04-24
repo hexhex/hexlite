@@ -511,13 +511,26 @@ class GroundProgramObserver:
 
 class ClingoPropagator:
   def __init__(self):
-    pass
-  def init(self, pinit):
+    # key = eatom
+    # value = { 'true': [ (symbol, solverlit), ... ], 'false': [ (symbol, solverlit), ... ] }
+    self.eatomAux = {}
+  def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
     logging.info('CP init')
+    for eatomname, eatomholder in dlvhex.atoms.items():
+      trueSymLit, falseSymLit = [], []
+      for truepred, falsepred, arity in eatomholder.aux_atom_signatures:
+        for x in init.symbolic_atoms.by_signature(truepred, arity):
+          trueSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
+        for x in init.symbolic_atoms.by_signature(falsepred, arity):
+          falseSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
+      self.eatomAux[eatomname] = {'true': trueSymLit, 'false': falseSymLit}
+      # TODO (future) create one propagator for each external atom
+      # TODO (future) set watches for propagation on partial assignments
+      
   # TODO (future) implement propagation on partial assignments
-  def check(self, scontrol):
+  def check(self, control):
     '''
     * get valueAuxTrue and valueAuxFalse truth values
     * get predicate input truth values/extension
@@ -525,7 +538,13 @@ class ClingoPropagator:
     '''
     # called on total assignments (even without watches)
     logging.info('CP check')
-
+    for eatomname, auxinfo in self.eatomAux.items():
+      for sym, lit in auxinfo['true']:
+        if control.assignment.is_true(lit):
+          logging.debug('CP need to check true atom {}'.format(sym))
+      for sym, lit in auxinfo['false']:
+        if control.assignment.is_true(lit):
+          logging.debug('CP need to check false atom {}'.format(sym))
 
 
 class ModelReceiver:
@@ -671,13 +690,20 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
       pprint.pformat(eatom), pprint.pformat(statement), repr(safevars), pprint.pformat(safeconditions))) or True)
     out = []
 
-    # auxiliary atoms
-    inputAuxPred = 'aux_i{}_{}'.format(len(eatom['inputs']), eatom['name'])
+    # auxiliary atom for input
+    inputArity = len(eatom['inputs'])
+    inputAuxPred = 'aux_i{}_{}'.format(inputArity, eatom['name'])
     inputAuxAtom = [ inputAuxPred, shp.alist(eatom['inputs'], left='(', right=')', sep=',') ]
-    valueAuxPredTrue = 'aux_t{}_{}'.format(len(eatom['inputs'])+len(eatom['outputs']), eatom['name'])
-    valueAuxPredFalse = 'aux_f{}_{}'.format(len(eatom['inputs'])+len(eatom['outputs']), eatom['name'])
-    valueAuxAtomTrue = [ valueAuxPredTrue, shp.alist(eatom['inputs'] + eatom['outputs'], left='(', right=')', sep=',') ]
-    valueAuxAtomFalse = [ valueAuxPredFalse, shp.alist(eatom['inputs'] + eatom['outputs'], left='(', right=')', sep=',') ]
+    self.holder.aux_input_signatures.add( (inputAuxPred, inputArity) )
+
+    # auxiliary atoms for value of external atom
+    in_out_list = eatom['inputs']+eatom['outputs']
+    atomArity = len(in_out_list)
+    valueAuxPredTrue = 'aux_t{}_{}'.format(atomArity, eatom['name'])
+    valueAuxPredFalse = 'aux_f{}_{}'.format(atomArity, eatom['name'])
+    valueAuxAtomTrue = [ valueAuxPredTrue, shp.alist(in_out_list, left='(', right=')', sep=',') ]
+    valueAuxAtomFalse = [ valueAuxPredFalse, shp.alist(in_out_list, left='(', right=')', sep=',') ]
+    self.holder.aux_atom_signatures.add( (valueAuxPredTrue, valueAuxPredFalse, atomArity) )
 
     # create input instantiation rule for eatom value based on safeconditions (this also determines if the atom needs to be guessed)
     if len(safeconditions) == 0:

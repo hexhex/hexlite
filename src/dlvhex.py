@@ -97,6 +97,11 @@ class ExternalAtomHolder:
     self.func = func
     # this will be set by the engine
     self.executionHandler = None
+    # this will be used by the rewriting
+    # sets of tuples: inpred, arity
+    self.aux_input_signatures = set()
+    # sets of tuples: truepred, falsepred, arity
+    self.aux_atom_signatures = set()
 
 _specToString = {
   TUPLE: 'TUPLE',
