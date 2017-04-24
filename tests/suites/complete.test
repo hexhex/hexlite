@@ -2,6 +2,7 @@
 csv1.hex csv1.out --csvinput=p,/home/ps/_science/projects/hex/core/examples/csv1.csv --csvoutput=q
 agg1.hex agg1.out
 #XFAIL agg2.hex agg2.out
+#XFAIL TODO dawg.hex
 agg3.hex agg3.out --nofacts
 agg4.hex agg4.out --nofacts
 agg5.hex agg5.out --nofacts
