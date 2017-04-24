@@ -523,10 +523,12 @@ class ClingoPropagator:
       for truepred, falsepred, arity in eatomholder.aux_atom_signatures:
         for x in init.symbolic_atoms.by_signature(truepred, arity):
           trueSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
+          # get symbols given to predicate inputs and also register their literals
         for x in init.symbolic_atoms.by_signature(falsepred, arity):
           falseSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
+          # get symbols given to predicate inputs and also register their literals
       self.eatomAux[eatomname] = {'true': trueSymLit, 'false': falseSymLit}
-      # TODO (future) create one propagator for each external atom
+      # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
       # TODO (future) set watches for propagation on partial assignments
       
   # TODO (future) implement propagation on partial assignments
