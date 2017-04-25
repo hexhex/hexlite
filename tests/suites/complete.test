@@ -1,9 +1,9 @@
 3col.hex 3col.out
-csv1.hex csv1.out --csvinput=p,/home/ps/_science/projects/hex/core/examples/csv1.csv --csvoutput=q
+#XFAIL csvplugin csv1.hex csv1.out --csvinput=p,/home/ps/_science/projects/hex/core/examples/csv1.csv --csvoutput=q
 agg1.hex agg1.out
-#XFAIL agg2.hex agg2.out
+XFAIL agg2.hex agg2.out
 #XFAIL TODO dawg.hex
-agg3.hex agg3.out --nofacts
+#XFAIL (eatom in aggregate) agg3.hex agg3.out --nofacts
 agg4.hex agg4.out --nofacts
 agg5.hex agg5.out --nofacts
 agg6.hex agg6.out --nofacts
@@ -12,13 +12,13 @@ agg7.hex agg7.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
 weak1.hex weak1.out
 weak2.hex weak2.out
-#XFAIL &id weak3.hex weak3.out
+weak3.hex weak3.out
 weak4.hex weak4.out
 weak5.hex weak5.out
 weak_bench_small.hex weak_bench_small.out
-#XFAIL &id weak6a.hex weak6a.out 
-#XFAIL &id weak6b.hex weak6b.out 
-#XFAIL &id weak6c.hex weak6c.out 
+weak6a.hex weak6a.out 
+weak6b.hex weak6b.out 
+weak6c.hex weak6c.out 
 weak7.hex weak7.out
 anonymousvariable1.hex anonymousvariable1.out --nofacts
 builtin_safety1.hex builtin_safety1.stderr
@@ -32,18 +32,18 @@ duplicaterule.asp duplicaterule.out
 equality.hex equality.out
 nonmoncycle.hex nonmoncycle.out
 nonmoncycle2.hex nonmoncycle2.out
-#XFAIL extatom1.hex extatom1.out
-#XFAIL extatom1simple.hex extatom1simple.out
+#XFAIL FLP extatom1.hex extatom1.out
+#XFAIL FLP extatom1simple.hex extatom1simple.out
 extatom2.hex extatom2.out
 extatom2safety.hex extatom2.out
-#XFAIL extatom3.hex extatom3.out --nofacts
-#XFAIL extatom3.hex extatom3_faultya.stderr --nofacts
-#XFAIL extatom3.hex extatom3_faultyb.stderr --nofacts
-#XFAIL extatom4.hex extatom4.out
-#XFAIL extatom5.hex extatom5.out
-#XFAIL extatom6.hex extatom6.out
+extatom3.hex extatom3.out --nofacts
+extatom3.hex extatom3_faultya.stderr --nofacts
+extatom3.hex extatom3_faultyb.stderr --nofacts
+extatom4.hex extatom4.out
+extatom5.hex extatom5.out
+extatom6.hex extatom6.out
 extatom7.hex extatom7.out --nofacts
-#XFAIL extatom8.hex extatom8.out --nofacts
+extatom8.hex extatom8.out --nofacts
 extatom9.hex extatom9.out
 extatom10.hex extatom10.out
 auxinput.hex auxinput.out

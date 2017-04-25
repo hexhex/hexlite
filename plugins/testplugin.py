@@ -15,6 +15,24 @@ def testZeroArity0():
 def testZeroArity1():
 	dlvhex.output(())
 
+def testA(pred):
+	if len(dlvhex.getTrueInputAtoms()) == 0:
+		dlvhex.output(('foo',))
+	else:
+		dlvhex.output(('bar',))
+
+def testB(pred1, pred2):
+	if len(dlvhex.getTrueInputAtoms()) <= 1:
+		dlvhex.output(('bar',))
+	else:
+		dlvhex.output(('foo',))
+
+def testC(pred):
+	for atom in dlvhex.getTrueInputAtoms():
+		for x in atom.tuple()[1:]:
+			# output arguments of input predicate
+			dlvhex.output((x.value(),))
+
 def testEven(pred1, pred2):
 	true = [x for x in dlvhex.getTrueInputAtoms()]
 	num = len(true)
@@ -186,10 +204,10 @@ def rdf(uri):
 	dlvhex.output(('s', 'p', 'o'))
 
 def register():
-	#XFAIL = expected failure (out of fragment)
-	#XFAIL dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
-	#XFAIL dlvhex.addAtom("testB", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1)
-	#XFAIL dlvhex.addAtom("testC", (dlvhex.PREDICATE,), 1)
+	#XFAIL = expected failure
+	dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
+	dlvhex.addAtom("testB", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1)
+	dlvhex.addAtom("testC", (dlvhex.PREDICATE,), 1)
 	dlvhex.addAtom("testZeroArity0", tuple(), 0)
 	dlvhex.addAtom("testZeroArity1", tuple(), 0)
 	#XFAIL unused dlvhex.addAtom("testConcatAll", (dlvhex.PREDICATE,), 1)
