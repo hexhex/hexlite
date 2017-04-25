@@ -577,11 +577,24 @@ class EAtomVerification:
 
 clingoPropControl = None
 
+class Nogood:
+  def __init__(self):
+    self.literals = set()
+  def add(self, lit):
+    if -lit in self.literals:
+      return False
+    self.literals.add(lit)
+    return True
+
 class ClingoPropagator:
+  class StopPropagation:
+    pass
   def __init__(self):
     # key = eatom
     # value = list of EAtomVerification
     self.eatomVerifications = collections.defaultdict(list)
+    # mapping from solver literals to lists of strings
+    self.debugMapping = collections.defaultdict(list)
   def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
@@ -615,9 +628,18 @@ class ClingoPropagator:
           verification.allinputs = flatten([idlist for idlist in verification.predinputs.values()])
           self.eatomVerifications[eatomname].append(verification)
 
-      # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
-      # TODO (future) set watches for propagation on partial assignments
-      
+    # for debugging: get full symbol table
+    for aname, aarity, apol in init.symbolic_atoms.signatures:
+      for x in init.symbolic_atoms.by_signature(aname, aarity):
+        slit = init.solver_literal(x.literal)
+        self.debugMapping[slit].append(str(x.symbol))
+
+  def nogoodToString(self, nogood):
+    return repr([ '-'*int(slit > 0) + '/'.join(self.debugMapping[abs(slit)]) for slit in nogood ])
+
+    # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
+    # TODO (future) set watches for propagation on partial assignments
+    
   # TODO (future) implement propagation on partial assignments
   def check(self, control):
     '''
@@ -636,6 +658,9 @@ class ClingoPropagator:
             self.verifyTruthOfAtom(eatomname, control, veri)
           else:
             logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
+    except ClingoPropagator.StopPropagation:
+      # this is part of the intended behavior
+      logging.debug('CPcheck aborted propagation')
     finally:
       # reset
       clingoPropControl = None
@@ -647,10 +672,55 @@ class ClingoPropagator:
     # in replacement atom everything that is not output is relevant input
     logging.debug(repr(veri.replacement.sym.arguments))
     replargs = veri.replacement.sym.arguments
-    inputtuple = replargs[0:len(replargs)-holder.outnum]
-    logging.debug('CPvTOA inputtuple {}'.format(repr(inputtuple)))
+    inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
+    outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
+    logging.debug('CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     out = externalAtomCallHelper(holder, inputtuple, veri.allinputs)
     logging.debug("CPvTOA output {}".format(pprint.pformat(out)))
+    realValue = outputtuple in out
+    if realValue == targetValue:
+      logging.debug("CPvTOA positively verified!")
+    else:
+      logging.debug("CPvTOA verification failed!")
+    # add clause that ensures this value is always chosen correctly in the future
+    # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in 
+
+    # build nogood: solution is eliminated if ...
+
+    # ... eatom is relevant ...
+    nogood = Nogood()
+    nogood.add(veri.relevance.lit)
+
+    # ... and all inputs are as they were above ...
+    for atom in veri.allinputs:
+      value = control.assignment.value(atom.symlit.lit)
+      if value == True:
+        if not nogood.add(atom.symlit.lit):
+          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+          return
+      elif value == False:
+        if not nogood.add(-atom.symlit.lit):
+          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+          return
+      # None case does not contribute to nogood
+
+    checklit = None
+    if realValue == True:
+      # ... and computation gave true but eatom replacement is false
+      checklit = -veri.replacement.lit
+    else:
+      # ... and computation gave false but eatom replacement is true
+      checklit = veri.replacement.lit
+
+    if not nogood.add(checklit):
+      logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+      return
+
+    nogood = nogood.literals
+    logging.debug("CPcheck adding nogood {} which is {}".format(nogood, self.nogoodToString(nogood)))
+    may_continue = control.add_nogood(nogood)
+    if not may_continue:
+      raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
   def __init__(self, facts, nofacts=False):
