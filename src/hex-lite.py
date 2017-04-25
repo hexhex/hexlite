@@ -909,7 +909,7 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     out.append(relevanceRule)
 
     # create guessing rule for eatom value based on safeconditions
-    valueGuessHead = [ shp.alist([ valueAuxAtom ], left='{', right='}', sep=';'), 1]
+    valueGuessHead = [ shp.alist([ valueAuxAtom ], left='{', right='}', sep=';') ]
     valueGuessRule = shp.alist([ valueGuessHead, shp.alist([relAuxAtom], sep=',') ], sep=':-', right='.')
     logging.debug('NOEAH valueGuessRule={}'.format(shp.shallowprint(valueGuessRule)))
     out.append(valueGuessRule)
