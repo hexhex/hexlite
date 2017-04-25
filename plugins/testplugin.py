@@ -15,7 +15,7 @@ def testZeroArity0():
 def testZeroArity1():
 	dlvhex.output(())
 
-def testEven():
+def testEven(pred1, pred2):
 	true = [x for x in dlvhex.getTrueInputAtoms()]
 	num = len(true)
 	if num % 2 == 0:
