@@ -769,9 +769,9 @@ class ClingoPropagator:
       raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
-  def __init__(self, facts, nofacts=False):
+  def __init__(self, facts, args):
     self.facts = set(self._normalizeFacts(facts))
-    self.nofacts = nofacts
+    self.args = args
 
   def __call__(self, mdl):
     costs = mdl.cost
@@ -780,9 +780,10 @@ class ModelReceiver:
       return
     syms = mdl.symbols(atoms=True,terms=True)
     strsyms = [ str(s) for s in syms ]
-    if self.nofacts:
+    if self.args.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
-    strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
+    if not self.args.auxfacts:
+      strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
     if len(costs) > 0:
       # first entry = highest priority level
       # last entry = lowest priority level (1)
@@ -835,7 +836,7 @@ def execute(rewritten, facts, plugins, args):
   logging.info('preparing for search')
   checkprop = ClingoPropagator()
   cc.register_propagator(checkprop)
-  mr = ModelReceiver(facts, args.nofacts)
+  mr = ModelReceiver(facts, args)
 
   logging.info('starting search')
   cc.solve(on_model=mr)
@@ -1020,6 +1021,8 @@ def interpretArguments(argv):
     help='Number of models to enumerate.')
   parser.add_argument('--nofacts', action='store_true', default=False,
     help='Whether to output given facts in answer set.')
+  parser.add_argument('--auxfacts', action='store_true', default=False,
+    help='Whether to output auxiliary facts in answer set.')
   #parser.add_argument('--solver', nargs='?', metavar='BACKEND', action='store', default=[],
   #  help='Names of solver backend to use (supported: clingo).')
   parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
