@@ -55,7 +55,7 @@ higherorder5.hex higherorder5.out --nofacts
 higherorder5except.hex higherorder5except.stderr
 manyanswersets.hex manyanswersets_twomodels.stdout --number=2
 maxint.hex maxint.out
-minimality.hex minimality.out
+#XFAIL FLP minimality.hex minimality.out
 naftest.hex naftest.out
 nonmon_guess.hex nonmon_guess.out
 nonmon_inc.hex nonmon_inc.out
