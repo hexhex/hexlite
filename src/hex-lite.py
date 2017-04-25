@@ -678,10 +678,10 @@ class ClingoPropagator:
     for aname, aarity, apol in init.symbolic_atoms.signatures:
       for x in init.symbolic_atoms.by_signature(aname, aarity):
         slit = init.solver_literal(x.literal)
-        self.debugMapping[slit].append(str(x.symbol))
-
-  def nogoodToString(self, nogood):
-    return repr([ '-'*int(slit > 0) + '/'.join(self.debugMapping[abs(slit)]) for slit in nogood ])
+        if apol == True:
+          self.debugMapping[slit].append(str(x.symbol))
+        else:
+          self.debugMapping[slit].append('-'+str(x.symbol))
 
     # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
     # TODO (future) set watches for propagation on partial assignments
@@ -707,16 +707,19 @@ class ClingoPropagator:
     except ClingoPropagator.StopPropagation:
       # this is part of the intended behavior
       logging.debug('CPcheck aborted propagation')
+      #logging.debug('aborted from '+traceback.format_exc())
     finally:
       # reset
       clingoPropControl = None
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
     targetValue = control.assignment.is_true(veri.replacement.lit)
-    logging.debug('CPvTOA checking if {} = {}'.format(str(targetValue), veri.replacement.sym))
+    if __debug__:
+      idebug = pprint.pformat([ x.value for x in veri.allinputs if x.isTrue() ])
+      logging.debug('CPvTOA checking if {} = {} with interpretation {}'.format(
+        str(targetValue), veri.replacement.sym, idebug))
     holder = dlvhex.eatoms[eatomname]
     # in replacement atom everything that is not output is relevant input
-    logging.debug(repr(veri.replacement.sym.arguments))
     replargs = veri.replacement.sym.arguments
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
@@ -726,6 +729,10 @@ class ClingoPropagator:
     realValue = outputtuple in out
     if realValue == targetValue:
       logging.debug("CPvTOA positively verified!")
+      # TODO somehow adding the (redundant) nogood aborts the propagation
+      # this was the case with bb7ab74
+      # benjamin said there is a bug, now i try the WIP branch 83038e
+      return
     else:
       logging.debug("CPvTOA verification failed!")
     # add clause that ensures this value is always chosen correctly in the future
@@ -762,10 +769,15 @@ class ClingoPropagator:
       logging.debug("CPvTOA cannot build nogood (opposite literals)!")
       return
 
-    nogood = nogood.literals
-    logging.debug("CPcheck adding nogood {} which is {}".format(nogood, self.nogoodToString(nogood)))
+    nogood = list(nogood.literals)
+    if __debug__:
+      logging.debug("CPcheck adding nogood {}".format(repr(nogood)))
+      for slit in nogood:
+        a = abs(slit)
+        logging.debug("CPcheck  {} ({}) is {}".format(a, control.assignment.value(a), repr(self.debugMapping[a])))
     may_continue = control.add_nogood(nogood)
-    if not may_continue:
+    logging.debug("CPcheck add_nogood returned {}".format(repr(may_continue)))
+    if may_continue == False:
       raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
@@ -1000,11 +1012,13 @@ def classifyExternalAtoms():
     inspec_types = set(holder.inspec)
     if dlvhex.PREDICATE not in inspec_types:
       holder.executionHandler = PureInstantiationEAtomHandler(holder)
-    elif holder.outnum == 0:
-      holder.executionHandler = PregroundableOutputEAtomHandler(holder)
+    #elif holder.outnum == 0:
     else:
-      raise Exception("cannot handle external atom '{}' from plugin '{}' because of input signature {} and nonempty ({}) output signature (please use dlvhex2)".format(
-        name, holder.module.__name__, repr(dlvhex.humanReadableSpec(holder.inspec)), holder.outnum))
+      # let's try
+      holder.executionHandler = PregroundableOutputEAtomHandler(holder)
+    #else:
+    #  raise Exception("cannot handle external atom '{}' from plugin '{}' because of input signature {} and nonempty ({}) output signature (please use dlvhex2)".format(
+    #    name, holder.module.__name__, repr(dlvhex.humanReadableSpec(holder.inspec)), holder.outnum))
 
 def interpretArguments(argv):
   parser = argparse.ArgumentParser(
