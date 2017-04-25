@@ -446,46 +446,63 @@ def convertHexToClingo(term):
     raise Exception("cannot convert external atom term {} to clingo term!".format(repr(term)))
   return ret
 
+def externalAtomCallHelper(holder, inputtuple, predicateinputatoms):
+  '''
+  * converts input tuple for execution
+  * prepares dlvhex.py for execution
+  * executes
+  * converts output tuples
+  * cleans up
+  * return result
+  '''
+  out = None
+  dlvhex.startExternalAtomCall(predicateinputatoms)
+  try:
+    # prepare input tuple
+    plugin_arguments = []
+    for spec_idx, inp in enumerate(holder.inspec):
+      if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
+        arg = convertClingoToHex(inputtuple[spec_idx])
+        plugin_arguments.append(arg)
+      elif inp == dlvhex.TUPLE:
+        if (spec_idx + 1) != len(holder.inspec):
+          raise Exception("got TUPLE type which is not in final argument position")
+        # give all remaining arguments as one tuple
+        args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
+        plugin_arguments.append(tuple(args))
+      else:
+        raise Exception("unknown input type "+repr(inp))
+
+    # call external atom in plugin
+    logging.debug('calling plugin eatom with arguments '+repr(plugin_arguments))
+    holder.func(*plugin_arguments)
+    
+    # interpret output
+    # list of tuple of terms (maybe empty tuple)
+    out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+  finally:
+    dlvhex.cleanupExternalAtomCall()
+  return out
+
 class GringoContext:
   class ExternalAtomCall:
     def __init__(self, holder):
       self.holder = holder
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      dlvhex.startExternalAtomCall(None) # no inputs
-      out = None
-      try:
-        # prepare arguments
-        plugin_arguments = []
-        for spec_idx, inp in enumerate(self.holder.inspec):
-          if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
-            arg = convertClingoToHex(arguments[spec_idx])
-            plugin_arguments.append(arg)
-          elif inp == dlvhex.TUPLE:
-            if (spec_idx + 1) != len(self.holder.inspec):
-              raise Exception("got TUPLE type which is not in final argument position")
-            # give all remaining arguments as one tuple
-            args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
-            plugin_arguments.append(tuple(args))
-          else:
-            raise Exception("unknown input type "+repr(inp))
-        # call external atom in plugin
-        #logging.debug('calling plugin with arguments '+repr(plugin_arguments))
-        self.holder.func(*plugin_arguments)
-        if self.holder.outnum == 0:
-          # 1 or 0
-          if len(dlvhex.currentOutput) > 0:
-            out = 1
-          else:
-            out = 0
-        elif self.holder.outnum == 1:
-          # list of terms
-          out = [ convertHexToClingo(_tuple[0]) for _tuple in dlvhex.currentOutput ]
+      out = externalAtomCallHelper(self.holder, arguments, None)
+      outarity = self.holder.outnum
+      # interpret special cases for gringo @eatom rewritings:
+      if outarity == 0:
+        # no output arguments: 1 or 0
+        if len(out) == 0:
+          out = 0
         else:
-          # list of tuple of terms (maybe empty tuple)
-          out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
-      finally:
-        dlvhex.cleanupExternalAtomCall()
+          out = 1
+      elif outarity == 1:
+        # list of terms, not list of tuples (I could not convince Gringo to process single-element-tuples)
+        out = [ x[0] for x in out ]
+      # in other cases we can directly use what externalAtomCallHelper returned
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
       return out
   def __init__(self):
@@ -626,16 +643,14 @@ class ClingoPropagator:
   def verifyTruthOfAtom(self, eatomname, control, veri):
     targetValue = control.assignment.is_true(veri.replacement.lit)
     logging.debug('CPvTOA checking if {} = {}'.format(str(targetValue), veri.replacement.sym))
-    dlvhex.startExternalAtomCall(veri.allinputs)
-    try:
-      # TODO prepare arguments (input tuple)
-      plugin_arguments = []
-      # call
-      dlvhex.eatoms[eatomname].func(*plugin_arguments)
-      raise Exception("TODO interpret output and add nogoods")
-      logging.debug("CPvTOA output {}".format(pprint.pformat(dlvhex.currentOutput)))
-    finally:
-      dlvhex.cleanupExternalAtomCall()
+    holder = dlvhex.eatoms[eatomname]
+    # in replacement atom everything that is not output is relevant input
+    logging.debug(repr(veri.replacement.sym.arguments))
+    replargs = veri.replacement.sym.arguments
+    inputtuple = replargs[0:len(replargs)-holder.outnum]
+    logging.debug('CPvTOA inputtuple {}'.format(repr(inputtuple)))
+    out = externalAtomCallHelper(holder, inputtuple, veri.allinputs)
+    logging.debug("CPvTOA output {}".format(pprint.pformat(out)))
 
 class ModelReceiver:
   def __init__(self, facts, nofacts=False):
