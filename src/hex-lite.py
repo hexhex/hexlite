@@ -30,6 +30,7 @@ import dlvhex
 import clingo
 
 AUXPREFIX = 'aux_'
+AUX_MAXINT = AUXPREFIX+'maxint'
 
 class Plugin:
   def __init__(self, mname, pmodule):
@@ -101,20 +102,27 @@ class ProgramRewriter:
     ret = []
     facts = []
     for stm in self.shallowprog:
-      dbgstm = pprint.pformat(stm, width=1000)
+      if __debug__:
+        dbgstm = pprint.pformat(stm, width=1000)
       #logging.debug('ASR '+dbgstm)
       if isinstance(stm, shp.alist):
         sig = (stm.left, stm.sep, stm.right)
         #logging.debug('ASR alist {}'.format(repr(sig)))
         if sig == (None, None, '.'):
-          # fact (maybe disjunctive)
-          #logging.info('ASR fact/passthrough '+dbgstm)
-          ret.append(StatementRewriterHead(self, stm))
-          facts.append(stm)
-          continue
+          if len(stm) == 1 and isinstance(stm[0], list) and isinstance(stm[0][0], str) and stm[0][0].startswith('#'):
+            # hash-instruction
+            logging.debug('ASR hash %s', dbgstm)
+            ret.append(StatementRewriterHash(self, stm))
+            continue
+          else:
+            # fact (maybe disjunctive)
+            logging.debug('ASR fact/passthrough %s', dbgstm)
+            ret.append(StatementRewriterHead(self, stm))
+            facts.append(stm)
+            continue
         elif sig == (None, ':-', '.'):
           # rule/constraint
-          #logging.info('ASR rule/rulecstr '+dbgstm)
+          logging.debug('ASR rule/rulecstr %s', dbgstm)
           ret.append(StatementRewriterRuleCstr(self, stm))
           continue
       elif isinstance(stm, list) and len(stm) == 2:
@@ -142,6 +150,25 @@ class StatementRewriterBase:
     '''
     raise Exception('should be implemented in child class')
 
+  def rewriteInt(self):
+    '''
+    rewrite #int directives wherever they are in the tree (uses aux_maxint)
+    '''
+    def rewriteIfApplicable(elem):
+      if isinstance(elem, list) and len(elem) > 0 and elem[0] == '#int':
+        if len(elem) != 2 or not isinstance(elem[1], shp.alist):
+          logging.warning("do not know how to rewrite integer in {}".format(pprint.pformat(elem)))
+        else:
+          # rewrite
+          # #int(Term) becomes Term = 0..aux_maxint
+          if __debug__:
+            orig = list(elem)
+          term = elem[1][0]
+          elem[:] = [term, '=', '0', '..', AUXPREFIX+'maxint']
+          if __debug__:
+            logging.debug("rewrote {} to {}".format(pprint.pformat(orig), pprint.pformat(elem)))
+    dfVisit(self.statement, rewriteIfApplicable)
+
 class StatementRewriterPassthrough(StatementRewriterBase):
   '''
   just outputs the statement as it comes in
@@ -151,17 +178,26 @@ class StatementRewriterPassthrough(StatementRewriterBase):
     StatementRewriterBase.__init__(self, pr, statement)
 
   def rewrite(self):
+    #self.rewriteInt()
     self.pr.addRewrittenRule(self.statement)
 
 class StatementRewriterHash(StatementRewriterBase):
   '''
-  (unused)
+  for everything starting with # and ending with .
   '''
   def __init__(self, pr, statement):
     StatementRewriterBase.__init__(self, pr, statement)
 
   def rewrite(self):
-    logging.error('TODO')
+    #self.rewriteInt()
+    base = self.statement[0]
+    logging.debug('SRH base '+pprint.pformat(base))
+    if base[0] == '#maxint':
+      # replace the first part with a const declaration (this way there can be a formula to the right of '=')
+      self.statement[0][0:1] = ['#const', AUX_MAXINT]
+      self.pr.addRewrittenRule(self.statement)
+    else:
+      logging.warning('SRH skipping rewriting of '+pprint.pformat(base))
 
 class StatementRewriterHead(StatementRewriterBase):
   '''
@@ -172,6 +208,7 @@ class StatementRewriterHead(StatementRewriterBase):
     StatementRewriterBase.__init__(self, pr, statement)
   def rewrite(self):
     logging.debug('SRH stm='+pprint.pformat(self.statement))
+    #self.rewriteInt()
     assert(isinstance(self.statement, shp.alist))
     assert(len(self.statement) == 1) # we have no body (otherwise use StatementRewriterRuleCstr)
     self.statement[0] = self.rewriteDisjunctiveHead(self.statement[0])
@@ -208,7 +245,9 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
     StatementRewriterHead.__init__(self, pr, statement)
 
   def rewrite(self):
-    #logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
+    if __debug__:
+      logging.debug('SRRC stm='+pprint.pformat(self.statement, width=1000))
+    self.rewriteInt()
     self.statement[0] = self.rewriteDisjunctiveHead(self.statement[0])
     body = self.statement[1]
     safeVars = self.findBasicSafeVariables(body)
@@ -398,6 +437,13 @@ def findVariables(structure):
   # XXX maybe we want a "findFreeVariables" and not search for variables within aggregate bodies ...
   return deepCollect(structure,
     lambda x: isinstance(x, str) and x[0].isupper())
+
+def dfVisit(structure, visitor):
+  'depth-first traversal of structure, calls visitor on everything'
+  if isinstance(structure, list):
+    for elem in structure:
+      dfVisit(elem, visitor)
+  visitor(structure)
 
 def deepCollect(liststructure, condition):
   'recursively traverses liststructure and retrieves items where condition is true'
@@ -889,11 +935,11 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     args = eatom['inputs']+eatom['outputs']
     arity = len(args)
     # one auxiliary per arity (to rule out problems with multi-arity-predicates)
-    relAuxPred = 'aux_r{}_{}'.format(arity, eatom['name'])
+    relAuxPred = '{}r{}_{}'.format(AUXPREFIX, arity, eatom['name'])
     relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
 
     # auxiliary atoms for value of external atom
-    valueAuxPred = 'aux_t{}_{}'.format(arity, eatom['name'])
+    valueAuxPred = '{}t{}_{}'.format(AUXPREFIX, arity, eatom['name'])
     valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
     rewritingState.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
 
