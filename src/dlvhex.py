@@ -41,30 +41,48 @@ class ExtSourceProperties:
     return Generic(name)
 
 def addAtom(name, inargumentspec, outargumentnum, props=None):
-  global callingModule, atoms
-  if name in atoms:
+  global callingModule, eatoms
+  if name in eatoms:
     raise Exception("atom with name {} registered by module {} already defined by module {}!".format(
-      name, callingModule.__name__, atoms[name].module.__name__))
+      name, callingModule.__name__, eatoms[name].module.__name__))
   try:
     func = getattr(callingModule, name) 
   except:
     raise Exception("could not get function for external atom {} in module {}".format(name, callingModule.__name__))
   if props is None:
     props = ExtSourceProperties()
-  atoms[name] = ExternalAtomHolder(name, inargumentspec, outargumentnum, props, callingModule, func)
+  eatoms[name] = ExternalAtomHolder(name, inargumentspec, outargumentnum, props, callingModule, func)
 
 def output(tpl):
   global currentOutput
   currentOutput.append(tpl)
 
+def storeAtom(tpl):
+  # in dlvhex2 this function registers a new ID for an atom specified in a tuple or retrieves its existing ID
+  # WARNING we cannot extend the theory so we will just lookup in the backend
+  # WARNING if we do not find in the backend we return an ID with None backend to let other backend code ignore this ID
+  raise Exception("TODO implement")
+
+def getInputAtoms():
+  global currentInput
+  assert(currentInput)
+  return currentInput
+
+def getTrueInputAtoms():
+  global currentInput
+  return [ i for i in currentInput if i.isTrue() ]
+  
 #
 # used by engine
 #
 
 # key = eatom name, value = ExternalAtomHolder instance
-atoms = {}
-# plugin module that is currently registering atoms
+eatoms = {}
+# plugin module that is currently registering eatoms
 callingModule = None
+# list of ID objects that are predicate input for the currently called external atom
+# None if eatom does not take predicate input
+currentInput = []
 # tuples returned by the current/previously called external atom
 currentOutput = []
 
@@ -74,14 +92,16 @@ def startRegistration(caller):
   callingModule = caller
 
 # called by engine before calling external atom function
-def startExternalAtomCall():
-  global currentOutput
+def startExternalAtomCall(inputs):
+  global currentOutput, currentInput
   currentOutput = []
+  currentInput = inputs
 
 # called by engine after calling external atom function
 def cleanupExternalAtomCall():
-  global currentOutput
+  global currentOutput, currentInput
   currentOutput = []
+  currentInput = []
 
 class ExternalAtomHolder:
   def __init__(self, name, inspec, outnum, props, module, func):
@@ -97,11 +117,6 @@ class ExternalAtomHolder:
     self.func = func
     # this will be set by the engine
     self.executionHandler = None
-    # this will be used by the rewriting
-    # sets of tuples: inpred, arity
-    self.aux_input_signatures = set()
-    # sets of tuples: truepred, falsepred, arity
-    self.aux_atom_signatures = set()
 
 _specToString = {
   TUPLE: 'TUPLE',

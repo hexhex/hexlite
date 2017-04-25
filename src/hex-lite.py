@@ -22,7 +22,7 @@ import sys, logging
 logging.basicConfig(level=logging.NOTSET, format="%(filename)10s:%(lineno)4d:%(message)s", stream=sys.stderr)
 
 # load rest after configuring logging
-import os, argparse, traceback, pprint
+import os, argparse, traceback, pprint, collections
 import shallowhexparser as shp
 import dlvhex
 
@@ -48,7 +48,7 @@ def loadPlugin(mname):
   dlvhex.startRegistration(pmodule)
   logging.info('calling register() for '+repr(mname))
   pmodule.register()
-  logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.atoms.keys())))
+  logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
   return Plugin(mname, pmodule)
 
 def loadProgram(hexfiles):
@@ -231,9 +231,9 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
 
   def getExecutionHandler(self, eatom):
     eatomname = eatom['name']
-    if eatomname not in dlvhex.atoms:
+    if eatomname not in dlvhex.eatoms:
       raise Exception('could not find handler for external atom {}'.format(shp.shallowprint(eatom['shallow'])))
-    return dlvhex.atoms[eatomname].executionHandler
+    return dlvhex.eatoms[eatomname].executionHandler
 
   def pickSafeExternalAtom(self, pendingEatoms, safeVars):
     '''
@@ -370,10 +370,10 @@ class StatementRewriterWeakCstr(StatementRewriterRuleCstr):
         pendingEatoms.remove(safeEatm)
         #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
         eatomname = safeEatm['eatom'][0][1:]
-        if eatomname not in dlvhex.atoms:
+        if eatomname not in dlvhex.eatoms:
           raise Exception('could not find handler for external atom {}'.format(
             shp.shallowprint(safeEatm['shallow'])))
-        handler = dlvhex.atoms[eatomname].executionHandler
+        handler = dlvhex.eatoms[eatomname].executionHandler
         resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
         for r in resultRules:
           self.pr.addRewrittenRule(self.decorateWeak(r, safeVars))
@@ -452,45 +452,47 @@ class GringoContext:
       self.holder = holder
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      dlvhex.startExternalAtomCall()
-      # prepare arguments
-      plugin_arguments = []
-      for spec_idx, inp in enumerate(self.holder.inspec):
-        if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
-          arg = convertClingoToHex(arguments[spec_idx])
-          plugin_arguments.append(arg)
-        elif inp == dlvhex.TUPLE:
-          if (spec_idx + 1) != len(self.holder.inspec):
-            raise Exception("got TUPLE type which is not in final argument position")
-          # give all remaining arguments as one tuple
-          args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
-          plugin_arguments.append(tuple(args))
+      dlvhex.startExternalAtomCall(None) # no inputs
+      out = None
+      try:
+        # prepare arguments
+        plugin_arguments = []
+        for spec_idx, inp in enumerate(self.holder.inspec):
+          if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
+            arg = convertClingoToHex(arguments[spec_idx])
+            plugin_arguments.append(arg)
+          elif inp == dlvhex.TUPLE:
+            if (spec_idx + 1) != len(self.holder.inspec):
+              raise Exception("got TUPLE type which is not in final argument position")
+            # give all remaining arguments as one tuple
+            args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
+            plugin_arguments.append(tuple(args))
+          else:
+            raise Exception("unknown input type "+repr(inp))
+        # call external atom in plugin
+        #logging.debug('calling plugin with arguments '+repr(plugin_arguments))
+        self.holder.func(*plugin_arguments)
+        if self.holder.outnum == 0:
+          # 1 or 0
+          if len(dlvhex.currentOutput) > 0:
+            out = 1
+          else:
+            out = 0
+        elif self.holder.outnum == 1:
+          # list of terms
+          out = [ convertHexToClingo(_tuple[0]) for _tuple in dlvhex.currentOutput ]
         else:
-          raise Exception("unknown input type "+repr(inp))
-      # call external atom in plugin
-      #logging.debug('calling plugin with arguments '+repr(plugin_arguments))
-      self.holder.func(*plugin_arguments)
-      if self.holder.outnum == 0:
-        # 1 or 0
-        if len(dlvhex.currentOutput) > 0:
-          out = 1
-        else:
-          out = 0
-      elif self.holder.outnum == 1:
-        # list of terms
-        out = [ convertHexToClingo(_tuple[0]) for _tuple in dlvhex.currentOutput ]
-      else:
-        # list of tuple of terms (maybe empty tuple)
-        out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+          # list of tuple of terms (maybe empty tuple)
+          out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+      finally:
+        dlvhex.cleanupExternalAtomCall()
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
-      dlvhex.cleanupExternalAtomCall()
       return out
-      
   def __init__(self):
     pass
   def __getattr__(self, attr):
     #logging.debug('GC.%s called',attr)
-    return self.ExternalAtomCall(dlvhex.atoms[attr])
+    return self.ExternalAtomCall(dlvhex.eatoms[attr])
 
 class Generic:
   def __init__(self, name):
@@ -509,25 +511,93 @@ class GroundProgramObserver:
     #logging.debug("GP getattr {}".format(name))
     return Generic(name)
 
+class SymLit:
+  def __init__(self, sym, lit):
+    self.sym = sym
+    self.lit = lit
+
+class ClingoID:
+  # the ID class as passed to plugins, from view of Clingo backend
+  def __init__(self, symlit):
+    self.symlit = symlit
+    self.value = str(symlit.sym)
+
+  def value(self):
+    return self.value
+
+  def intValue(self):
+    if self.symlit.sym.type == clingo.SymbolType.Number:
+      return self.symlit.sym.number
+    else:
+      raise Exception('intValue called on ID {} which is not a number!'.format(self.value))
+
+  def isTrue(self):
+    global clingoPropControl
+    return clingoPropControl.assignment.is_true(self.symlit.lit)
+
+  def isFalse(self):
+    global clingoPropControl
+    return clingoPropControl.assignment.is_false(self.symlit.lit)
+
+  def isAssigned(self):
+    global clingoPropControl
+    return clingoPropControl.assignment.value(self.symlit.lit) != None
+
+  def __getattr__(self, name):
+    raise Exception("not (yet) implemented: ClingoID.{}".format(name))
+
+
+class EAtomVerification:
+  def __init__(self, relevance, replacement):
+    # symlit for ground eatom relevance
+    self.relevance = relevance
+    # symlit for ground eatom replacement
+    self.replacement = replacement
+    # key = argument position, value = list of ClingoID
+    self.predinputs = collections.defaultdict(list)
+    # list of all elements in self.predinputs (cache)
+    self.allinputs = None
+
+clingoPropControl = None
+
 class ClingoPropagator:
   def __init__(self):
     # key = eatom
-    # value = { 'true': [ (symbol, solverlit), ... ], 'false': [ (symbol, solverlit), ... ] }
-    self.eatomAux = {}
+    # value = list of EAtomVerification
+    self.eatomVerifications = collections.defaultdict(list)
   def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
-    logging.info('CP init')
-    for eatomname, eatomholder in dlvhex.atoms.items():
-      trueSymLit, falseSymLit = [], []
-      for truepred, falsepred, arity in eatomholder.aux_atom_signatures:
-        for x in init.symbolic_atoms.by_signature(truepred, arity):
-          trueSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
-          # get symbols given to predicate inputs and also register their literals
-        for x in init.symbolic_atoms.by_signature(falsepred, arity):
-          falseSymLit.append( (x.symbol, init.solver_literal(x.literal)) )
-          # get symbols given to predicate inputs and also register their literals
-      self.eatomAux[eatomname] = {'true': trueSymLit, 'false': falseSymLit}
+    for eatomname, signatures in rewritingState.eatoms.items():
+      logging.info('CPinit processing eatom '+eatomname)
+      for siginfo in signatures:
+        logging.debug('CPinit processing eatom {} relpred {} reppred arity {}'.format(
+          eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
+        for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
+          logging.debug('CPinit   replacement atom {}'.format(str(xrep.symbol)))
+          replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
+          xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
+          logging.debug('CPinit   relevance atom {}'.format(str(xrel.symbol)))
+          relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
+
+          verification = EAtomVerification(relevance, replacement)
+
+          # get symbols given to predicate inputs and register their literals
+          for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
+            if argtype == dlvhex.PREDICATE:
+              argval = str(xrep.symbol.arguments[argpos])
+              logging.debug('CPinit     argument {} is {}'.format(argpos, str(argval)))
+              relevantSig = [ (aarity, apol) for (aname, aarity, apol) in init.symbolic_atoms.signatures if aname == argval ]
+              logging.debug('CPinit       relevantSig {}'.format(repr(relevantSig)))
+              for aarity, apol in relevantSig:
+                for ax in init.symbolic_atoms.by_signature(argval, aarity):
+                  logging.debug('CPinit         atom {}'.format(str(ax.symbol)))
+                  predinputid = ClingoID(SymLit(ax.symbol, init.solver_literal(ax.literal)))
+                  verification.predinputs[argpos].append(predinputid)
+
+          verification.allinputs = flatten([idlist for idlist in verification.predinputs.values()])
+          self.eatomVerifications[eatomname].append(verification)
+
       # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
       # TODO (future) set watches for propagation on partial assignments
       
@@ -539,15 +609,33 @@ class ClingoPropagator:
     * for each true/false external atom call the plugin and add corresponding nogood
     '''
     # called on total assignments (even without watches)
-    logging.info('CP check')
-    for eatomname, auxinfo in self.eatomAux.items():
-      for sym, lit in auxinfo['true']:
-        if control.assignment.is_true(lit):
-          logging.debug('CP need to check true atom {}'.format(sym))
-      for sym, lit in auxinfo['false']:
-        if control.assignment.is_true(lit):
-          logging.debug('CP need to check false atom {}'.format(sym))
+    logging.info('CPcheck')
+    global clingoPropControl
+    clingoPropControl = control
+    try:
+      for eatomname, veriList in self.eatomVerifications.items():
+        for veri in veriList:
+          if control.assignment.is_true(veri.relevance.lit):
+            self.verifyTruthOfAtom(eatomname, control, veri)
+          else:
+            logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
+    finally:
+      # reset
+      clingoPropControl = None
 
+  def verifyTruthOfAtom(self, eatomname, control, veri):
+    targetValue = control.assignment.is_true(veri.replacement.lit)
+    logging.debug('CPvTOA checking if {} = {}'.format(str(targetValue), veri.replacement.sym))
+    dlvhex.startExternalAtomCall(veri.allinputs)
+    try:
+      # TODO prepare arguments (input tuple)
+      plugin_arguments = []
+      # call
+      dlvhex.eatoms[eatomname].func(*plugin_arguments)
+      raise Exception("TODO interpret output and add nogoods")
+      logging.debug("CPvTOA output {}".format(pprint.pformat(dlvhex.currentOutput)))
+    finally:
+      dlvhex.cleanupExternalAtomCall()
 
 class ModelReceiver:
   def __init__(self, facts, nofacts=False):
@@ -624,6 +712,22 @@ def execute(rewritten, facts, plugins, args):
   # TODO return code for unsat/sat/opt?
   return 0
 
+class RewritingState:
+  class SignatureInfo:
+    def __init__(self, relevancePred, replacementPred, arity):
+      self.relevancePred = relevancePred
+      self.replacementPred = replacementPred
+      self.arity = arity
+
+  def __init__(self):
+    # key = eatomname, value = list of SignatureInfo
+    self.eatoms = collections.defaultdict(list)
+  def addSignature(self, eatomname, relevancePred, replacementPred, arity):
+    self.eatoms[eatomname].append(
+      self.SignatureInfo(relevancePred, replacementPred, arity))
+
+rewritingState = RewritingState()
+
 class EAtomHandlerBase:
   def __init__(self, holder):
     assert(isinstance(holder, dlvhex.ExternalAtomHolder))
@@ -676,7 +780,7 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
     else:
       return []
 
-class NoOutputEAtomHandler(EAtomHandlerBase):
+class PregroundableOutputEAtomHandler(EAtomHandlerBase):
   def __init__(self, holder):
     EAtomHandlerBase.__init__(self, holder)
   def transformEAtomInStatement(self, eatom, statement, safevars, safeconditions):
@@ -692,41 +796,41 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
       pprint.pformat(eatom), pprint.pformat(statement), repr(safevars), pprint.pformat(safeconditions))) or True)
     out = []
 
-    # auxiliary atom for input
-    inputArity = len(eatom['inputs'])
-    inputAuxPred = 'aux_i{}_{}'.format(inputArity, eatom['name'])
-    inputAuxAtom = [ inputAuxPred, shp.alist(eatom['inputs'], left='(', right=')', sep=',') ]
-    self.holder.aux_input_signatures.add( (inputAuxPred, inputArity) )
+    # raise an exception if outputs are non-safe variables (this case will for sure not work)
+    if not eatom['outputvars'].issubset(safevars):
+      raise Exception("cannot use PregroundableOutputEAtomHandler for eatom {} with output vars {} and safe vars {} in statement {}".format(pprint.pformat(eatom), repr(eatom['outputvars']), repr(safevars), shp.shallowprint(statement)))
+
+    # auxiliary atom for relevance of external atom
+    args = eatom['inputs']+eatom['outputs']
+    arity = len(args)
+    # one auxiliary per arity (to rule out problems with multi-arity-predicates)
+    relAuxPred = 'aux_r{}_{}'.format(arity, eatom['name'])
+    relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
 
     # auxiliary atoms for value of external atom
-    in_out_list = eatom['inputs']+eatom['outputs']
-    atomArity = len(in_out_list)
-    valueAuxPredTrue = 'aux_t{}_{}'.format(atomArity, eatom['name'])
-    valueAuxPredFalse = 'aux_f{}_{}'.format(atomArity, eatom['name'])
-    valueAuxAtomTrue = [ valueAuxPredTrue, shp.alist(in_out_list, left='(', right=')', sep=',') ]
-    valueAuxAtomFalse = [ valueAuxPredFalse, shp.alist(in_out_list, left='(', right=')', sep=',') ]
-    self.holder.aux_atom_signatures.add( (valueAuxPredTrue, valueAuxPredFalse, atomArity) )
+    valueAuxPred = 'aux_t{}_{}'.format(arity, eatom['name'])
+    valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
+    rewritingState.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
 
-    # create input instantiation rule for eatom value based on safeconditions (this also determines if the atom needs to be guessed)
+    # create input instantiation rule for eatom value based on safeconditions
+    # (this also determines if the atom needs to be guessed)
     if len(safeconditions) == 0:
       # fact (for keeping it uniform)
-      inputInstRule = shp.alist([ inputAuxAtom ], right='.')
+      relevanceRule = shp.alist([ relAuxAtom ], right='.')
     else:
       # rule
-      inputInstRule = shp.alist([ inputAuxAtom, shp.alist(safeconditions, sep=',') ], sep=':-', right='.')
-    logging.debug('NOEAH inputInstRule1={}'.format(pprint.pformat(inputInstRule)))
-    logging.debug('NOEAH inputInstRule2={}'.format(shp.shallowprint(inputInstRule)))
-    out.append(inputInstRule)
+      relevanceRule = shp.alist([ relAuxAtom, shp.alist(safeconditions, sep=',') ], sep=':-', right='.')
+    logging.debug('NOEAH relevanceRule={}'.format(shp.shallowprint(relevanceRule)))
+    out.append(relevanceRule)
 
     # create guessing rule for eatom value based on safeconditions
-    valueGuessHead = [ 1, shp.alist([ valueAuxAtomTrue, valueAuxAtomFalse ], left='{', right='}', sep=';'), 1]
-    valueGuessRule = shp.alist([ valueGuessHead, shp.alist([inputAuxAtom], sep=',') ], sep=':-', right='.')
-    logging.debug('NOEAH valueGuessRule1={}'.format(pprint.pformat(valueGuessRule)))
-    logging.debug('NOEAH valueGuessRule2={}'.format(shp.shallowprint(valueGuessRule)))
+    valueGuessHead = [ shp.alist([ valueAuxAtom ], left='{', right='}', sep=';'), 1]
+    valueGuessRule = shp.alist([ valueGuessHead, shp.alist([relAuxAtom], sep=',') ], sep=':-', right='.')
+    logging.debug('NOEAH valueGuessRule={}'.format(shp.shallowprint(valueGuessRule)))
     out.append(valueGuessRule)
 
     # replace eatom in statement
-    replacement = valueAuxAtomTrue
+    replacement = valueAuxAtom
     # find position of eatom in body list
     posInStatement = statement[1].index(eatom['shallow'])
     logging.info('NOEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
@@ -743,16 +847,21 @@ class NoOutputEAtomHandler(EAtomHandlerBase):
 def classifyExternalAtoms():
   '''
   For now we can only handle the following:
-  * NoOutputEAtomHandler:
+  * PregroundableOutputEAtomHandler:
     external atom has no output and arbitrary input
-    -> we transform this atom into an input/guessing rule as in dlvhex2
-    -> we use a propagator to evaluate during solving
+    -> we create an input instantiation (relevance) rule as in dlvhex2
+    -> we transform this atom into a regular atom and add a guessing rule as in dlvhex2
+    -> we use a propagator to evaluate during solving as in dlvhex2
+    external atom has only output variables that are safe (without using the external atom)
+    -> we create an input instantiation (relevance) rule as in dlvhex2
+    -> we transform this atom into a regular atom and add a guessing rule as in dlvhex2
+    -> we use a propagator to evaluate during solving as in dlvhex2
   * PureInstantiationEAtomHandler:
     external atom has only constant/tuple input(s)
     -> we transform this atom into a gringo external
     -> we do not (need to) consider it during solving
   '''
-  for name, holder in dlvhex.atoms.items():
+  for name, holder in dlvhex.eatoms.items():
     # uses PureInstantiationEAtomHandler if possible (even if output is 0)
     # (external atom functions cannot change during evaluation,
     # hence it is safe to evaluate these atoms in grounding)
@@ -760,7 +869,7 @@ def classifyExternalAtoms():
     if dlvhex.PREDICATE not in inspec_types:
       holder.executionHandler = PureInstantiationEAtomHandler(holder)
     elif holder.outnum == 0:
-      holder.executionHandler = NoOutputEAtomHandler(holder)
+      holder.executionHandler = PregroundableOutputEAtomHandler(holder)
     else:
       raise Exception("cannot handle external atom '{}' from plugin '{}' because of input signature {} and nonempty ({}) output signature (please use dlvhex2)".format(
         name, holder.module.__name__, repr(dlvhex.humanReadableSpec(holder.inspec)), holder.outnum))
