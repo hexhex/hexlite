@@ -468,7 +468,7 @@ def externalAtomCallHelper(holder, inputtuple, predicateinputatoms):
         if (spec_idx + 1) != len(holder.inspec):
           raise Exception("got TUPLE type which is not in final argument position")
         # give all remaining arguments as one tuple
-        args = [ convertClingoToHex(x) for x in arguments[spec_idx:] ]
+        args = [ convertClingoToHex(x) for x in inputtuple[spec_idx:] ]
         plugin_arguments.append(tuple(args))
       else:
         raise Exception("unknown input type "+repr(inp))
