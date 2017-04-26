@@ -471,17 +471,21 @@ def deepCollectAtDepth(liststructure, depthfilter, condition):
 
 def convertClingoToHex(term):
   assert(isinstance(term, clingo.Symbol))
-  if term.type is clingo.SymbolType.Number:
-    ret = term.number
-  elif term.type in [clingo.SymbolType.String, clingo.SymbolType.Function]:
-    ret = str(term)
-  else:
-    raise Exception("cannot convert clingo term {} of type {} to external atom term!".format(
-      repr(term), str(term.type)))
-  return ret
+  #logging.debug("convertClingoToHex got {} with type {}".format(repr(term), term.type))
+  return ClingoID(SymLit(term, None))
+  #if term.type is clingo.SymbolType.Number:
+  #  ret = term.number
+  #elif term.type in [clingo.SymbolType.String, clingo.SymbolType.Function]:
+  #  ret = str(term)
+  #else:
+  #  raise Exception("cannot convert clingo term {} of type {} to external atom term!".format(
+  #    repr(term), str(term.type)))
+  #return ret
 
 def convertHexToClingo(term):
-  if isinstance(term, str):
+  if isinstance(term, ClingoID):
+    return term.symlit.sym
+  elif isinstance(term, str):
     if term[0] == '"':
       ret = clingo.String(term[1:-1])
     else:
@@ -583,28 +587,45 @@ class ClingoID:
   # the ID class as passed to plugins, from view of Clingo backend
   def __init__(self, symlit):
     self.symlit = symlit
-    self.value = str(symlit.sym)
+    self.__value = str(symlit.sym)
 
   def value(self):
-    return self.value
+    return self.__value
 
   def intValue(self):
     if self.symlit.sym.type == clingo.SymbolType.Number:
       return self.symlit.sym.number
     else:
-      raise Exception('intValue called on ID {} which is not a number!'.format(self.value))
+      raise Exception('intValue called on ID {} which is not a number!'.format(self.__value))
 
   def isTrue(self):
     global clingoPropControl
+    if not self.symlit.lit:
+      raise Exception("cannot call isTrue on term that is not an atom")
     return clingoPropControl.assignment.is_true(self.symlit.lit)
 
   def isFalse(self):
     global clingoPropControl
+    if not self.symlit.lit:
+      raise Exception("cannot call isFalse on term that is not an atom")
     return clingoPropControl.assignment.is_false(self.symlit.lit)
 
   def isAssigned(self):
     global clingoPropControl
+    if not self.symlit.lit:
+      raise Exception("cannot call isAssigned on term that is not an atom")
     return clingoPropControl.assignment.value(self.symlit.lit) != None
+
+  def tuple(self):
+    tup = tuple([ ClingoID(SymLit(sym, None)) for sym in
+                  [clingo.Function(self.symlit.sym.name)]+self.symlit.sym.arguments])
+    return tup
+
+  def __str__(self):
+    return self.__value
+
+  def __repr__(self):
+    return "ClingoID({})".format(str(self))
 
   def __getattr__(self, name):
     raise Exception("not (yet) implemented: ClingoID.{}".format(name))
@@ -683,10 +704,11 @@ class ClingoPropagator:
         else:
           self.debugMapping[slit].append('-'+str(x.symbol))
 
-    # TODO (future) create one propagator for each external atom (or even for each external atom literal, but then we need to find out which grounded input tuple belongs to which atom, so we might need nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency))
-    # TODO (future) set watches for propagation on partial assignments
-    
-  # TODO (future) implement propagation on partial assignments
+    # TODO (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
+    # TODO (far future) create one propagator for each external atom (or even for each external atom literal)
+    #                   which watches predicate inputs, relevance, and replacement, and incrementally finds when it should compute
+    #                   [then we need to find out which grounded input tuple belongs to which atom, so we might need
+    #                    nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency)]
   def check(self, control):
     '''
     * get valueAuxTrue and valueAuxFalse truth values
