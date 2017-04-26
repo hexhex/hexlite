@@ -2,9 +2,12 @@ import dlvhex;
 
 import logging
 
-#def id(p):
-#	for x in dlvhex.getTrueInputAtoms():
-#		dlvhex.output((x.tuple()[1], ))
+def id(p):
+	for x in dlvhex.getTrueInputAtoms():
+		tup = x.tuple()
+		if len(tup) != 2:
+			raise Exception("this external atom processes only arity 1 predicate inputs")
+		dlvhex.output( (tup[1],) )
 
 def idc(c):
 	dlvhex.output((c,))
@@ -40,19 +43,24 @@ def testEven(pred1, pred2):
 		dlvhex.output(())
 
 def testSubstr(string, start, length):
-	if not isinstance(string, str) or not isinstance(start, int) or not isinstance(length, int):
-		raise Exception("testSubstr expects inputs [str,int,int]")
-	unquoted = string.strip('"')
-	if start+length < len(unquoted):
-		dlvhex.output((unquoted[start:start+length],))
+	stringv = string.value()
+	startv = start.intValue()
+	lengthv = start.intValue()
+	unquoted = stringv.strip('"')
+	if startv+lengthv < len(unquoted):
+		dlvhex.output((unquoted[startv:startv+lengthv],))
 
 def testConcat(strs):
-	logging.debug('testConcat got '+repr(strs)+' '+str(strs.__class__)+' '+str(strs[0].__class__))
-	needquote = any(['"' in s for s in strs])
-	unquoted = [s.strip('"') for s in strs]
+	#logging.debug('testConcat got '+repr(strs)+' '+str(strs.__class__)+' '+str(strs[0].__class__))
+	values = [s.value() for s in strs]
+	#logging.debug('testConcat values '+repr(values))
+	needquote = any(['"' in s for s in values])
+	#logging.debug('testConcat needquote '+repr(needquote))
+	unquoted = [s.strip('"') for s in values]
 	result = ''.join(unquoted)
 	if needquote:
 		result = '"'+result+'"'
+	#logging.debug('testConcat returns '+repr(result))
 	dlvhex.output((result,))
 
 def isEmpty(assignment):
@@ -199,6 +207,18 @@ def partialTest(assignment):
 	elif true + unknown > 1:
 		dlvhex.outputUnknown(())
 
+def testSetMinus(p, q):
+	pset, qset = set(), set()
+	for x in dlvhex.getTrueInputAtoms():
+		tup = x.tuple()
+		if tup[0].value() == p.value():
+			pset.add(tup[1].value())
+		elif tup[0].value() == q.value():
+			qset.add(tup[1].value())
+	rset = pset - qset
+	for r in rset:
+		dlvhex.output( (r,) )
+
 def rdf(uri):
 	logging.warning('TODO implement &rdf (and #namespace)')
 	dlvhex.output(('s', 'p', 'o'))
@@ -222,10 +242,11 @@ def register():
 	#unused dlvhex.addAtom("testOdd", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#unused dlvhex.addAtom("testLessThan", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#unused dlvhex.addAtom("testEqual", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
-	#XFAIL dlvhex.addAtom("id", (dlvhex.PREDICATE,), 1)
+	dlvhex.addAtom("id", (dlvhex.PREDICATE,), 1)
+	#XFAIL partial dlvhex.addAtom("idp", (dlvhex.PREDICATE,), 1)
 	dlvhex.addAtom("idc", (dlvhex.CONSTANT,), 1)
 	#TODO testCautiousQuery
-	#XFAIL (TODO) testSetMinus
+	dlvhex.addAtom("testSetMinus", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
