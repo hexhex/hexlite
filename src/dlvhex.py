@@ -36,7 +36,7 @@ class ExtSourceProperties:
       def __init__(self, name):
         self.name = name
       def __call__(self, *arguments):
-        logging.warning("not implemented: ExtSourceProperties.{}({})".format(
+        logging.info("not implemented: ExtSourceProperties.{}({})".format(
           self.name, ','.join([repr(x) for x in arguments])))
     return Generic(name)
 
