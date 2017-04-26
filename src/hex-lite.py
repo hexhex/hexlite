@@ -1056,6 +1056,7 @@ def setupLogging(args):
   logging.getLogger().setLevel(level)
   
 def main():
+  code = 1
   try:
     args = interpretArguments(sys.argv[1:])
     setPaths(flatten(args.pluginpath))
@@ -1063,10 +1064,9 @@ def main():
     program = loadProgram(flatten(args.hexfiles))
     rewritten, facts = rewriteProgram(program, plugins)
     code = execute(rewritten, facts, plugins, args)
-    return code
   except:
     logging.error('Exception: '+traceback.format_exc())
-    return -1
+  sys.exit(code)
 
 def loadPlugins(plugins):
   ret = []
