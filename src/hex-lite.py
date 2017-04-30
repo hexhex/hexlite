@@ -365,15 +365,24 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
     '''
     #logging.debug('body='+pprint.pformat(body))
     def splitPrefixEatom(x):
-      assert(isinstance(x,list) and not isinstance(x,shp.alist))
-      checkIdx = 0
-      # skip over not's
-      while len(x) > checkIdx and x[checkIdx] == 'not':
-        checkIdx += 1
-      if len(x) > checkIdx and isinstance(x[checkIdx], str) and x[checkIdx][0].startswith('&'):
-        return x[:checkIdx], x[checkIdx:]
-      else:
+      if __debug__:
+        logging.debug('splitPrefixEatom({})'.format(pprint.pformat(x)))
+      if isinstance(x,shp.alist):
+        # maybe expansion (lit : lit) or disjunction (lit ; lit)
+        # TODO how about external atoms in expansions/disjunctions/aggregates?
         return None
+      else:
+        # literal
+        assert(isinstance(x,list))
+        checkIdx = 0
+        # skip over not's
+        while len(x) > checkIdx and x[checkIdx] == 'not':
+          checkIdx += 1
+        if len(x) > checkIdx and isinstance(x[checkIdx], str) and x[checkIdx][0].startswith('&'):
+          return x[:checkIdx], x[checkIdx:]
+        else:
+          # TODO how about external atoms in aggregates?
+          return None
     eatoms = [ splitPrefixEatom(x) for x in body ]
     #logging.debug('eatoms1='+pprint.pformat(eatoms))
     eatoms = [ {'shallow': p_e[0] + p_e[1], 'prefix': p_e[0], 'eatom': p_e[1], 'name': p_e[1][0][1:] }
