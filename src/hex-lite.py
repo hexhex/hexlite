@@ -68,19 +68,20 @@ def loadProgram(hexfiles):
       ret += prog
   return ret
 
-def rewriteProgram(program, plugins):
+def rewriteProgram(program, plugins, args):
   '''
   go over all rules of program
   for each rule find external atoms and handle them with EAtomHandler
   (this can change the rule and create new rules)
   '''
-  pr = ProgramRewriter(program, plugins)
+  pr = ProgramRewriter(program, plugins, args)
   return pr.rewrite()
 
 class ProgramRewriter:
-  def __init__(self, shallowprogram, plugins):
+  def __init__(self, shallowprogram, plugins, args):
     self.shallowprog = shallowprogram
     self.plugins = plugins
+    self.args = args
     self.srprog, self.facts = self.__annotateWithStatementRewriters()
     self.rewritten = []
 
@@ -91,6 +92,10 @@ class ProgramRewriter:
     # rewriters append to self.rewritten
     for stm in self.srprog:
       stm.rewrite()
+    if not rewritingState.wroteMaxint and self.args.maxint is not None:
+      maxintConst = shp.alist(['#const', AUX_MAXINT, '=', self.args.maxint], right='.')
+      logging.info("adding maxint rule (from commandline) "+shp.shallowprint(maxintConst))
+      self.addRewrittenRule(maxintConst)
     return self.rewritten, self.facts
 
   def addRewrittenRule(self, stm):
@@ -212,6 +217,7 @@ class StatementRewriterHash(StatementRewriterBase):
       # replace the first part with a const declaration (this way there can be a formula to the right of '=')
       self.statement[0][0:1] = ['#const', AUX_MAXINT]
       self.pr.addRewrittenRule(self.statement)
+      rewritingState.wroteMaxint = True
     else:
       logging.warning('SRH skipping rewriting of '+pprint.pformat(base))
 
@@ -672,8 +678,6 @@ class EAtomVerification:
     # list of all elements in self.predinputs (cache)
     self.allinputs = None
 
-clingoPropControl = None
-
 class Nogood:
   def __init__(self):
     self.literals = set()
@@ -918,11 +922,13 @@ class RewritingState:
   def __init__(self):
     # key = eatomname, value = list of SignatureInfo
     self.eatoms = collections.defaultdict(list)
+    self.wroteMaxint = False
   def addSignature(self, eatomname, relevancePred, replacementPred, arity):
     self.eatoms[eatomname].append(
       self.SignatureInfo(relevancePred, replacementPred, arity))
 
 rewritingState = RewritingState()
+clingoPropControl = None
 
 class EAtomHandlerBase:
   def __init__(self, holder):
@@ -1089,6 +1095,8 @@ def interpretArguments(argv):
     help='Whether strong negation is enabled (ignored).')
   parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
     help='Number of models to enumerate.')
+  parser.add_argument('-N', '--maxint', metavar='N', action='store', default=0,
+    help='Maximum integer (#maxint in the program can override this).')
   parser.add_argument('--nofacts', action='store_true', default=False,
     help='Whether to output given facts in answer set.')
   parser.add_argument('--auxfacts', action='store_true', default=False,
@@ -1122,7 +1130,7 @@ def main():
     setPaths(flatten(args.pluginpath))
     plugins = loadPlugins(flatten(args.plugin))
     program = loadProgram(flatten(args.hexfiles))
-    rewritten, facts = rewriteProgram(program, plugins)
+    rewritten, facts = rewriteProgram(program, plugins, args)
     code = execute(rewritten, facts, plugins, args)
   except:
     logging.error('Exception: '+traceback.format_exc())
