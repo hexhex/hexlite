@@ -9,7 +9,7 @@ agg5.hex agg5.out --nofacts
 agg6.hex agg6.out --nofacts
 agg7.hex agg7.out --nofacts
 #XFAIL (eatom in aggregate) agg8.hex agg8.out --nofacts
-aggextcycle1.hex aggextcycle1e.out --nofacts
+#XFAIL FLP aggextcycle1.hex aggextcycle1e.out --nofacts
 weak1.hex weak1.out
 weak2.hex weak2.out
 #XFAIL predinput-valueinvention weak3.hex weak3.out
@@ -93,7 +93,7 @@ percentparser.hex percentparser.out
 #XFAIL query query_hex_ground1.hex query_hex_ground1ca.stdout --query-enable --query-cautious --query-all
 #XFAIL query query_hex_nonground1.hex query_hex_nonground1b.out --query-enable --query-brave
 #XFAIL query query_hex_nonground1.hex no_model.out --query-enable --query-cautious
-rec_agg_bug1.hex rec_agg_bug1.stderr
+#XFAIL (eatom in aggregate) rec_agg_bug1.hex rec_agg_bug1.stderr
 safety1.hex safety1.stderr
 safety2.hex safety2.stderr
 simple1.hex simple1.out
@@ -110,7 +110,7 @@ strongnegation_asp7.hex strongnegation_asp7.out --strongnegation-enable
 variable_predicate_inputs_worksnow.hex variable_predicate_inputs.out
 wellfounded1.hex wellfounded1.out --nofacts
 wellfounded2.hex wellfounded2.out --nofacts
-empty.hex testrepetition.stdout --testplugin-test-repetition
+#XFAIL dlvhex2 specific empty.hex testrepetition.stdout --testplugin-test-repetition
 #XFAIL predinput-valueinvention liberalsafety1.hex liberalsafety1.out --liberalsafety
 liberalsafety2.hex liberalsafety2.out --liberalsafety
 liberalsafety3.hex liberalsafety3.out --liberalsafety
@@ -118,8 +118,8 @@ liberalsafety4.hex liberalsafety4.out --liberalsafety
 liberalsafety5.hex liberalsafety5.out --liberalsafety
 #XFAIL predinput-valueinvention liberalsafety6.hex liberalsafety6.out --liberalsafety
 #XFAIL predinput-valueinvention liberalsafety7.hex liberalsafety7.out --liberalsafety
-liberalsafety8.hex liberalsafety8.out --liberalsafety
-liberalsafety9.hex liberalsafety9.out --liberalsafety
+#XFAIL predinput-valueinvention liberalsafety8.hex liberalsafety8.out --liberalsafety
+#XFAIL predinput-valueinvention liberalsafety9.hex liberalsafety9.out --liberalsafety
 functionsymbols1.hex functionsymbols1.out
 functionsymbols2.hex functionsymbols2.out --liberalsafety
 functionsymbols3.hex functionsymbols3.out --liberalsafety
