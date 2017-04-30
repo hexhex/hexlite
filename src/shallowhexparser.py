@@ -21,6 +21,7 @@ The parser can be used as follows:
 
 import shallowhexparser
 structure = shallowhexparser.parse(text)
+structure = shallowhexparser.parseTerm(text)
 
 The parser recognizes all HEX/ASP programs but distinguishes
 in the structure only the following structural elements:
@@ -267,12 +268,18 @@ def p_error(p):
   msg = "unexpected '{}'\n".format(repr(p))
   raise Exception(msg)
 
-myparser = yacc.yacc()
+myparser = yacc.yacc(start='content', tabmodule='contentparser', optimize=not __debug__)
+mytermparser = yacc.yacc(start='elist', tabmodule='termparser', optimize=not __debug__, errorlog=None)
+
+def parseTerm(content):
+  '''
+  this is a method you can use from outside the module!
+  '''
+  return mytermparser.parse(content, lexer=mylexer, debug=False)
 
 def parse(content):
   '''
-  this is the only method in this module
-  that you should use from outside the module!
+  this is a method you can use from outside the module!
   '''
   return myparser.parse(content, lexer=mylexer, debug=False)
 

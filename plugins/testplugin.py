@@ -1,4 +1,6 @@
-import dlvhex;
+import dlvhex
+
+import shallowhexparser as shp
 
 import logging
 
@@ -71,6 +73,44 @@ def testConcat(strs):
 		result = '"'+result+'"'
 	#logging.debug('testConcat returns '+repr(result))
 	dlvhex.output((result,))
+
+def functionCompose(args):
+	logging.debug('functionCompose got '+repr(args))
+	if len(args) == 1:
+		dlvhex.output((args[0],))
+	else:
+		apred = args[0].value()
+		avalues = [a.value() for a in args[1:]]
+		dlvhex.output(("{}({})".format(apred, ','.join(avalues)),))
+
+def functionDecompose(term, narg):
+	logging.debug('functionDecompose got {} and {}'.format(repr(term), narg))
+	pinp = shp.parseTerm(term.value())
+	logging.debug('parseTerm {}'.format(repr(pinp)))
+	argidx = narg.intValue()
+	if argidx < len(pinp):
+		dlvhex.output( (shp.shallowprint(pinp[argidx]),) )
+
+def functionDecomposeN(inp, N):
+	logging.debug('functionDecomposeN got {} and {}'.format(repr(inp), N))
+	pinp = shp.parseTerm(inp.value())
+	logging.debug('parseTerm {}'.format(repr(pinp)))
+	if len(pinp) == N+1:
+		otuple = [ shp.shallowprint(x) for x in pinp ]
+		dlvhex.output( tuple(otuple) )
+
+def functionDecompose1(inp):
+	functionDecomposeN(inp, 1)
+def functionDecompose2(inp):
+	functionDecomposeN(inp, 2)
+def functionDecompose3(inp):
+	functionDecomposeN(inp, 3)
+
+def getArity(term):
+	logging.debug('getArity got {}'.format(repr(term)))
+	pinp = shp.parseTerm(term.value())
+	logging.debug('parseTerm {}'.format(repr(pinp)))
+	dlvhex.output( (len(pinp)-1,) )
 
 def isEmpty(assignment):
 
@@ -295,6 +335,13 @@ def register():
 	prop = dlvhex.ExtSourceProperties()
 	prop.addFiniteOutputDomain(0)
 	dlvhex.addAtom("testConcat", (dlvhex.TUPLE,), 1, prop)
+
+	dlvhex.addAtom("functionCompose", (dlvhex.TUPLE,), 1)
+	dlvhex.addAtom("functionDecompose", (dlvhex.CONSTANT,dlvhex.CONSTANT), 1)
+	dlvhex.addAtom("functionDecompose1", (dlvhex.CONSTANT,), 2)
+	dlvhex.addAtom("functionDecompose2", (dlvhex.CONSTANT,), 3)
+	dlvhex.addAtom("functionDecompose3", (dlvhex.CONSTANT,), 4)
+	dlvhex.addAtom("getArity", (dlvhex.CONSTANT,), 1)
 
 	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 

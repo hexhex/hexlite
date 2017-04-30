@@ -1,2 +1,3 @@
-parsetab.py
+contentparser.py
+termparser.py
 parser.out
