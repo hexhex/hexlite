@@ -19,7 +19,14 @@
 
 import sys, logging
 # initially log everything
-logging.basicConfig(level=logging.NOTSET, format="%(filename)10s:%(lineno)4d:%(message)s", stream=sys.stderr)
+logging.basicConfig(
+  level=logging.NOTSET, stream=sys.stderr,
+  format="%(levelname)1s:%(filename)10s:%(lineno)3d:%(message)s")
+logging.addLevelName(50, 'C')
+logging.addLevelName(40, 'E')
+logging.addLevelName(30, 'W')
+logging.addLevelName(20, 'I')
+logging.addLevelName(10, 'D')
 
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
