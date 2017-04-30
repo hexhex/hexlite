@@ -1,1 +1,1 @@
-1 grep -q "unsafe variables: Y"
+1 grep -q "unsafe"
