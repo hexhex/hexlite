@@ -74,6 +74,14 @@ def testConcat(strs):
 	#logging.debug('testConcat returns '+repr(result))
 	dlvhex.output((result,))
 
+def isFunctionTerm(term):
+	logging.debug('isFunctionTerm got '+repr(term))
+	pinp = shp.parseTerm(term.value())
+	logging.debug('parseTerm {}'.format(repr(pinp)))
+	if len(pinp) > 1:
+		# yes it is
+		dlvhex.output( () )
+
 def functionCompose(args):
 	logging.debug('functionCompose got '+repr(args))
 	if len(args) == 1:
@@ -342,6 +350,7 @@ def register():
 	dlvhex.addAtom("functionDecompose2", (dlvhex.CONSTANT,), 3)
 	dlvhex.addAtom("functionDecompose3", (dlvhex.CONSTANT,), 4)
 	dlvhex.addAtom("getArity", (dlvhex.CONSTANT,), 1)
+	dlvhex.addAtom("isFunctionTerm", (dlvhex.CONSTANT,), 0)
 
 	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 
