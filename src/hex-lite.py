@@ -132,6 +132,15 @@ class ProgramRewriter:
           logging.debug('ASR rule/rulecstr %s', dbgstm)
           ret.append(StatementRewriterRuleCstr(self, stm))
           continue
+        elif sig == (None, ':~', '.'):
+          # weak constraint without weights (with weights would be caught below)
+          defaultweight = shp.alist([['1'], ['1']], left='[', right=']', sep=':')
+          extendedWeakConstraint = [stm, defaultweight]
+          if __debug__:
+            logging.debug('ASR extended weak constraint {} into {}'.format(
+              dbgstm, pprint.pformat(extendedWeakConstraint)))
+          ret.append(StatementRewriterWeakCstr(self, extendedWeakConstraint))
+          continue
       elif isinstance(stm, list) and len(stm) == 2:
         # weak constraint
         assert(isinstance(stm[0], shp.alist) and stm[0].sep == ':~')
