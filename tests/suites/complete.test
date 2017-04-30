@@ -103,8 +103,9 @@ strongnegation_asp4.hex strongnegation_asp4.out --strongnegation-enable --nofact
 strongnegation_asp5.hex strongnegation_asp5.out --strongnegation-enable --nofacts
 strongnegation_asp6.hex strongnegation_asp6.out --strongnegation-enable
 strongnegation_asp7.hex strongnegation_asp7.out --strongnegation-enable
-tertop.hex tertop.out
-variable_predicate_inputs.hex variable_predicate_inputs.stderr
+#XFAIL old DLV tertop.hex tertop.out
+#XFAIL dlvhex2 specific and testcase faulty variable_predicate_inputs.hex variable_predicate_inputs.stderr
+variable_predicate_inputs_worksnow.hex variable_predicate_inputs.out
 wellfounded1.hex wellfounded1.out --nofacts
 wellfounded2.hex wellfounded2.out --nofacts
 empty.hex testrepetition.stdout --testplugin-test-repetition

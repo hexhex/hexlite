@@ -1,0 +1,8 @@
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(vx),setc(wx),setd(ux)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(wx),setd(ux),setd(vx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(vx),setd(ux),setd(wx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setd(ux),setd(vx),setd(wx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(ux),setc(wx),setd(vx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(ux),setc(vx),setc(wx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(ux),setc(vx),setd(wx)}
+{seta(u),seta(v),seta(w),seta_indirect(ux),seta_indirect(vx),seta_indirect(wx),guard(ux),guard(vx),guard(wx),base(seta_indirect),setc(ux),setd(vx),setd(wx)}
