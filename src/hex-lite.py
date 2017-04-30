@@ -111,7 +111,7 @@ class ProgramRewriter:
     for stm in self.shallowprog:
       if __debug__:
         dbgstm = pprint.pformat(stm, width=1000)
-      #logging.debug('ASR '+dbgstm)
+        logging.debug('ASR stm='+dbgstm)
       if isinstance(stm, shp.alist):
         sig = (stm.left, stm.sep, stm.right)
         #logging.debug('ASR alist {}'.format(repr(sig)))
