@@ -12,7 +12,7 @@ agg7.hex agg7.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
 weak1.hex weak1.out
 weak2.hex weak2.out
-weak3.hex weak3.out
+#XFAIL predinput-valueinvention weak3.hex weak3.out
 weak4.hex weak4.out
 weak5.hex weak5.out
 weak_bench_small.hex weak_bench_small.out
@@ -36,31 +36,33 @@ equality.hex equality.out
 extatom2.hex extatom2.out
 extatom2safety.hex extatom2.out
 extatom3.hex extatom3.out --nofacts
-extatom3.hex extatom3_faultya.stderr --nofacts
-extatom3.hex extatom3_faultyb.stderr --nofacts
-extatom4.hex extatom4.out
-extatom5.hex extatom5.out
-extatom6.hex extatom6.out
+#XFAIL dlvhex2 specific extatom3.hex extatom3_faultya.stderr --nofacts
+#XFAIL dlvhex2 specific extatom3.hex extatom3_faultyb.stderr --nofacts
+#XFAIL predinput-valueinvention extatom4.hex extatom4.out
+#XFAIL predinput-valueinvention extatom5.hex extatom5.out
+#XFAIL predinput-valueinvention extatom6.hex extatom6.out
 extatom7.hex extatom7.out --nofacts
 extatom8.hex extatom8.out --nofacts
 extatom9.hex extatom9.out
 extatom10.hex extatom10.out
 auxinput.hex auxinput.out
-higherorder1.hex higherorder1.out --nofacts
-higherorder2.hex higherorder2.out --nofacte
-higherorder3.hex higherorder3.out --nofacts
-higherorder4.hex higherorder4.out --nofacts
-higherorder5.hex higherorder5.out --nofacts
-higherorder5except.hex higherorder5except.stderr
+#XFAIL HO higherorder1.hex higherorder1.out --nofacts
+#XFAIL HO higherorder2.hex higherorder2.out --nofacts
+#XFAIL HO higherorder3.hex higherorder3.out --nofacts
+#XFAIL HO higherorder4.hex higherorder4.out --nofacts
+#XFAIL HO higherorder5.hex higherorder5.out --nofacts
+#XFAIL HO higherorder5except.hex higherorder5except.stderr
 manyanswersets.hex manyanswersets_twomodels.stdout --number=2
 maxint.hex maxint.out
 #XFAIL FLP minimality.hex minimality.out
 naftest.hex naftest.out
 nonmon_guess.hex nonmon_guess.out
 nonmon_inc.hex nonmon_inc.out
-nonmon_noloop.hex nonmon_noloop.out
-notstronglysafe1.hex notstronglysafe1.stderr --strongsafety
-notstronglysafe2.hex notstronglysafe2.stderr --strongsafety
+#XFAIL predinput-valueinvention nonmon_noloop.hex nonmon_noloop.out
+notstronglysafe1.hex notstronglysafe1.out
+notstronglysafe1_madesafe.hex notstronglysafe1.out
+#XFAIL best-effort-safety notstronglysafe1.hex notstronglysafe1.stderr --strongsafety
+#XFAIL predinput-valueinvention notstronglysafe2.hex notstronglysafe2.stderr --strongsafety
 notwellfounded1.hex notwellfounded1_nofacts.out --nofacts
 notwellfounded1.hex notwellfounded1_withfacts.out
 notwellfounded2.hex notwellfounded2.out --nofacts
