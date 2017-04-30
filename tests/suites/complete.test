@@ -36,6 +36,8 @@ equality.hex equality.out
 extatom2.hex extatom2.out
 extatom2safety.hex extatom2.out
 extatom3.hex extatom3.out --nofacts
+extatom3_simple.hex extatom3.out --nofacts
+extatom3_minimal.hex extatom3.out --nofacts
 #XFAIL dlvhex2 specific extatom3.hex extatom3_faultya.stderr --nofacts
 #XFAIL dlvhex2 specific extatom3.hex extatom3_faultyb.stderr --nofacts
 #XFAIL predinput-valueinvention extatom4.hex extatom4.out

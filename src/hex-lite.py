@@ -1034,7 +1034,7 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     out.append(valueGuessRule)
 
     # replace eatom in statement
-    replacement = valueAuxAtom
+    replacement = eatom['prefix'] + valueAuxAtom
     # find position of eatom in body list
     posInStatement = statement[1].index(eatom['shallow'])
     logging.info('NOEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
