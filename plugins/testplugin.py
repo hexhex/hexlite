@@ -50,6 +50,15 @@ def testSubstr(string, start, length):
 	if startv+lengthv < len(unquoted):
 		dlvhex.output((unquoted[startv:startv+lengthv],))
 
+def testStrlen(string):
+	stringv = string.value()
+	unquoted = stringv.strip('"')
+	dlvhex.output( (len(unquoted),) )
+
+def testSmallerThan(int1, int2):
+	if int1.intValue() < int2.intValue():
+		dlvhex.output( () )
+
 def testConcat(strs):
 	#logging.debug('testConcat got '+repr(strs)+' '+str(strs.__class__)+' '+str(strs[0].__class__))
 	values = [s.value() for s in strs]
@@ -238,6 +247,8 @@ def register():
 	#unused dlvhex.addAtom("testListHalf", (dlvhex.CONSTANT,), 2)
 	#unused dlvhex.addAtom("testListMerge", (dlvhex.CONSTANT,dlvhex.CONSTANT,dlvhex.CONSTANT), 2)
 	dlvhex.addAtom("testSubstr", (dlvhex.CONSTANT,dlvhex.CONSTANT,dlvhex.CONSTANT), 1)
+	dlvhex.addAtom("testStrlen", (dlvhex.CONSTANT,), 1)
+	dlvhex.addAtom("testSmallerThan", (dlvhex.CONSTANT,dlvhex.CONSTANT), 0)
 	dlvhex.addAtom("testEven", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#unused dlvhex.addAtom("testOdd", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
 	#unused dlvhex.addAtom("testLessThan", (dlvhex.PREDICATE,dlvhex.PREDICATE), 0)
