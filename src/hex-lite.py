@@ -975,8 +975,10 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     * transforms eatom in statement into auxiliary atom with all inputs and outputs
     * creates a rule for guessing truth of the auxiliary eatom based on the auxiliary input tuple
     '''
-    assert(logging.debug('NOEAH eatom {} in statement {} with safevars {} and safeconditions {}'.format(
-      pprint.pformat(eatom), pprint.pformat(statement), repr(safevars), pprint.pformat(safeconditions))) or True)
+    if __debug__:
+      logging.debug('NOEAH eatom {} with safevars {} and safeconditions {}'.format(
+        pprint.pformat(eatom), repr(safevars), pprint.pformat(safeconditions)))
+      logging.debug('NOEAH in statement '+pprint.pformat(statement))
     out = []
 
     # raise an exception if outputs are non-safe variables (this case will for sure not work)
