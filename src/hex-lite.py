@@ -323,7 +323,8 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
 
   def findSafeConditions(self, body, safeVars):
     '''
-    find all body elements that are safe assuming safeVars are safe
+    find all body elements that are not external atoms
+    and that are safe assuming safeVars are safe
 
     currently:
     * finds all positive body literals
@@ -334,7 +335,7 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
     #logging.debug('SRRC findSafeConditions for safeVars {} and body {}'.format(repr(safeVars), pprint.pformat(body)))
     def isSafe(elem):
       #logging.debug('SRRC isSafe='+pprint.pformat(elem))
-      isEatom = isinstance(elem[0],str) and elem[0][0] == '&'
+      isEatom = any([isinstance(subelem,str) and subelem[0] == '&' for subelem in elem])
       if isEatom:
         # for sure do not return untransformed external atoms
         return False
