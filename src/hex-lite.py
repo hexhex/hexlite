@@ -1095,7 +1095,7 @@ def interpretArguments(argv):
     help='Whether strong negation is enabled (ignored).')
   parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
     help='Number of models to enumerate.')
-  parser.add_argument('-N', '--maxint', metavar='N', action='store', default=0,
+  parser.add_argument('-N', '--maxint', metavar='N', action='store', default=None,
     help='Maximum integer (#maxint in the program can override this).')
   parser.add_argument('--nofacts', action='store_true', default=False,
     help='Whether to output given facts in answer set.')
