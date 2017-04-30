@@ -577,6 +577,10 @@ class GringoContext:
           out = 1
       elif outarity == 1:
         # list of terms, not list of tuples (I could not convince Gringo to process single-element-tuples)
+        if any([ len(x) != outarity for x in out ]):
+          wrongarity = [ x for x in out if len(x) != outarity ]
+          out = [ x for x in out if len(x) == outarity ]
+          logging.warning("ignored tuples {} with wrong arity from atom {}".format(repr(wrongarity), self.holder.name))
         out = [ x[0] for x in out ]
       # in other cases we can directly use what externalAtomCallHelper returned
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
