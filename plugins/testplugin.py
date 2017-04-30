@@ -46,11 +46,16 @@ def testEven(pred1, pred2):
 
 def testSubstr(string, start, length):
 	stringv = string.value()
+	needquote = '"' in stringv
 	startv = start.intValue()
-	lengthv = start.intValue()
+	lengthv = length.intValue()
 	unquoted = stringv.strip('"')
-	if startv+lengthv < len(unquoted):
-		dlvhex.output((unquoted[startv:startv+lengthv],))
+	endv = min(startv+lengthv, len(unquoted)+1)
+	out = unquoted[startv:endv]
+	if needquote:
+		out = '"'+out+'"'
+	logging.debug('testSubstr with string={} start={} length={} creates out={}'.format(stringv, startv, lengthv, out))
+	dlvhex.output((out,))
 
 def testStrlen(string):
 	stringv = string.value()
