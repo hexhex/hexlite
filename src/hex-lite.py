@@ -1080,7 +1080,9 @@ def interpretArguments(argv):
   parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
     help='Names of python modules to load as external atoms.')
   parser.add_argument('--liberalsafety', action='store_true', default=False,
-    help='Whether liberal safety is requested (ignore).')
+    help='Whether liberal safety is requested (ignored).')
+  parser.add_argument('--strongnegation-enable', action='store_true', default=False,
+    help='Whether strong negation is enabled (ignored).')
   parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
     help='Number of models to enumerate.')
   parser.add_argument('--nofacts', action='store_true', default=False,
@@ -1094,6 +1096,10 @@ def interpretArguments(argv):
   args = parser.parse_args(argv)
   setupLogging(args)
   logging.debug('args='+repr(args))
+  if args.liberalsafety:
+    logging.warning("ignored argument about liberal safety")
+  if args.strongnegation_enable:
+    logging.warning("ignored argument about strong negation")
   return args
 
 def setupLogging(args):
