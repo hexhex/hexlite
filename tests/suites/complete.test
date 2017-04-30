@@ -114,8 +114,8 @@ liberalsafety2.hex liberalsafety2.out --liberalsafety
 liberalsafety3.hex liberalsafety3.out --liberalsafety
 liberalsafety4.hex liberalsafety4.out --liberalsafety
 liberalsafety5.hex liberalsafety5.out --liberalsafety
-liberalsafety6.hex liberalsafety6.out --liberalsafety
-liberalsafety7.hex liberalsafety7.out --liberalsafety
+#XFAIL predinput-valueinvention liberalsafety6.hex liberalsafety6.out --liberalsafety
+#XFAIL predinput-valueinvention liberalsafety7.hex liberalsafety7.out --liberalsafety
 liberalsafety8.hex liberalsafety8.out --liberalsafety
 liberalsafety9.hex liberalsafety9.out --liberalsafety
 functionsymbols1.hex functionsymbols1.out
