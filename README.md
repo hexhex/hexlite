@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/hexhex/hexlite.svg?branch=master)](https://travis-ci.org/hexhex/hexlite)
+[![codebeat badge](https://codebeat.co/badges/5493bd59-f87f-470c-9069-86d4c14dd374)](https://codebeat.co/projects/github-com-hexhex-hexlite-master)
+
 # HEXLite Python-based solver for a fragment of HEX
 
 This is a solver for a fragment of the HEX language and for Python-based plugins
