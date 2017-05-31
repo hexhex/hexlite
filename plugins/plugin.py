@@ -1,21 +1,8 @@
 import dlvhex
 
-def multiply(a, b):
-	dlvhex.output((a.intValue() * b.intValue(), ));
-
 def test(a, b, c):
 	dlvhex.output((a, a))
 
-def id(p):
-	if dlvhex.learnSupportSets():
-		dlvhex.learn((
-				dlvhex.storeAtom((p, )),	        # if p is true for some X
-				dlvhex.storeOutputAtom(()).negate()	# then () is in the output
-				));
-	else:
-		for x in dlvhex.getTrueInputAtoms():
-			dlvhex.output(())
-			return
 def neg(p):
 	if dlvhex.learnSupportSets():
 		dlvhex.learn((
@@ -107,12 +94,6 @@ def fibonacci_comp(val):
 	else:
 		return fibonacci_comp(val - 1) + fibonacci_comp(val - 2)
 
-def concat(tup):
-	res = ""
-	for x in tup:
-		res = res + x.value()
-	dlvhex.output((res, ))
-
 def testSetMinus(p, q):
 
 	premisse = ()
@@ -139,186 +120,6 @@ def testSetMinus(p, q):
 	for x in outputatoms:
 		dlvhex.learn((x.negate(), ) + premisse)
 
-def testSetMinus2(p, q):
-	for x in p.extension():
-		if not x in q.extension():
-			dlvhex.learn((	dlvhex.storeAtom((p, ) + x),
-					dlvhex.storeAtom((q, ) + x).negate(),
-					dlvhex.storeOutputAtom(x).negate()
-					))
-			dlvhex.output(x)
-
-def testSetMinusPartial(p, q):
-
-	# compute the set difference of the extension of p minus the one of q
-	input = dlvhex.getInputAtoms()
-	for x in input:
-		tup = x.tuple()
-
-		# for each possible input atom p(x) (according to the grouding, it is not necessarily true in the current input)
-		if tup[0].value() == p.value():
-
-			qAtom = dlvhex.storeAtom((q, tup[1]))
-
-			# if p(x) is true and the corresponding atom q(x) is not true (i.e., false or undefined)
-			if dlvhex.isTrue(x) and not dlvhex.isTrue(qAtom):
-				# if q(x) is false, then x is definitely in the output
-				if not dlvhex.isInputAtom(qAtom) or dlvhex.isFalse(qAtom):
-#					print "Definitely true: " + tup[1].value()
-					dlvhex.output((tup[1], ))
-
-				# if q(x) is undefined, then x might be in the output
-				else:
-#					print "Could be true: " + tup[1].value()
-					dlvhex.outputUnknown((tup[1], ))
-					v=0
-
-			# if p(x) is undefined and q(x) is not true (i.e., false or undefined), then x might be in the output
-			if not dlvhex.isTrue(x) and not dlvhex.isFalse(x) and not dlvhex.isTrue(qAtom):
-#				print "Could be true: " + tup[1].value()
-				dlvhex.outputUnknown((tup[1], ))
-				v=0
-
-			# if p(x) is false, then x is definitely not in the output
-			# (no implementation needed, this is by default)
-
-def isEmpty(assignment):
-
-	true = 0
-	false = 0
-	unknown = 0
-
-	premisse = ()
-	for x in dlvhex.getInputAtoms():
-		if x.isTrue():
-			true = true + 1
-		elif x.isFalse():
-			false = false + 1
-		else:
-			unknown = unknown + 1
-
-	if true > 0:
-		# external atom is true
-		dlvhex.output(())
-	elif (true + unknown) > 0:
-		# external atom can be true
-		dlvhex.outputUnknown(())
-	else:
-		# else case applies: (true + unknown) < min.intValue() or true > max.intValue()
-		#
-		# external atom is certainly not true
-		v = 0
-
-def numberOfBalls(assignment, min, max):
-
-	true = 0
-	false = 0
-	unknown = 0
-
-	premisse = ()
-	for x in dlvhex.getInputAtoms():
-		if x.isTrue():
-			true = true + 1
-		elif x.isFalse():
-			false = false + 1
-		else:
-			unknown = unknown + 1
-			v = 0
-
-	if true >= min.intValue() and (true + unknown) <= max.intValue():
-		# external atom is true
-		dlvhex.output(())
-	elif (true + unknown) >= min.intValue() and true <= max.intValue():
-		# external atom can be true
-		dlvhex.outputUnknown(())
-	else:
-		# else case applies: (true + unknown) < min.intValue() or true > max.intValue()
-		#
-		# external atom is certainly not true
-		v = 0
-
-def numberOfBallsSE(assignment, max):
-
-	true = 0
-	false = 0
-	unknown = 0
-
-	premisse = ()
-	for x in dlvhex.getInputAtoms():
-		if x.isTrue():
-			true = true + 1
-		elif x.isFalse():
-			false = false + 1
-		else:
-			unknown = unknown + 1
-			v = 0
-
-	if (true + unknown) <= max.intValue():
-		# external atom is true
-		dlvhex.output(())
-	elif true <= max.intValue():
-		# external atom can be true
-		dlvhex.outputUnknown(())
-	else:
-		# else case applies: if true > max.intValue()
-		#
-		# external
-		v = 0
-
-def numberOfBallsGE(assignment, min):
-
-	true = 0
-	false = 0
-	unknown = 0
-
-	premisse = ()
-	for x in dlvhex.getInputAtoms():
-		if x.isTrue():
-			true = true + 1
-		elif x.isFalse():
-			false = false + 1
-		else:
-			unknown = unknown + 1
-			v = 0
-
-	if true >= min.intValue():
-		# external atom is true
-		dlvhex.output(())
-	elif (true + unknown) >= min.intValue():
-		# external atom can be true
-		dlvhex.outputUnknown(())
-	else:
-		# else case applies: if (true + unknown) < min.intValue()
-		#
-		# external
-		v = 0
-
-def partialTest(assignment):
-
-	true = 0
-	false = 0
-	unknown = 0
-
-	premisse = ()
-	for x in dlvhex.getInputAtoms():
-		if x.isTrue():
-			true = true + 1
-#			premisse = premisse + (x, )
-#			print "true input atom:", x.value()
-		elif x.isFalse():
-			false = false + 1
-#			premisse = premisse + (x.negate(), )
-#			print "false input atom:", x.value()
-		else:
-			unknown = unknown + 1
-#			print "unknown input atom:", x.value()
-			v = 0
-
-	if true > 1:
-#		dlvhex.learn(premisse + (dlvhex.storeOutputAtom((), False).negate(), ))
-		dlvhex.output(())
-	elif true + unknown > 1:
-		dlvhex.outputUnknown(())
 
 def satCheck(formula,trueAt):	
 	import re
@@ -695,14 +496,7 @@ def main():
 		print("Answer set:", dlvhex.getValue(x))
 
 def register():
-	dlvhex.addAtom("multiply", (dlvhex.CONSTANT, dlvhex.CONSTANT), 1)
-
 	dlvhex.addAtom("test", (dlvhex.PREDICATE, dlvhex.CONSTANT, dlvhex.CONSTANT), 2)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setSupportSets(True)
-	prop.setCompletePositiveSupportSets(True)
-	dlvhex.addAtom("id", (dlvhex.PREDICATE, ), 0, prop)
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.setSupportSets(True)
@@ -714,51 +508,14 @@ def register():
 	prop.setCompletePositiveSupportSets(True)
 	dlvhex.addAtom("aOrNotB", (dlvhex.PREDICATE, dlvhex.PREDICATE), 0, prop)
 
-        prop = dlvhex.ExtSourceProperties()
-        prop.setSupportSets(True)
-        prop.setCompletePositiveSupportSets(True)
+	prop = dlvhex.ExtSourceProperties()
+	prop.setSupportSets(True)
+	prop.setCompletePositiveSupportSets(True)
 	dlvhex.addAtom("parity", (dlvhex.PREDICATE, ), 0, prop)
 
 	dlvhex.addAtom("fibonacci", (dlvhex.CONSTANT, ), 1)
 
-	dlvhex.addAtom("concat", (dlvhex.TUPLE, ), 1)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.addMonotonicInputPredicate(0)
-	prop.addAntimonotonicInputPredicate(1)
-	dlvhex.addAtom("testSetMinus", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1, prop)
-	dlvhex.addAtom("testSetMinus2", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-#	prop.addMonotonicInputPredicate(0)
-#	prop.addAntimonotonicInputPredicate(1)
-	dlvhex.addAtom("testSetMinusPartial", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-	dlvhex.addAtom("isEmpty", (dlvhex.PREDICATE, ), 0, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-	dlvhex.addAtom("numberOfBalls", (dlvhex.PREDICATE, dlvhex.CONSTANT, dlvhex.CONSTANT), 0, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-	prop.addAntimonotonicInputPredicate(0)
-	dlvhex.addAtom("numberOfBallsSE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-	prop.addMonotonicInputPredicate(0)
-	dlvhex.addAtom("numberOfBallsGE", (dlvhex.PREDICATE, dlvhex.CONSTANT), 0, prop)
-
-	prop = dlvhex.ExtSourceProperties()
-	prop.setProvidesPartialAnswer(True)
-	dlvhex.addAtom("partialTest", (dlvhex.PREDICATE, ), 0, prop)
-
 	dlvhex.addAtom("date", (), 1)
-
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
@@ -787,7 +544,6 @@ def register():
 	prop = dlvhex.ExtSourceProperties()
 	dlvhex.addAtom("greater", (dlvhex.CONSTANT, dlvhex.CONSTANT), 0, prop)
 
-
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
 	prop.addMonotonicInputPredicate(1)
@@ -811,3 +567,5 @@ def register():
 	dlvhex.addAtom("tail", (dlvhex.CONSTANT, ), 1, prop)
 
 	dlvhex.addAtom("cnt", (dlvhex.PREDICATE, ), 1)
+
+# vim:noexpandtab:nolist:

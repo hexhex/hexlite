@@ -281,6 +281,15 @@ def testSetMinus(p, q):
 	for r in rset:
 		dlvhex.output( (r,) )
 
+def testSetMinus2(p, q):
+	for x in p.extension():
+		if not x in q.extension():
+			dlvhex.learn((	dlvhex.storeAtom((p, ) + x),
+					dlvhex.storeAtom((q, ) + x).negate(),
+					dlvhex.storeOutputAtom(x).negate()
+					))
+			dlvhex.output(x)
+
 def rdf(uri):
 	logging.warning('TODO implement &rdf (and #namespace)')
 	dlvhex.output(('s', 'p', 'o'))
@@ -311,6 +320,7 @@ def register():
 	dlvhex.addAtom("idc", (dlvhex.CONSTANT,), 1)
 	#TODO testCautiousQuery
 	dlvhex.addAtom("testSetMinus", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
+	dlvhex.addAtom("testSetMinus2", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
