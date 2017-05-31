@@ -1,4 +1,4 @@
-# This module is imported by plugin modules and used to communicate with the main program!
+# This package is imported by plugins and used to communicate with the main program!
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
