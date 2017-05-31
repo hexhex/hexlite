@@ -17,11 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# TODO make this a real script, move most content to hexlite package
+
 import sys, logging
 # initially log everything
 logging.basicConfig(
   level=logging.NOTSET, stream=sys.stderr,
   format="%(levelname)1s:%(filename)10s:%(lineno)3d:%(message)s")
+# make log level names shorter so that we can show them
 logging.addLevelName(50, 'C')
 logging.addLevelName(40, 'E')
 logging.addLevelName(30, 'W')
@@ -31,10 +34,31 @@ logging.addLevelName(10, 'D')
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
 import hexlite.shallowhexparser as shp
+
+# this is our own package for communicating with plugins
 import dlvhex
 
 # clingo python API
-import clingo
+try:
+  # try without any settings
+  import clingo
+except ImportError:
+  # try in ~/.hexlite/
+  try:
+    sys.path.append(os.path.expanduser('~/.hexlite/'))
+    import clingo
+  except ImportError:
+    logging.warning("Could not find clingo python module in global or local (~/.hexlite/) installation")
+    import hexlite.buildclingo as bcm
+    if not bcm.build():
+      logging.critical("Could not install clingo python module. Please retry or install manually and retry running hexlite.")
+      sys.exit(-1)
+  # now it should work
+  try:
+    import clingo
+  except ImportError:
+    logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
+    sys.exit(-1)
 
 AUXPREFIX = 'aux_'
 AUX_MAXINT = AUXPREFIX+'maxint'
@@ -1132,6 +1156,8 @@ def main():
     program = loadProgram(flatten(args.hexfiles))
     rewritten, facts = rewriteProgram(program, plugins, args)
     code = execute(rewritten, facts, plugins, args)
+  except SystemExit:
+    pass
   except:
     logging.error('Exception: '+traceback.format_exc())
   sys.exit(code)
