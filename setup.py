@@ -6,13 +6,13 @@ from setuptools import setup
 
 def readme():
   with open('README', 'w') as of:
-    with open('README') as i:
+    with open('README.md') as i:
       out = ''.join([ line for line in i if not line.startswith('[')])
       of.write(out)
       return out
 
 setup(name='hexlite',
-      version='0.3.3',
+      version='0.3.4',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
