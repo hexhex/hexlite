@@ -17,6 +17,6 @@ The system is currently under development and *only works for certain programs*.
 A manuscript about the system is under preparation.
 
 * License: GPL (3.0)
-
 * Author: Peter Schüller <schueller.p@gmail.com>
-
+* Available at PyPi: https://pypi.python.org/pypi/hexlite
+* Installation: ```pip install hexlite```
