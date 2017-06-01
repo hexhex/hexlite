@@ -20,3 +20,4 @@ A manuscript about the system is under preparation.
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
 * Installation: ```pip install hexlite```
+  (You might need to install python-pip under Ubuntu ```apt-get install python-pip```.)
