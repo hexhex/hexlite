@@ -627,23 +627,6 @@ class GringoContext:
     #logging.debug('GC.%s called',attr)
     return self.ExternalAtomCall(dlvhex.eatoms[attr])
 
-class Generic:
-  def __init__(self, name):
-    self.name = name
-  def __call__(self, *arguments):
-    logging.debug("GPGeneric {} {}".format(self.name, repr(arguments)))
-
-class GroundProgramObserver:
-  def rule(self, choice, head, body):
-    logging.debug("GPRule ch={} hd={} b={}".format(repr(choice), repr(head), repr(body)))
-  def output_atom(self, symbol, atom):
-    logging.debug("GPAtom symb={} atm={}".format(repr(symbol), repr(atom)))
-  def output_term(self, symbol, condition):
-    logging.debug("GPAtom symb={} cond={}".format(repr(symbol), repr(condition)))
-  def __getattr__(self, name):
-    #logging.debug("GP getattr {}".format(name))
-    return Generic(name)
-
 class SymLit:
   def __init__(self, sym, lit):
     self.sym = sym
@@ -929,7 +912,6 @@ def execute(rewritten, facts, plugins, args):
     cc.add('base', (), sendprog)
   except:
     raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
-  #cc.register_observer(GroundProgramObserver(), False)
 
   logging.info('grounding with gringo context')
   ccc = GringoContext()
