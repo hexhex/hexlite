@@ -715,7 +715,7 @@ class Nogood:
     return True
 
 class ClingoPropagator:
-  class StopPropagation:
+  class StopPropagation(Exception):
     pass
   def __init__(self):
     # key = eatom
