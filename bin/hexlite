@@ -63,6 +63,9 @@ except ImportError:
     logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
     sys.exit(-1)
 
+# import this after importing clingo, because it requires clingo too
+import hexlite.explicitflpcheck as flp
+
 AUXPREFIX = 'aux_'
 AUX_MAXINT = AUXPREFIX+'maxint'
 
@@ -864,11 +867,15 @@ class ClingoPropagator:
       raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
-  def __init__(self, facts, args):
+  def __init__(self, facts, args, flpchecker):
     self.facts = set(self._normalizeFacts(facts))
     self.args = args
+    self.flpchecker = flpchecker
 
   def __call__(self, mdl):
+    if not self.flpchecker.checkModel(mdl):
+      logging.debug('leaving on_model because flpchecker returned False')
+      return
     costs = mdl.cost
     if len(costs) > 0 and not mdl.optimality_proven:
       logging.info('not showing suboptimal model (like dlvhex2)!')
@@ -926,12 +933,14 @@ def execute(rewritten, facts, plugins, args):
 
   logging.info('grounding with gringo context')
   ccc = GringoContext()
+  flpchecker = flp.ExplicitFLPChecker()
+  flpchecker.attach(cc)
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
   checkprop = ClingoPropagator()
   cc.register_propagator(checkprop)
-  mr = ModelReceiver(facts, args)
+  mr = ModelReceiver(facts, args, flpchecker)
 
   logging.info('starting search')
   cc.solve(on_model=mr)
