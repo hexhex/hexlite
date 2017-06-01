@@ -1162,6 +1162,7 @@ def main():
     pass
   except:
     logging.error('Exception: '+traceback.format_exc())
+    logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
   sys.exit(code)
 
 def loadPlugins(plugins):
