@@ -798,7 +798,7 @@ class ClingoPropagator:
   def verifyTruthOfAtom(self, eatomname, control, veri):
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
-      idebug = pprint.pformat([ x.value for x in veri.allinputs if x.isTrue() ])
+      idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
       logging.debug('CPvTOA checking if {} = {} with interpretation {}'.format(
         str(targetValue), veri.replacement.sym, idebug))
     holder = dlvhex.eatoms[eatomname]
