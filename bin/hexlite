@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
-# needs clingo to be built with correct python version, this software supports python2 and python3
+
+# needs clingo.so to be built with the correct Python version, this software supports python2 and python3
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
