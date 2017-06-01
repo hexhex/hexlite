@@ -55,6 +55,8 @@ except ImportError:
       sys.exit(-1)
   # now it should work
   try:
+    # add a NEW path (non-existence of clingo module seems to be cached)
+    sys.path.append(os.path.expanduser('~/.hexlite//'))
     import clingo
   except ImportError:
     logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")

@@ -268,8 +268,10 @@ def p_error(p):
   msg = "unexpected '{}'\n".format(repr(p))
   raise Exception(msg)
 
-myparser = yacc.yacc(start='content', tabmodule='contentparser', optimize=not __debug__)
-mytermparser = yacc.yacc(start='elist', tabmodule='termparser', optimize=not __debug__, errorlog=None)
+# TODO manage installation of yacc-generated scripts somehow and reactivate write_tables
+# , optimize=not __debug__
+myparser = yacc.yacc(start='content', write_tables=False)
+mytermparser = yacc.yacc(start='elist', write_tables=False, errorlog=None)
 
 def parseTerm(content):
   '''

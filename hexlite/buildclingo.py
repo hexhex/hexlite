@@ -29,9 +29,12 @@ class Installer:
   SRCDIR = UNPACKDIR+DIR_IN_ARCHIVE
   # you can change this to reduce/increase number of parallel jobs
   MAKEARGS = ['VERBOSE=1', '--jobs=4']
+  NEEDED = {
+    'Ubuntu 16.04': ['wget', 'tar', 'gzip', 'cmake', 'g++'],
+    }
 
   def run_cmd(self, cmd, **args):
-    logging.info("running command '{}'".format(cmd))
+    logging.info("running command '{}'".format(' '.join(cmd)))
     subprocess.check_call(cmd, **args)
 
   def prompt_user(self, message):
@@ -46,6 +49,19 @@ class Installer:
       return True
     # skip
     return False
+
+  def ensurepackages(self, version):
+    logging.debug('obtaining list of installed packages with dpkg')
+    allpackages = subprocess.check_output(['dpkg-query', '-W', "-f=${binary:Package}\\n"])
+    #logging.debug('got list: '+repr(allpackages))
+    allpackages = set([pkg.strip() for pkg in allpackages.split('\n')])
+    need = [pkg for pkg in self.NEEDED[version] if pkg not in allpackages]
+    if len(need) > 0:
+      logging.info("did not find required packages {} via dpkg".format(repr(need)))
+      prompt = "Will next use 'sudo apt-get' install to install {}".format(repr(need))
+      if not self.prompt_user(prompt):
+        return
+      subprocess.check_call(['sudo', 'apt-get', 'install']+list(need))
 
   def makedirs(self):
     prompt = "Will next create directories {} for installation".format(repr([self.UNPACKDIR, self.INSTALLDIR]))
@@ -83,7 +99,8 @@ class Installer:
   def install(self):
     self.run_cmd(['make', 'install'], cwd=self.SRCDIR)
 
-  def doit(self):
+  def doit(self, version):
+    self.ensurepackages(version)
     self.makedirs()
     self.download()
     self.unpack()
@@ -97,11 +114,11 @@ def build():
     if 'Ubuntu 16.04' in lsbout:
       logging.info('installing for Ubuntu 16.04')
       inst = Installer()
-      inst.doit()
+      inst.doit('Ubuntu 16.04')
     elif 'Ubuntu' in lsbout:
       logging.warning('installing for nonsupported Ubuntu')
       inst = Installer()
-      inst.doit()
+      inst.doit('Ubuntu 16.04')
     else:
       logging.critical("We are sorry, your operating system seems to be unsupported."+
         " Please contact the developers and provide this information: '"+lsbout+"'")

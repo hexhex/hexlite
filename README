@@ -17,4 +17,7 @@ A manuscript about the system is under preparation.
 * License: GPL (3.0)
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
-* Installation: ```pip install hexlite```
+* Installation: ```sudo pip install hexlite```
+  (You might need to install python-pip under Ubuntu ```sudo apt-get install python-pip```.)
+  Ubuntu 16.04 works
+  Ubuntu 14.04 does not work automatically (CMake 3.1 or higher is required by clingo)

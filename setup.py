@@ -2,8 +2,6 @@
 
 from setuptools import setup
 
-# TODO dependency clingo?
-
 def readme():
   with open('README', 'w') as of:
     with open('README.md') as i:
@@ -12,7 +10,7 @@ def readme():
       return out
 
 setup(name='hexlite',
-      version='0.3.5',
+      version='0.3.11',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
