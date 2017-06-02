@@ -35,7 +35,8 @@ logging.addLevelName(10, 'D')
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
 import hexlite.shallowhexparser as shp
-from hexlite.aux import Aux
+import hexlite.aux as aux
+Aux = aux.Aux
 
 # this is our own package for communicating with plugins
 import dlvhex
@@ -213,7 +214,7 @@ class StatementRewriterBase:
           if __debug__:
             orig = list(elem)
           term = elem[1][0]
-          elem[:] = [term, '=', '0', '..', Aux.PREFIX+'maxint']
+          elem[:] = [term, '=', '0', '..', Aux.MAXINT]
           if __debug__:
             logging.debug("rewrote {} to {}".format(pprint.pformat(orig), pprint.pformat(elem)))
     dfVisit(self.statement, rewriteIfApplicable)
@@ -1024,11 +1025,11 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     args = eatom['inputs']+eatom['outputs']
     arity = len(args)
     # one auxiliary per arity (to rule out problems with multi-arity-predicates)
-    relAuxPred = '{}r{}_{}'.format(Aux.PREFIX, arity, eatom['name'])
+    relAuxPred = aux.predEAtomRelevance(arity, eatom['name'])
     relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
 
     # auxiliary atoms for value of external atom
-    valueAuxPred = '{}t{}_{}'.format(Aux.PREFIX, arity, eatom['name'])
+    valueAuxPred = aux.predEAtomTruth(arity, eatom['name'])
     valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
     rewritingState.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
 

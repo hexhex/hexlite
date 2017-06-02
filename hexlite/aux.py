@@ -20,9 +20,24 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Aux:
+  # prefix for all auxiliaries [just rename in case of conflicts in an application]
   PREFIX = 'aux_'
-  RHPRED = PREFIX+'rh'
-  CATOMTRUE = PREFIX+'cat'
+
+  # maxint
   MAXINT = PREFIX+'maxint'
 
+  # relevance of external atoms + input tuple grounding
+  EAREL = PREFIX+'r'
+  # truth of external atoms (in the papers "external replacement atoms")
+  EAREPL = PREFIX+'t'
 
+  # auxiliary for rule heads in explicitflpcheck.RuleActivityProgram
+  RHPRED = PREFIX+'h'
+  # auxiliary for atoms in compatible set in explicitflpcheck.CheckOptimizedProgram
+  CATOMTRUE = PREFIX+'c'
+
+def predEAtomRelevance(arity, eatomname):
+  return Aux.EAREL+'_'+str(arity)+'_'+eatomname
+
+def predEAtomTruth(arity, eatomname):
+  return Aux.EAREPL+'_'+str(arity)+'_'+eatomname
