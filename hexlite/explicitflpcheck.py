@@ -53,7 +53,7 @@ class GroundProgramObserver:
     self.replatoms = set()
     # facts
     self.facts = set()
-    # received rules
+    # received rules (will be erased at end_step! use only eareplrules and rules!)
     self.preliminaryrules = []
     # rules for eatom replacement guessing
     self.eareplrules = []
@@ -106,22 +106,28 @@ class GroundProgramObserver:
       else:
         assert(len(head) != 2 or (head[0] not in self.replatoms and head[1] not in self.replatoms))
         self.rules.append( (choice, head, body) )
+    # after that we should not use this anymore
+    # XXX solve this in a more elegant way, without ever storing in self
+    del(self.preliminaryrules)
 
   def formatAtom(self, atom):
     # XXX if atom is x we segfault (we cannot catch an exception here!)
-    return str(self.int2atom[atom])
+    if atom > 0L:
+      return str(self.int2atom[atom])
+    else:
+      return 'not '+str(self.int2atom[-atom])
 
   def formatBody(self, body):
     return ','.join([self.formatAtom(x) for x in body])
 
   def formatRule(self, rule):
     choice, head, body = rule
-    headstr = HSEP[choice].join([self.formatAtom(x) for x in head])
+    headstr = HBEG[choice] + HSEP[choice].join([self.formatAtom(x) for x in head]) + HEND[choice]
     if len(body) == 0:
       return headstr+'.'
     else:
       bodystr = self.formatBody(body)
-      return '{}{}{}:-{}.'.format(HBEG[choice], headstr, HEND[choice], bodystr)
+      return headstr+':-'+bodystr+'.'
 
   # TODO formatWeightRule
 
@@ -129,9 +135,11 @@ class GroundProgramObserver:
     if __debug__:
       logging.debug("facts:")
       logging.debug('  '+', '.join([ str(f) for f in self.facts]))
+      logging.debug("eareplrules:")
+      for r in self.eareplrules:
+        logging.debug('  '+self.formatRule(r))
       logging.debug("rules:")
       for r in self.rules:
-        #logging.debug('r:'+repr(r))
         logging.debug('  '+self.formatRule(r))
       # TODO weight rules
 
@@ -139,15 +147,12 @@ class GroundProgramObserver:
     # true if at least one program was fully received
     return not self.waitingForStuff
 
-  def cargo(self):
-    return self.facts, self.rules, self.atom2int, self.int2atom, self.maxAtom
-
 class RuleActivityProgram:
   '''
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
   It contains:
-  (I) a guess for each atom in Pi (non-fact rules are stored in self.po.rules)
+  (I) a guess for each atom in Pi (non-fact rules are stored in self.po.eareplrules and self.po.rules)
   (II) for each non-fact rule in Pi a rule with a unique head <Aux.RHPRED>(ruleidx) and the body of the original rule.
 
   The purpose of this program is to find out which rule bodies are satisfied (i.e., which rules are in the FLP reduct) in a given answer set.
@@ -164,6 +169,32 @@ class RuleActivityProgram:
         # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
     self.cc.ground([("base", [])])
+
+  def _assumptionFromModel(self, mdl):
+    syms = mdl.symbols(atoms=True, terms=True)
+    return [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
+
+  def _build(self):
+    def headActivityRule(idx, chb):
+      choice, head, body = chb
+      # we only use the body!
+      if len(body) == 0:
+        return '{}({}).'.format(Aux.RHPRED, idx)
+      else:
+        sbody = self.po.formatBody(body)
+        return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
+    def atomGuessRule(atom):
+      return  '{'+str(atom)+'}.'
+      
+    assert(self.po.finished())
+
+    # (I) guess for each atom
+    raguesses = [ atomGuessRule(atom) for atom in self.po.atom2int.keys() ]
+    # (II) rules with special auxiliary heads
+    rarules = [ headActivityRule(idx, chb) for idx, chb in enumerate(self.po.eareplrules + self.po.rules) ]
+    # we are interested in which rule is active
+    rashow = ['#show {}/1.'.format(Aux.RHPRED)]
+    return rarules + raguesses + rashow
 
   def getActiveRulesForModel(self, mdl):
     class OnModel:
@@ -183,51 +214,27 @@ class RuleActivityProgram:
     assert(modelcb.activeRules is not None)
     return modelcb.activeRules
 
-  def _assumptionFromModel(self, mdl):
-    syms = mdl.symbols(atoms=True, terms=True)
-    return [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
-
-  def _build(self):
-    def headActivityRule(idx, chb, int2atom):
-      choice, head, body = chb
-      # we only use the body!
-      if len(body) == 0:
-        return '{}({}).'.format(Aux.RHPRED, idx)
-      else:
-        sbody = self.po.formatBody(body)
-        return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
-    def atomGuessRule(atom):
-      return  '{'+str(atom)+'}.'
-      
-    assert(self.po.finished())
-    cargo = self.po.cargo()
-    facts, rules, atom2int, int2atom, maxAtom = cargo
-
-    # guess for each atom
-    raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
-    # rules with special auxiliary heads
-    rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
-    return rarules + raguesses + ['#show {}/1.'.format(Aux.RHPRED)]
-
 class CheckOptimizedProgram:
   '''
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
   It contains:
-  (I) a guess for <Aux.RHPRED>(ruleidx) for each non-fact rule in Pi (non-fact rules are stored in self.po.rules)
-  (II) a constraint :- not <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
-    (except guessing rules for external atom replacements) [this seems to be merely an optimization].
+  (I) a guess for <Aux.RHPRED>(ruleidx) for each non-fact rule in Pi (will be determined by an assumption)
+      (non-fact rules are stored in self.eareplrules and self.po.rules)
+  (II) a constraint :- <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
+      (except guessing rules for external atom replacements)
+      [this seems to be merely an optimization].
   (III) for each atom in Pi (stored in self.po.int2atom/atom2int) a guess.
-  (IV) for each atom A in Pi a guess for <Aux.CATOMTRUE>(A) (will be determined by an assumption)
-  (V) for each atom A in Pi the rules
-    % A cannot become true if it was not true in the compatible set
-    :- A, not <Aux.CATOMTRUE>(A).
-    % A is guessed to be true if it was true in the compatible set
-    {A} :- <Aux.CATOMTRUE>(A).
-    % model is smaller than compatible set if an atom is not true that is true in the compatible set
-    smaller :- not A, <Aux.CATOMTRUE>(A).
+  (IV) for each atom A in Pi a guess for <Aux.CATOMTRUE>_A (will be determined by an assumption)
+  (V) for each atom A in Pi that is not an external atom replacement, the rules
+      % A cannot become true if it was not true in the compatible set
+      :- A, not <Aux.CATOMTRUE>_A.
+      % A is guessed to be true if it was true in the compatible set
+      {A} :- <Aux.CATOMTRUE>_A.
+      % model is smaller than compatible set if an atom is not true that is true in the compatible set
+      smaller :- not A, <Aux.CATOMTRUE>_A.
   (VI) the rule
-    :- not smaller
+      :- not smaller
   (VII) all facts from the original ground program (stored in self.po.facts)
 
   The purpose of this program is to check if the FLP reduct has a model that is smaller than the original compatible set.
@@ -248,7 +255,6 @@ class CheckOptimizedProgram:
         # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
     self.cc.ground([("base", [])])
-    raise Exception("INTERUPT to see check program")
 
   def _build(self):
     def headActivityRule(idx, chb, int2atom):
@@ -259,17 +265,73 @@ class CheckOptimizedProgram:
       else:
         sbody = self.po.formatBody(body)
         return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
+    def rhGuessRule(ruleidx):
+      return  '{'+Aux.RHPRED+'('+str(ruleidx)+')}.'
+    def ruleToReductConstraint(ruleidx, rule):
+      activator = '{}({})'.format(Aux.RHPRED, ruleidx)
+      choice, head, body = rule
+      bodies = [activator]
+      bodies += [ self.po.formatAtom(-h) for h in head ]
+      bodies += [ self.po.formatAtom(b) for b in body ]
+      return ':-'+','.join(bodies)+'.'
+
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
     assert(self.po.finished())
-    cargo = self.po.cargo()
-    facts, rules, atom2int, int2atom, maxAtom = cargo
 
-    # add rules but put new atoms instead of heads
-    rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
-    raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
-    return rarules + raguesses + ['#show {}/1.'.format(Aux.RHPRED)]
+    # (I) guess which rules are marked as active (will be determined with assumption)
+    rhguess = [ rhGuessRule(idx) for idx in range(0, len(self.po.rules)) ]
+    # (II) check model of reduct (not for choice rules, because they are always satisfied)
+    reductconstr = [
+      ruleToReductConstraint(idx, rule)
+      for idx, rule in enumerate(self.po.rules)
+      if rule[0] != True ]
+    # (III) guess each atom in Pi
+    atomguess = [ atomGuessRule(atom) for atom in self.po.atom2int ]
+    # this is A(Pi) in the paper
+    nonreplatoms = [ str(atom) for idx, atom in self.po.int2atom.items() if idx not in self.po.replatoms ]
+    # (IV) guess <Aux.CATOMTRUE>_A for each atom except eareplacements (will be determined by an assumption)
+    csatomguess = [ atomGuessRule(Aux.CATOMTRUE+"_"+at) for at in nonreplatoms ]
+    # (V) ensure model is equal or smaller except eareplacements
+    # A cannot become true if it was not true in the compatible set
+    ensure = [ ':-'+at+',not '+Aux.CATOMTRUE+"_"+at+"." for at in nonreplatoms ]
+    # A is guessed to be true if it was true in the compatible set
+    ensure += [ '{'+at+'}:-'+Aux.CATOMTRUE+"_"+at+"." for at in nonreplatoms ]
+    # model is smaller than compatible set if an atom is not true that is true in the compatible set
+    ensure +=[ 'smaller:-not '+at+','+Aux.CATOMTRUE+'_'+at+"." for at in nonreplatoms ]
+    nsmaller = [':- not smaller.']
+    # (VI) facts (external atom semantics depends also on these facts)
+    facts = [ str(f)+'.' for f in self.po.facts ]
+
+    # XXX maybe show violating model as debug info?
+    return rhguess + reductconstr + atomguess + csatomguess + ensure + nsmaller + facts
+
+  def _assumptionFromActiveRules(self, activeRules):
+    return [
+      (clingo.Function(Aux.RHPRED, [clingo.Number(ruleidx)]),
+        ruleidx in activeRules)
+      for ruleidx in range(0, len(self.po.rules)) ]
+
+  def _assumptionFromModel(self, mdl):
+    syms = mdl.symbols(atoms=True, terms=True)
+    return [
+      (clingo.parse_term(Aux.CATOMTRUE+'_'+str(atm)), mdl.contains(atm))
+      for atm, iatm in self.po.atom2int.items()
+      if iatm not in self.po.replatoms ]
+
+  def checkFLPViolation(self, activeRules, mdl):
+    class OnModel:
+      def __call__(self, mdl):
+        logging.debug('flpModel = '+str(mdl)) 
+
+    assumptions = self._assumptionFromActiveRules(activeRules) + self._assumptionFromModel(mdl)
+    modelcb = OnModel()
+    #logging.debug("assumptions:"+repr(assumptions))
+    res = self.cc.solve(on_model=modelcb, assumptions=assumptions)
+    logging.debug("res=%s", res)
+    raise Exception("TODO incorporate external atom semantics")
+
 
 class ExplicitFLPChecker:
   def __init__(self):
@@ -283,13 +345,14 @@ class ExplicitFLPChecker:
 
   def checkModel(self, mdl):
     # returns True if mdl passes the FLP check (= is an answer set)
+    logging.debug("FLP check for "+repr(mdl))
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
     for ridx in activeRules:
       r = self.programObserver.rules[ridx]
       logging.info("rule in reduct: "+repr(self.programObserver.formatRule(r)))
     checkProgram = self.checkProgram()
-    raise Exception("TODO next: ask check program if answer set")
+    checkProgram.checkFLPViolation(activeRules, mdl)
     return True
 
   def ruleActivityProgram(self):
