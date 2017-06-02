@@ -182,6 +182,56 @@ class RuleActivityProgram:
     rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
     return rarules + raguesses + ['#show {}/1.'.format(Aux.AUXRHPRED)]
 
+class CheckOptimizedProgram:
+  '''
+  This program is a transformed version of the ground program Pi with HEX replacement atoms.
+
+  It contains:
+  (I) a guess for <AUXRHPRED>(ruleidx) for each non-fact rule in Pi (non-fact rules are stored in self.po.rules)
+  (II) a constraint :- not <AUXRHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
+    (except guessing rules for external atom replacements) [this seems to be merely an optimization].
+  (III) for each atom in Pi (stored in self.po.int2atom/atom2int) a guess.
+  (IV) for each atom A in Pi a guess for <AUXCATOMTRUE>(A) (will be determined by an assumption)
+  (V) for each atom A in Pi the rules
+    % A cannot become true if it was not true in the compatible set
+    :- A, not <AUXCATOMTRUE>(A).
+    % A is guessed to be true if it was true in the compatible set
+    {A} :- <AUXCATOMTRUE>(A).
+    % model is smaller than compatible set if an atom is not true that is true in the compatible set
+    smaller :- not A, <AUXCATOMTRUE>(A).
+  (VI) the rule
+    :- not smaller
+  (VII) all facts from the original ground program (stored in self.po.facts)
+
+  The purpose of this program is to check if the FLP reduct has a model that is smaller than the original compatible set.
+
+  This is determined using solver assumptions which fully determine the guesses (I) to determine the reduct and the guess (IV) to determine the compatible set.
+
+  For this program we also need to check if external atom semantics are correctly captured by the guesses,
+  so we include the propagator from the main solver in the search.
+  (Input/output cache can be reused so we use the same instance as in the main search.)
+  '''
+  def __init__(self, programObserver):
+    self.po = programObserver
+    self.cc = clingo.Control()
+    prog = self._build()
+    with self.cc.builder() as b:
+      for rule in prog:
+        logging.debug('COP rule: '+repr(rule))
+        # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
+        clingo.parse_program(rule, lambda ast: b.add(ast))
+    self.cc.ground([("base", [])])
+    raise Exception("INTERUPT to see check program")
+
+  def _build(self):
+    def headActivityRule(idx, chb, int2atom):
+      choice, head, body = chb
+      # we only use the body!
+      if len(body) == 0:
+        return '{}({}).'.format(Aux.AUXRHPRED, idx)
+      else:
+        sbody = self.po.formatBody(body)
+        return '{}({}) :- {}.'.format(Aux.AUXRHPRED, idx, sbody)
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
@@ -197,6 +247,7 @@ class RuleActivityProgram:
 class ExplicitFLPChecker:
   def __init__(self):
     self._ruleActivityProgram = None
+    self._checkProgram = None
     logging.debug("initializing explicit FLP checker")
 
   def attach(self, clingocontrol):
@@ -210,7 +261,8 @@ class ExplicitFLPChecker:
     for ridx in activeRules:
       r = self.programObserver.rules[ridx]
       logging.info("rule in reduct: "+repr(self.programObserver.formatRule(r)))
-    raise Exception("TODO next: build check program")
+    checkProgram = self.checkProgram()
+    raise Exception("TODO next: ask check program if answer set")
     return True
 
   def ruleActivityProgram(self):
@@ -219,3 +271,10 @@ class ExplicitFLPChecker:
     if not self._ruleActivityProgram:
       self._ruleActivityProgram = RuleActivityProgram(self.programObserver)
     return self._ruleActivityProgram
+
+  def checkProgram(self):
+    # on first call, creates control object and fills with program
+    # otherwise reuses old one control object with new assumptions
+    if not self._checkProgram:
+      self._checkProgram = CheckOptimizedProgram(self.programObserver)
+    return self._checkProgram
