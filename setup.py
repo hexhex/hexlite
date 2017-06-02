@@ -10,7 +10,7 @@ def readme():
       return out
 
 setup(name='hexlite',
-      version='0.3.12',
+      version='0.3.13',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
