@@ -77,19 +77,34 @@ class GroundProgramObserver:
       self.atom2int[symbol] = atom
       self.int2atom[atom] = symbol
       self.maxAtom = max(self.maxAtom, atom)
+
+  def formatAtom(self, atom):
+    # XXX if atom is x we segfault (we cannot catch an exception here!)
+    return str(self.int2atom[atom])
+
+  def formatBody(self, body):
+    return ','.join([self.formatAtom(x) for x in body])
+
+  def formatRule(self, rule):
+    choice, head, body = rule
+    headstr = HSEP[choice].join([self.formatAtom(x) for x in head])
+    if len(body) == 0:
+      return headstr+'.'
+    else:
+      bodystr = self.formatBody(body)
+      return '{}{}{}:-{}.'.format(HBEG[choice], headstr, HEND[choice], bodystr)
+
+  # TODO formatWeightRule
+
   def printall(self):
     if __debug__:
       logging.debug("facts:")
       logging.debug('  '+', '.join([ str(f) for f in self.facts]))
       logging.debug("rules:")
-      for choice, head, body in self.rules:
-        #logging.debug('triple:'+repr((choice, head, body)))
-        #logging.debug('keys:'+repr(self.int2atom.keys()))
-        headstr = HSEP[choice].join([str(self.int2atom[x]) for x in head])
-        #logging.debug('headstr' + headstr)
-        bodystr = ' , '.join([str(self.int2atom[x]) for x in body])
-        #logging.debug('bodystr' + bodystr)
-        logging.debug('  {}{}{}:-{}.'.format(HBEG[choice], headstr, HEND[choice], bodystr))
+      for r in self.rules:
+        #logging.debug('r:'+repr(r))
+        logging.debug('  '+self.formatRule(r))
+      # TODO weight rules
 
   def finished(self):
     # true if at least one program was fully received
@@ -136,10 +151,10 @@ class RuleActivityProgram:
     def headActivityRule(idx, chb, int2atom):
       choice, head, body = chb
       # we only use the body!
-      sbody = ','.join([str(int2atom[x]) for x in body])
       if len(body) == 0:
         return '{}({}).'.format(self.AUXRHPRED, idx)
       else:
+        sbody = self.po.formatBody(body)
         return '{}({}) :- {}.'.format(self.AUXRHPRED, idx, sbody)
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
@@ -166,9 +181,10 @@ class ExplicitFLPChecker:
     # returns True if mdl passes the FLP check (= is an answer set)
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
-    for r in activeRules:
-      logging.info("rule active in reduct: "+repr(self.programObserver.rules[r]))
-      raise Exception("TODO next: debug reduct and build check program")
+    for ridx in activeRules:
+      r = self.programObserver.rules[ridx]
+      logging.info("rule in reduct: "+repr(self.programObserver.formatRule(r)))
+    raise Exception("TODO next: build check program")
     return True
 
   def ruleActivityProgram(self):
