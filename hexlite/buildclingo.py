@@ -31,6 +31,7 @@ class Installer:
   MAKEARGS = ['VERBOSE=1', '--jobs=4']
   NEEDED = {
     'Ubuntu 16.04': ['wget', 'tar', 'gzip', 'cmake', 'g++'],
+    'Debian jessie': ['wget', 'tar', 'gzip', 'cmake', 'g++'],
     }
 
   def run_cmd(self, cmd, **args):
@@ -119,6 +120,14 @@ def build():
       logging.warning('installing for nonsupported Ubuntu')
       inst = Installer()
       inst.doit('Ubuntu 16.04')
+    elif 'Debian' in lsbout and 'jessie' in lsbout:
+      logging.info('installing for Debian jessie')
+      inst = Installer()
+      inst.doit('Debian jessie')
+    elif 'Debian' in lsbout:
+      logging.warning('installing for nonsupported Debian')
+      inst = Installer()
+      inst.doit('Debian jessie')
     else:
       logging.critical("We are sorry, your operating system seems to be unsupported."+
         " Please contact the developers and provide this information: '"+lsbout+"'")
