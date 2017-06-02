@@ -46,10 +46,20 @@ class GroundProgramObserver:
       logging.debug("GPOWarning {} {}".format(self.name, repr(arguments)))
 
   def __init__(self):
+    # a program is a set of rules, we assume gringo/clasp are clever enough to eliminate duplicates
     self.atom2int = {}
     self.int2atom = {}
-    self.rules = [] # it is a set but let's assume gringo/clasp are clever enough
+    # eatom truth replacement atoms (cache)
+    self.replatoms = set()
+    # facts
     self.facts = set()
+    # received rules
+    self.preliminaryrules = []
+    # rules for eatom replacement guessing
+    self.eareplrules = []
+    # all other rules
+    self.rules = []
+    # TODO: weight rules
     self.maxAtom = 1
     self.waitingForStuff = True
 
@@ -58,27 +68,44 @@ class GroundProgramObserver:
   def begin_step(self):
     self.waitingForStuff = True
   def end_step(self):
+    #logging.debug("GPEndStep")
+    # here we got rules and atoms so only here we can separate rules from eareplrules
+    self.extractEAtomReplacementGuesses()
     self.waitingForStuff = False
     self.printall()
   def __getattr__(self, name):
     return self.WarnMissing(name)
   def rule(self, choice, head, body):
-    #logging.debug("GPRule ch={} hd={} b={}".format(repr(choice), repr(head), repr(body)))
+    logging.debug("GPRule ch=%s hd=%s b=%s", repr(choice), repr(head), repr(body))
     if choice == False and len(head) == 1 and len(body) == 0:
-      # ignore rules for facts, they are eliminated from bodies anyways
+      # ignore rules for facts,
+      # because we get facts separately in output_atom, and
+      # because they are eliminated from bodies anyways
       pass
     else:
-      self.rules.append( (choice, head, body) )
+      self.preliminaryrules.append( (choice, head, body) )
   def weight_rule(self, choice, head, lower_bound, body):
     raise Exception("weight_rule [aggregates] not yet implemented in FLP checker")
   def output_atom(self, symbol, atom):
-    #logging.debug("GPAtom symb={} atm={}".format(repr(symbol), repr(atom)))
+    logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
     if atom == 0L:
       self.facts.add(symbol)
+      assert(not symbol.name.startswith(Aux.EAREPL))
     else:
       self.atom2int[symbol] = atom
       self.int2atom[atom] = symbol
       self.maxAtom = max(self.maxAtom, atom)
+      if symbol.name.startswith(Aux.EAREPL):
+        self.replatoms.add(atom)
+
+  def extractEAtomReplacementGuesses(self):
+    for choice, head, body in self.preliminaryrules:
+      if choice and len(head) == 2 and head[0] in self.replatoms:
+        assert(head[1] in self.replatoms)
+        self.eareplrules.append( (choice, head, body) )
+      else:
+        assert(len(head) != 2 or (head[0] not in self.replatoms and head[1] not in self.replatoms))
+        self.rules.append( (choice, head, body) )
 
   def formatAtom(self, atom):
     # XXX if atom is x we segfault (we cannot catch an exception here!)
