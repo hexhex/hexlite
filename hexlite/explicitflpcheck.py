@@ -27,6 +27,8 @@ import logging
 # assume that the main program has handled possible import problems
 import clingo
 
+from .aux import Aux
+
 def msg(s):
   logging.info(s)
 
@@ -114,14 +116,25 @@ class GroundProgramObserver:
     return self.facts, self.rules, self.atom2int, self.int2atom, self.maxAtom
 
 class RuleActivityProgram:
-  AUXRHPRED = 'aux_rh'
+  '''
+  This program is a transformed version of the ground program Pi with HEX replacement atoms.
+
+  It contains:
+  (I) a guess for each atom in Pi (non-fact rules are stored in self.po.rules)
+  (II) for each non-fact rule in Pi a rule with a unique head <AUXRHPRED>(ruleidx) and the body of the original rule.
+
+  The purpose of this program is to find out which rule bodies are satisfied (i.e., which rules are in the FLP reduct) in a given answer set.
+
+  This is determined using solver assumptions which fully determine the guesses (I).
+  '''
   def __init__(self, programObserver):
     self.po = programObserver
     self.cc = clingo.Control()
     prog = self._build()
     with self.cc.builder() as b:
       for rule in prog:
-        logging.debug('parsing rule: '+repr(rule))
+        logging.debug('RAP rule: '+repr(rule))
+        # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
     self.cc.ground([("base", [])])
 
@@ -152,10 +165,23 @@ class RuleActivityProgram:
       choice, head, body = chb
       # we only use the body!
       if len(body) == 0:
-        return '{}({}).'.format(self.AUXRHPRED, idx)
+        return '{}({}).'.format(Aux.AUXRHPRED, idx)
       else:
         sbody = self.po.formatBody(body)
-        return '{}({}) :- {}.'.format(self.AUXRHPRED, idx, sbody)
+        return '{}({}) :- {}.'.format(Aux.AUXRHPRED, idx, sbody)
+    def atomGuessRule(atom):
+      return  '{'+str(atom)+'}.'
+      
+    assert(self.po.finished())
+    cargo = self.po.cargo()
+    facts, rules, atom2int, int2atom, maxAtom = cargo
+
+    # guess for each atom
+    raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
+    # rules with special auxiliary heads
+    rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
+    return rarules + raguesses + ['#show {}/1.'.format(Aux.AUXRHPRED)]
+
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
@@ -166,7 +192,7 @@ class RuleActivityProgram:
     # add rules but put new atoms instead of heads
     rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
     raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
-    return rarules + raguesses + ['#show {}/1.'.format(self.AUXRHPRED)]
+    return rarules + raguesses + ['#show {}/1.'.format(Aux.AUXRHPRED)]
 
 class ExplicitFLPChecker:
   def __init__(self):
