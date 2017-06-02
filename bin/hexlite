@@ -35,6 +35,7 @@ logging.addLevelName(10, 'D')
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
 import hexlite.shallowhexparser as shp
+from hexlite.aux import Aux
 
 # this is our own package for communicating with plugins
 import dlvhex
@@ -65,9 +66,6 @@ except ImportError:
 
 # import this after importing clingo, because it requires clingo too
 import hexlite.explicitflpcheck as flp
-
-AUXPREFIX = 'aux_'
-AUX_MAXINT = AUXPREFIX+'maxint'
 
 class Plugin:
   def __init__(self, mname, pmodule):
@@ -123,7 +121,7 @@ class ProgramRewriter:
     for stm in self.srprog:
       stm.rewrite()
     if not rewritingState.wroteMaxint and self.args.maxint is not None:
-      maxintConst = shp.alist(['#const', AUX_MAXINT, '=', self.args.maxint], right='.')
+      maxintConst = shp.alist(['#const', Aux.MAXINT, '=', self.args.maxint], right='.')
       logging.info("adding maxint rule (from commandline) "+shp.shallowprint(maxintConst))
       self.addRewrittenRule(maxintConst)
     return self.rewritten, self.facts
@@ -215,7 +213,7 @@ class StatementRewriterBase:
           if __debug__:
             orig = list(elem)
           term = elem[1][0]
-          elem[:] = [term, '=', '0', '..', AUXPREFIX+'maxint']
+          elem[:] = [term, '=', '0', '..', Aux.PREFIX+'maxint']
           if __debug__:
             logging.debug("rewrote {} to {}".format(pprint.pformat(orig), pprint.pformat(elem)))
     dfVisit(self.statement, rewriteIfApplicable)
@@ -245,7 +243,7 @@ class StatementRewriterHash(StatementRewriterBase):
     logging.debug('SRH base '+pprint.pformat(base))
     if base[0] == '#maxint':
       # replace the first part with a const declaration (this way there can be a formula to the right of '=')
-      self.statement[0][0:1] = ['#const', AUX_MAXINT]
+      self.statement[0][0:1] = ['#const', Aux.MAXINT]
       self.pr.addRewrittenRule(self.statement)
       rewritingState.wroteMaxint = True
     else:
@@ -868,7 +866,7 @@ class ModelReceiver:
     if self.args.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
     if not self.args.auxfacts:
-      strsyms = [ s for s in strsyms if not s.startswith(AUXPREFIX) ]
+      strsyms = [ s for s in strsyms if not s.startswith(Aux.PREFIX) ]
     if len(costs) > 0:
       # first entry = highest priority level
       # last entry = lowest priority level (1)
@@ -1026,11 +1024,11 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     args = eatom['inputs']+eatom['outputs']
     arity = len(args)
     # one auxiliary per arity (to rule out problems with multi-arity-predicates)
-    relAuxPred = '{}r{}_{}'.format(AUXPREFIX, arity, eatom['name'])
+    relAuxPred = '{}r{}_{}'.format(Aux.PREFIX, arity, eatom['name'])
     relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
 
     # auxiliary atoms for value of external atom
-    valueAuxPred = '{}t{}_{}'.format(AUXPREFIX, arity, eatom['name'])
+    valueAuxPred = '{}t{}_{}'.format(Aux.PREFIX, arity, eatom['name'])
     valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
     rewritingState.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
 

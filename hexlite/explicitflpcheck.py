@@ -121,7 +121,7 @@ class RuleActivityProgram:
 
   It contains:
   (I) a guess for each atom in Pi (non-fact rules are stored in self.po.rules)
-  (II) for each non-fact rule in Pi a rule with a unique head <AUXRHPRED>(ruleidx) and the body of the original rule.
+  (II) for each non-fact rule in Pi a rule with a unique head <Aux.RHPRED>(ruleidx) and the body of the original rule.
 
   The purpose of this program is to find out which rule bodies are satisfied (i.e., which rules are in the FLP reduct) in a given answer set.
 
@@ -165,10 +165,10 @@ class RuleActivityProgram:
       choice, head, body = chb
       # we only use the body!
       if len(body) == 0:
-        return '{}({}).'.format(Aux.AUXRHPRED, idx)
+        return '{}({}).'.format(Aux.RHPRED, idx)
       else:
         sbody = self.po.formatBody(body)
-        return '{}({}) :- {}.'.format(Aux.AUXRHPRED, idx, sbody)
+        return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
@@ -180,25 +180,25 @@ class RuleActivityProgram:
     raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
     # rules with special auxiliary heads
     rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
-    return rarules + raguesses + ['#show {}/1.'.format(Aux.AUXRHPRED)]
+    return rarules + raguesses + ['#show {}/1.'.format(Aux.RHPRED)]
 
 class CheckOptimizedProgram:
   '''
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
   It contains:
-  (I) a guess for <AUXRHPRED>(ruleidx) for each non-fact rule in Pi (non-fact rules are stored in self.po.rules)
-  (II) a constraint :- not <AUXRHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
+  (I) a guess for <Aux.RHPRED>(ruleidx) for each non-fact rule in Pi (non-fact rules are stored in self.po.rules)
+  (II) a constraint :- not <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
     (except guessing rules for external atom replacements) [this seems to be merely an optimization].
   (III) for each atom in Pi (stored in self.po.int2atom/atom2int) a guess.
-  (IV) for each atom A in Pi a guess for <AUXCATOMTRUE>(A) (will be determined by an assumption)
+  (IV) for each atom A in Pi a guess for <Aux.CATOMTRUE>(A) (will be determined by an assumption)
   (V) for each atom A in Pi the rules
     % A cannot become true if it was not true in the compatible set
-    :- A, not <AUXCATOMTRUE>(A).
+    :- A, not <Aux.CATOMTRUE>(A).
     % A is guessed to be true if it was true in the compatible set
-    {A} :- <AUXCATOMTRUE>(A).
+    {A} :- <Aux.CATOMTRUE>(A).
     % model is smaller than compatible set if an atom is not true that is true in the compatible set
-    smaller :- not A, <AUXCATOMTRUE>(A).
+    smaller :- not A, <Aux.CATOMTRUE>(A).
   (VI) the rule
     :- not smaller
   (VII) all facts from the original ground program (stored in self.po.facts)
@@ -228,10 +228,10 @@ class CheckOptimizedProgram:
       choice, head, body = chb
       # we only use the body!
       if len(body) == 0:
-        return '{}({}).'.format(Aux.AUXRHPRED, idx)
+        return '{}({}).'.format(Aux.RHPRED, idx)
       else:
         sbody = self.po.formatBody(body)
-        return '{}({}) :- {}.'.format(Aux.AUXRHPRED, idx, sbody)
+        return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
@@ -242,7 +242,7 @@ class CheckOptimizedProgram:
     # add rules but put new atoms instead of heads
     rarules = [ headActivityRule(idx, chb, int2atom) for idx, chb in enumerate(rules) ]
     raguesses = [ atomGuessRule(atom) for atom in atom2int.keys() ]
-    return rarules + raguesses + ['#show {}/1.'.format(Aux.AUXRHPRED)]
+    return rarules + raguesses + ['#show {}/1.'.format(Aux.RHPRED)]
 
 class ExplicitFLPChecker:
   def __init__(self):

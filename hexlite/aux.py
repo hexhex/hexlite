@@ -20,6 +20,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Aux:
-  AUXRHPRED = 'aux_rh'
-  AUXCATOMTRUE = 'aux_cat'
+  PREFIX = 'aux_'
+  RHPRED = PREFIX+'rh'
+  CATOMTRUE = PREFIX+'cat'
+  MAXINT = PREFIX+'maxint'
+
 
