@@ -1,6 +1,6 @@
 import dlvhex
 
-import hexlite.shallowhexparser as shp
+import hexlite.ast.shallowparser as shp
 
 import logging
 
