@@ -914,7 +914,8 @@ def execute(rewritten, facts, plugins, args):
 
   logging.info('grounding with gringo context')
   ccc = GringoContext()
-  flpchecker = flp.ExplicitFLPChecker()
+  #flpchecker = flp.ExplicitFLPChecker()
+  flpchecker = flp.DummyFLPChecker()
   flpchecker.attach(cc)
   cc.ground([('base',())], ccc)
 

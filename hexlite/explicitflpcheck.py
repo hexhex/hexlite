@@ -332,6 +332,14 @@ class CheckOptimizedProgram:
     logging.debug("res=%s", res)
     raise Exception("TODO incorporate external atom semantics")
 
+class DummyFLPChecker:
+  'FLP checker that will accept all answer sets'
+  def __init__(self):
+    pass
+  def attach(self, clingocontrol):
+    pass
+  def checkModel(self, mdl):
+    return True
 
 class ExplicitFLPChecker:
   def __init__(self):
