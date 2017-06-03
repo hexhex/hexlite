@@ -29,10 +29,6 @@ import clingo
 
 from .aux import Aux
 
-def msg(s):
-  logging.info(s)
-
-
 # head begin/separator/end sign for key=choice=True (choice rule) or False (disjunction)
 HBEG = { True: '{', False: '' }
 HSEP = { True: ' ; ', False: ' | ' }
