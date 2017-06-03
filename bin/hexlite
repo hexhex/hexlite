@@ -35,6 +35,7 @@ logging.addLevelName(10, 'D')
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
 import hexlite
+import hexlite.ast as ast
 import hexlite.ast.shallowparser as shp
 import hexlite.rewriter as rewriter
 import hexlite.aux as aux
@@ -560,7 +561,7 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
     posInStatement = statement[1].index(eatom['shallow'])
     logging.info('PIEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
     statement[1][posInStatement] = replacement
-    remainingEatoms = deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
+    remainingEatoms = ast.deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
     #assert(logging.debug('PIEAH remainingEatoms='+repr(remainingEatoms)) or True)
     if len(remainingEatoms) == 0:
       return [statement]
@@ -626,7 +627,7 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     statement[1][posInStatement] = replacement
 
     # find out if rule is completely rewritten XXX maybe the caller should decide this?
-    remainingEatoms = deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
+    remainingEatoms = ast.deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
     assert(logging.debug('NOEAH remainingEatoms='+repr(remainingEatoms)) or True)
     if len(remainingEatoms) == 0:
       out.append(statement)

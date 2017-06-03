@@ -6,5 +6,5 @@ EXTRA="$EXTRA --debug"
 hexlite $EXTRA \
   --pluginpath=./plugins/ \
   --plugin=stringplugin --plugin=testplugin \
-  $WHAT
+  $WHAT 2>&1
   
