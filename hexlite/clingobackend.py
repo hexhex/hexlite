@@ -258,31 +258,32 @@ class ClingoPropagator:
   class StopPropagation(Exception):
     pass
 
-  def __init__(self, pcontext, ccontext, eaeval):
+  def __init__(self, name, pcontext, ccontext, eaeval):
+    self.name = name
     # key = eatom
     # value = list of EAtomVerification
     self.eatomVerifications = collections.defaultdict(list)
     # mapping from solver literals to lists of strings
     self.debugMapping = collections.defaultdict(list)
-    # program context
+    # program context - to get external atoms and signatures to initialize EAtomVerification instances
     self.pcontext = pcontext
-    # clasp context
+    # clasp context - to store the propagator for external atom verification
     self.ccontext = ccontext
-    # helper for external atom evaluation
+    # helper for external atom evaluation - to perform external atom evaluation
     self.eaeval = eaeval
   def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
     for eatomname, signatures in self.pcontext.eatoms.items():
-      logging.info('CPinit processing eatom '+eatomname)
+      logging.info(self.name+'CPinit processing eatom '+eatomname)
       for siginfo in signatures:
-        logging.debug('CPinit processing eatom {} relpred {} reppred arity {}'.format(
+        logging.debug(self.name+'CPinit processing eatom {} relpred {} reppred arity {}'.format(
           eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
         for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
-          logging.debug('CPinit   replacement atom {}'.format(str(xrep.symbol)))
+          logging.debug(self.name+'CPinit   replacement atom {}'.format(str(xrep.symbol)))
           replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
           xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
-          logging.debug('CPinit   relevance atom {}'.format(str(xrel.symbol)))
+          logging.debug(self.name+'CPinit   relevance atom {}'.format(str(xrel.symbol)))
           relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
 
           verification = self.EAtomVerification(relevance, replacement)
@@ -291,12 +292,12 @@ class ClingoPropagator:
           for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
             if argtype == dlvhex.PREDICATE:
               argval = str(xrep.symbol.arguments[argpos])
-              logging.debug('CPinit     argument {} is {}'.format(argpos, str(argval)))
+              logging.debug(self.name+'CPinit     argument {} is {}'.format(argpos, str(argval)))
               relevantSig = [ (aarity, apol) for (aname, aarity, apol) in init.symbolic_atoms.signatures if aname == argval ]
-              logging.debug('CPinit       relevantSig {}'.format(repr(relevantSig)))
+              logging.debug(self.name+'CPinit       relevantSig {}'.format(repr(relevantSig)))
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
-                  logging.debug('CPinit         atom {}'.format(str(ax.symbol)))
+                  logging.debug(self.name+'CPinit         atom {}'.format(str(ax.symbol)))
                   predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
                   verification.predinputs[argpos].append(predinputid)
 
@@ -324,7 +325,7 @@ class ClingoPropagator:
     * for each true/false external atom call the plugin and add corresponding nogood
     '''
     # called on total assignments (even without watches)
-    logging.info('CPcheck')
+    logging.info(self.name+'CPcheck')
     with self.ccontext(control):
       try:
         for eatomname, veriList in self.eatomVerifications.items():
@@ -332,35 +333,35 @@ class ClingoPropagator:
             if control.assignment.is_true(veri.relevance.lit):
               self.verifyTruthOfAtom(eatomname, control, veri)
             else:
-              logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
+              logging.debug(self.name+'CP no need to verify atom {}'.format(veri.replacement.sym))
       except ClingoPropagator.StopPropagation:
         # this is part of the intended behavior
-        logging.debug('CPcheck aborted propagation')
+        logging.debug(self.name+'CPcheck aborted propagation')
         #logging.debug('aborted from '+traceback.format_exc())
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
       idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
-      logging.debug('CPvTOA checking if {} = {} with interpretation {}'.format(
+      logging.debug(self.name+'CPvTOA checking if {} = {} with interpretation {}'.format(
         str(targetValue), veri.replacement.sym, idebug))
     holder = dlvhex.eatoms[eatomname]
     # in replacement atom everything that is not output is relevant input
     replargs = veri.replacement.sym.arguments
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
-    logging.debug('CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
+    logging.debug(self.name+'CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug("CPvTOA output {}".format(pprint.pformat(out)))
+    logging.debug(self.name+"CPvTOA output {}".format(pprint.pformat(out)))
     realValue = outputtuple in out
     if realValue == targetValue:
-      logging.debug("CPvTOA positively verified!")
+      logging.debug(self.name+"CPvTOA positively verified!")
       # TODO somehow adding the (redundant) nogood aborts the propagation
       # this was the case with bb7ab74
       # benjamin said there is a bug, now i try the WIP branch 83038e
       return
     else:
-      logging.debug("CPvTOA verification failed!")
+      logging.debug(self.name+"CPvTOA verification failed!")
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
@@ -375,11 +376,11 @@ class ClingoPropagator:
       value = control.assignment.value(atom.symlit.lit)
       if value == True:
         if not nogood.add(atom.symlit.lit):
-          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+          logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
           return
       elif value == False:
         if not nogood.add(-atom.symlit.lit):
-          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+          logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
           return
       # None case does not contribute to nogood
 
@@ -392,17 +393,17 @@ class ClingoPropagator:
       checklit = veri.replacement.lit
 
     if not nogood.add(checklit):
-      logging.debug("CPvTOA cannot build nogood (opposite literals)!")
+      logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
       return
 
     nogood = list(nogood.literals)
     if __debug__:
-      logging.debug("CPcheck adding nogood {}".format(repr(nogood)))
+      logging.debug(self.name+"CPcheck adding nogood {}".format(repr(nogood)))
       for slit in nogood:
         a = abs(slit)
-        logging.debug("CPcheck  {} ({}) is {}".format(a, control.assignment.value(a), repr(self.debugMapping[a])))
+        logging.debug(self.name+"CPcheck  {} ({}) is {}".format(a, control.assignment.value(a), repr(self.debugMapping[a])))
     may_continue = control.add_nogood(nogood)
-    logging.debug("CPcheck add_nogood returned {}".format(repr(may_continue)))
+    logging.debug(self.name+"CPcheck add_nogood returned {}".format(repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
 
@@ -449,12 +450,27 @@ class ModelReceiver:
         ret = ''.join([normalize(y) for y in x])
       else:
         ret = str(x)
-      logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
+      #logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
       return ret
     return [normalize(f) for f in facts]
 
-
 def execute(pcontext, rewritten, facts, plugins, args):
+  # prepare contexts that are for this program but not yet specific for a clasp solver process
+  # (multiple clasp solvers are used for finding compatible sets and for checking FLP property)
+
+  # preparing clasp context which does not hold concrete clasp information yet
+  # (such information is added during propagation)
+  ccontext = ClaspContext()
+
+  # preparing evaluator for external atoms which needs to know the clasp context
+  eaeval = EAtomEvaluator(ccontext)
+
+  propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval)
+
+  flp_checker_factory = flp.ExplicitFLPChecker
+  #flp_checker_factory = flp.DummyFLPChecker
+  flpchecker = flp_checker_factory(propagatorFactory)
+
   # TODO get settings from commandline
   cmdlineargs = []
   if args.number != 1:
@@ -472,26 +488,16 @@ def execute(pcontext, rewritten, facts, plugins, args):
   except:
     raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
 
-  # prepareing clasp context which does not hold concrete clasp information yet
-  # (such information only exists during propagation)
-  ccontext = ClaspContext()
-
-  # preparing evaluator for external atoms
-  # it needs to know the clasp context
-  # (this class could cache if desired/implemented?)
-  eaeval = EAtomEvaluator(ccontext)
-
   # preparing context for instantiation
   # (this class is specific to the gringo API)
   logging.info('grounding with gringo context')
   ccc = GringoContext(eaeval)
-  #flpchecker = flp.ExplicitFLPChecker()
-  flpchecker = flp.DummyFLPChecker()
   flpchecker.attach(cc)
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
-  checkprop = ClingoPropagator(pcontext, ccontext, eaeval)
+  # name of this propagator CSF = compatible set finder
+  checkprop = propagatorFactory('CSF')
   cc.register_propagator(checkprop)
   mr = ModelReceiver(facts, args, flpchecker)
 

@@ -58,18 +58,22 @@ class GroundProgramObserver:
     # TODO: weight rules
     self.maxAtom = 1
     self.waitingForStuff = True
+    logging.debug("GP.__init__")
 
   def init_program(self, incr):
+    logging.debug("GPInit")
     pass
   def begin_step(self):
+    logging.debug("GPBeginStep")
     self.waitingForStuff = True
   def end_step(self):
-    #logging.debug("GPEndStep")
+    logging.debug("GPEndStep")
     # here we got rules and atoms so only here we can separate rules from eareplrules
     self.extractEAtomReplacementGuesses()
     self.waitingForStuff = False
     self.printall()
   def __getattr__(self, name):
+    logging.debug("GPWARN"+name)
     return self.WarnMissing(name)
   def rule(self, choice, head, body):
     logging.debug("GPRule ch=%s hd=%s b=%s", repr(choice), repr(head), repr(body))
@@ -81,6 +85,7 @@ class GroundProgramObserver:
     else:
       self.preliminaryrules.append( (choice, head, body) )
   def weight_rule(self, choice, head, lower_bound, body):
+    logging.debug("GPWeightRule ch=%s hd=%s lb=%s, b=%s", repr(choice), repr(head), repr(lower_bound), repr(body))
     raise Exception("weight_rule [aggregates] not yet implemented in FLP checker")
   def output_atom(self, symbol, atom):
     logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
@@ -241,8 +246,11 @@ class CheckOptimizedProgram:
   so we include the propagator from the main solver in the search.
   (Input/output cache can be reused so we use the same instance as in the main search.)
   '''
-  def __init__(self, programObserver):
+  def __init__(self, programObserver, propagatorFactory):
     self.po = programObserver
+    # name of this propagator = FLP checker
+    self.eatomPropagator = propagatorFactory('FLP')
+    # build program
     self.cc = clingo.Control()
     prog = self._build()
     with self.cc.builder() as b:
@@ -251,6 +259,8 @@ class CheckOptimizedProgram:
         # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
     self.cc.ground([("base", [])])
+    # register propagator for upcoming solve calls
+    self.cc.register_propagator(self.eatomPropagator)
 
   def _build(self):
     def headActivityRule(idx, chb, int2atom):
@@ -326,49 +336,63 @@ class CheckOptimizedProgram:
     #logging.debug("assumptions:"+repr(assumptions))
     res = self.cc.solve(on_model=modelcb, assumptions=assumptions)
     logging.debug("res=%s", res)
-    raise Exception("TODO incorporate external atom semantics")
+    # if it is unsatisfiable, it has passed the test, i.e., it is an answer set
+    return res.unsatisfiable
 
-class DummyFLPChecker:
-  'FLP checker that will accept all answer sets'
-  def __init__(self):
+class FLPCheckerBase:
+  def __init__(self, pcontext, ccontext, eaeval):
     pass
   def attach(self, clingocontrol):
     pass
   def checkModel(self, mdl):
     return True
 
-class ExplicitFLPChecker:
-  def __init__(self):
-    self._ruleActivityProgram = None
-    self._checkProgram = None
+class DummyFLPChecker(FLPCheckerBase):
+  """
+  FLP checker that will accept all answer sets
+  """
+  pass
+
+class ExplicitFLPChecker(FLPCheckerBase):
+  def __init__(self, propagatorFactory):
     logging.debug("initializing explicit FLP checker")
+    self.__propfactory = propagatorFactory
+    # we cannot initialize this in an eager way,
+    # because we cannot force clingo to finish instantiation without running solve()
+    self.__ruleActivityProgram = None
+    # we cannot initialize this in an eager way,
+    # because we cannot force clingo to finish instantiation without running solve()
+    self.__checkProgram = None
+    self.__programObserver = None
 
   def attach(self, clingocontrol):
-    self.programObserver = GroundProgramObserver()
-    clingocontrol.register_observer(self.programObserver)
+    self.__programObserver = GroundProgramObserver()
+    clingocontrol.register_observer(self.__programObserver)
 
   def checkModel(self, mdl):
     # returns True if mdl passes the FLP check (= is an answer set)
     logging.debug("FLP check for "+repr(mdl))
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
+    logging.info("Rules in reduct:")
     for ridx in activeRules:
-      r = self.programObserver.rules[ridx]
-      logging.info("rule in reduct: "+repr(self.programObserver.formatRule(r)))
+      r = self.__programObserver.rules[ridx]
+      logging.info("  R rule: "+repr(self.__programObserver.formatRule(r)))
     checkProgram = self.checkProgram()
-    checkProgram.checkFLPViolation(activeRules, mdl)
-    return True
+    is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl)
+    logging.debug("FLP check for {} returned {}".format(repr(mdl), repr(is_answer_set)))
+    return is_answer_set
 
   def ruleActivityProgram(self):
     # on first call, creates control object and fills with program
     # otherwise reuses old one control object with new assumptions
-    if not self._ruleActivityProgram:
-      self._ruleActivityProgram = RuleActivityProgram(self.programObserver)
-    return self._ruleActivityProgram
+    if not self.__ruleActivityProgram:
+      self.__ruleActivityProgram = RuleActivityProgram(self.__programObserver)
+    return self.__ruleActivityProgram
 
   def checkProgram(self):
     # on first call, creates control object and fills with program
     # otherwise reuses old one control object with new assumptions
-    if not self._checkProgram:
-      self._checkProgram = CheckOptimizedProgram(self.programObserver)
-    return self._checkProgram
+    if not self.__checkProgram:
+      self.__checkProgram = CheckOptimizedProgram(self.__programObserver, self.__propfactory)
+    return self.__checkProgram
