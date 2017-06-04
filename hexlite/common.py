@@ -19,6 +19,13 @@
 
 import collections
 
+
+class Plugin:
+  def __init__(self, mname, pmodule):
+    self.mname = mname
+    self.pmodule = pmodule
+
+
 class ProgramContext:
   '''
   program-global context
@@ -38,6 +45,7 @@ class ProgramContext:
       self.relevancePred = relevancePred
       self.replacementPred = replacementPred
       self.arity = arity
+
 
 def flatten(listoflists):
   return [x for y in listoflists for x in y]

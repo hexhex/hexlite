@@ -20,7 +20,8 @@
 
 # TODO make this a real script, move most content to hexlite package
 
-import sys, logging
+import sys
+import logging
 # initially log everything
 logging.basicConfig(
   level=logging.NOTSET, stream=sys.stderr,
@@ -33,11 +34,10 @@ logging.addLevelName(20, 'I')
 logging.addLevelName(10, 'D')
 
 # load rest after configuring logging
-import os, argparse, traceback, pprint, collections
+import os, argparse, traceback, pprint
 import hexlite
 import hexlite.ast.shallowparser as shp
 import hexlite.rewriter as rewriter
-import hexlite.aux as aux
 
 # this is our own package for communicating with plugins
 import dlvhex
@@ -67,15 +67,7 @@ except ImportError:
     sys.exit(-1)
 
 # import these after importing clingo, because it requires clingo too
-import hexlite.explicitflpcheck as flp
-import hexlite.clingobackend as cbackend
-
-
-class Plugin:
-  def __init__(self, mname, pmodule):
-    self.mname = mname
-    self.pmodule = pmodule
-
+import hexlite.clingobackend
 
 
 def loadPlugin(mname):
@@ -88,7 +80,7 @@ def loadPlugin(mname):
   logging.info('calling register() for '+repr(mname))
   pmodule.register()
   logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
-  return Plugin(mname, pmodule)
+  return hexlite.Plugin(mname, pmodule)
 
 def loadProgram(hexfiles):
   ret = []
@@ -98,99 +90,6 @@ def loadProgram(hexfiles):
       logging.debug('from file '+repr(f)+' parsed program\n'+pprint.pformat(prog, indent=2, width=250))
       ret += prog
   return ret
-
-class ModelReceiver:
-  def __init__(self, facts, args, flpchecker):
-    self.facts = set(self._normalizeFacts(facts))
-    self.args = args
-    self.flpchecker = flpchecker
-
-  def __call__(self, mdl):
-    if not self.flpchecker.checkModel(mdl):
-      logging.debug('leaving on_model because flpchecker returned False')
-      return
-    costs = mdl.cost
-    if len(costs) > 0 and not mdl.optimality_proven:
-      logging.info('not showing suboptimal model (like dlvhex2)!')
-      return
-    syms = mdl.symbols(atoms=True,terms=True)
-    strsyms = [ str(s) for s in syms ]
-    if self.args.nofacts:
-      strsyms = [ s for s in strsyms if s not in self.facts ]
-    if not self.args.auxfacts:
-      strsyms = [ s for s in strsyms if not s.startswith(aux.Aux.PREFIX) ]
-    if len(costs) > 0:
-      # first entry = highest priority level
-      # last entry = lowest priority level (1)
-      logging.debug('on_model got cost'+repr(costs))
-      pairs = [ '[{}:{}]'.format(p[1], p[0]+1) for p in enumerate(reversed(costs)) if p[1] != 0 ]
-      costs=' <{}>'.format(','.join(pairs))
-    else:
-      costs = ''
-    sys.stdout.write('{'+','.join(strsyms)+'}'+costs+'\n')
-
-  def _normalizeFacts(self, facts):
-    def normalize(x):
-      if isinstance(x, shp.alist):
-        if x.right == '.':
-          assert(x.left == None and x.sep == None and len(x) == 1)
-          ret = normalize(x[0])
-        else:
-          ret = x.sleft()+x.ssep().join([normalize(y) for y in x])+x.sright()
-      elif isinstance(x, list):
-        ret = ''.join([normalize(y) for y in x])
-      else:
-        ret = str(x)
-      logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
-      return ret
-    return [normalize(f) for f in facts]
-
-def execute(pcontext, rewritten, facts, plugins, args):
-  # XXX get settings from commandline
-  cmdlineargs = []
-  if args.number != 1:
-    cmdlineargs.append(str(args.number))
-  # just in case we need optimization
-  cmdlineargs.append('--opt-mode=optN')
-  cmdlineargs.append('--opt-strategy=usc,9')
-
-  logging.info('sending nonground program to clingo control')
-  cc = clingo.Control(cmdlineargs)
-  sendprog = shp.shallowprint(rewritten)
-  try:
-    logging.debug('sending program ===\n'+sendprog+'\n===')
-    cc.add('base', (), sendprog)
-  except:
-    raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
-
-  # prepareing clasp context which does not hold concrete clasp information yet
-  # (such information only exists during propagation)
-  ccontext = cbackend.ClaspContext()
-
-  # preparing evaluator for external atoms
-  # it needs to know the clasp context
-  # (this class could cache if desired/implemented?)
-  eaeval = cbackend.EAtomEvaluator(ccontext)
-
-  # preparing context for instantiation
-  # (this class is specific to the gringo API)
-  logging.info('grounding with gringo context')
-  ccc = cbackend.GringoContext(eaeval)
-  #flpchecker = flp.ExplicitFLPChecker()
-  flpchecker = flp.DummyFLPChecker()
-  flpchecker.attach(cc)
-  cc.ground([('base',())], ccc)
-
-  logging.info('preparing for search')
-  checkprop = cbackend.ClingoPropagator(pcontext, ccontext, eaeval)
-  cc.register_propagator(checkprop)
-  mr = ModelReceiver(facts, args, flpchecker)
-
-  logging.info('starting search')
-  cc.solve(on_model=mr)
-
-  # TODO return code for unsat/sat/opt?
-  return 0
 
 def interpretArguments(argv):
   parser = argparse.ArgumentParser(
@@ -244,9 +143,11 @@ def main():
     program = loadProgram(hexlite.flatten(args.hexfiles))
     pcontext = hexlite.ProgramContext()
     rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+    # TODO we should not pass args but a more generic configuration object
     pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
     rewritten, facts = pr.rewrite()
-    code = execute(pcontext, rewritten, facts, plugins, args)
+    # TODO we should not pass args but a more generic configuration object
+    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, args)
   except SystemExit:
     pass
   except:

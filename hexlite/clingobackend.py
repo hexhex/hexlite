@@ -17,13 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 import logging
 import collections
 import pprint
 import dlvhex
 
 from . import common as hexlite
-flatten=hexlite.flatten
+from . import aux
+from .ast import shallowparser as shp
+from . import explicitflpcheck as flp
 
 # assume that the main program has handled possible import problems
 import clingo
@@ -297,7 +300,7 @@ class ClingoPropagator:
                   predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
                   verification.predinputs[argpos].append(predinputid)
 
-          verification.allinputs = flatten([idlist for idlist in verification.predinputs.values()])
+          verification.allinputs = hexlite.flatten([idlist for idlist in verification.predinputs.values()])
           self.eatomVerifications[eatomname].append(verification)
 
     # for debugging: get full symbol table
@@ -402,3 +405,99 @@ class ClingoPropagator:
     logging.debug("CPcheck add_nogood returned {}".format(repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
+
+
+class ModelReceiver:
+  def __init__(self, facts, args, flpchecker):
+    self.facts = set(self._normalizeFacts(facts))
+    self.args = args
+    self.flpchecker = flpchecker
+
+  def __call__(self, mdl):
+    if not self.flpchecker.checkModel(mdl):
+      logging.debug('leaving on_model because flpchecker returned False')
+      return
+    costs = mdl.cost
+    if len(costs) > 0 and not mdl.optimality_proven:
+      logging.info('not showing suboptimal model (like dlvhex2)!')
+      return
+    syms = mdl.symbols(atoms=True,terms=True)
+    strsyms = [ str(s) for s in syms ]
+    if self.args.nofacts:
+      strsyms = [ s for s in strsyms if s not in self.facts ]
+    if not self.args.auxfacts:
+      strsyms = [ s for s in strsyms if not s.startswith(aux.Aux.PREFIX) ]
+    if len(costs) > 0:
+      # first entry = highest priority level
+      # last entry = lowest priority level (1)
+      logging.debug('on_model got cost'+repr(costs))
+      pairs = [ '[{}:{}]'.format(p[1], p[0]+1) for p in enumerate(reversed(costs)) if p[1] != 0 ]
+      costs=' <{}>'.format(','.join(pairs))
+    else:
+      costs = ''
+    sys.stdout.write('{'+','.join(strsyms)+'}'+costs+'\n')
+
+  def _normalizeFacts(self, facts):
+    def normalize(x):
+      if isinstance(x, shp.alist):
+        if x.right == '.':
+          assert(x.left == None and x.sep == None and len(x) == 1)
+          ret = normalize(x[0])
+        else:
+          ret = x.sleft()+x.ssep().join([normalize(y) for y in x])+x.sright()
+      elif isinstance(x, list):
+        ret = ''.join([normalize(y) for y in x])
+      else:
+        ret = str(x)
+      logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
+      return ret
+    return [normalize(f) for f in facts]
+
+
+def execute(pcontext, rewritten, facts, plugins, args):
+  # TODO get settings from commandline
+  cmdlineargs = []
+  if args.number != 1:
+    cmdlineargs.append(str(args.number))
+  # just in case we need optimization
+  cmdlineargs.append('--opt-mode=optN')
+  cmdlineargs.append('--opt-strategy=usc,9')
+
+  logging.info('sending nonground program to clingo control')
+  cc = clingo.Control(cmdlineargs)
+  sendprog = shp.shallowprint(rewritten)
+  try:
+    logging.debug('sending program ===\n'+sendprog+'\n===')
+    cc.add('base', (), sendprog)
+  except:
+    raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
+
+  # prepareing clasp context which does not hold concrete clasp information yet
+  # (such information only exists during propagation)
+  ccontext = ClaspContext()
+
+  # preparing evaluator for external atoms
+  # it needs to know the clasp context
+  # (this class could cache if desired/implemented?)
+  eaeval = EAtomEvaluator(ccontext)
+
+  # preparing context for instantiation
+  # (this class is specific to the gringo API)
+  logging.info('grounding with gringo context')
+  ccc = GringoContext(eaeval)
+  #flpchecker = flp.ExplicitFLPChecker()
+  flpchecker = flp.DummyFLPChecker()
+  flpchecker.attach(cc)
+  cc.ground([('base',())], ccc)
+
+  logging.info('preparing for search')
+  checkprop = ClingoPropagator(pcontext, ccontext, eaeval)
+  cc.register_propagator(checkprop)
+  mr = ModelReceiver(facts, args, flpchecker)
+
+  logging.info('starting search')
+  cc.solve(on_model=mr)
+
+  # TODO return code for unsat/sat/opt?
+  return 0
+
