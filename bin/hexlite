@@ -409,160 +409,6 @@ def execute(rewritten, facts, plugins, args):
   # TODO return code for unsat/sat/opt?
   return 0
 
-clingoPropControl = None
-
-class EAtomHandlerBase:
-  def __init__(self, pcontext, holder):
-    assert(isinstance(pcontext, hexlite.ProgramContext))
-    assert(isinstance(holder, dlvhex.ExternalAtomHolder))
-    self.pcontext = pcontext
-    self.holder = holder
-  def transformEAtomInStatement(self, eatom, statement, safevars, safeconditions):
-    '''
-    transforms eatom in self.holder in statement
-    * potentially modifies statement
-    * returns set of rules necessary for rewriting
-      (returns statement only if last eatom in statement was rewritten)
-    '''
-    raise Exception("TODO: implement in child class")
-
-class PureInstantiationEAtomHandler(EAtomHandlerBase):
-  def __init__(self, pcontext, holder):
-    EAtomHandlerBase.__init__(self, pcontext, holder)
-  def transformEAtomInStatement(self, eatom, statement, safevars, safeconditions):
-    '''
-    transforms eatom in statement into gringo external
-    with all inputs as inputs and all outputs as equivalent tuple:
-      &foo[bar,baz](bam,ban)
-    becomes
-      @foo(bar,baz) = (bam,ban)
-
-    * modifies statement in place
-    * does not use safeconditions, safevars
-    '''
-    #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
-    replacement = eatom['prefix'] + [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
-    if len(eatom['outputs']) == 0:
-      # add equality with 1
-      replacement.append('=')
-      replacement.append(1)
-    elif len(eatom['outputs']) == 1:
-      # for 1 output: no tuple (it will not work correctly)
-      replacement.append('=')
-      replacement.append(eatom['outputs'][0])
-    else:
-      # for >1 outputs: use tuple
-      replacement.append('=')
-      replacement.append(shp.alist(eatom['outputs'], '(', ')', ','))
-    # find position of eatom in body list
-    posInStatement = statement[1].index(eatom['shallow'])
-    logging.info('PIEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
-    statement[1][posInStatement] = replacement
-    remainingEatoms = ast.deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
-    #assert(logging.debug('PIEAH remainingEatoms='+repr(remainingEatoms)) or True)
-    if len(remainingEatoms) == 0:
-      return [statement]
-    else:
-      return []
-
-class PregroundableOutputEAtomHandler(EAtomHandlerBase):
-  def __init__(self, pcontext, holder):
-    EAtomHandlerBase.__init__(self, pcontext, holder)
-  def transformEAtomInStatement(self, eatom, statement, safevars, safeconditions):
-    '''
-    * creates a rule for instantiating the input tuple from the statement body
-      - input tuple is instantiated in an auxiliary predicate
-      - body of this rule contains all elements in statement that use only variables in safevars
-      - this is also done for empty input tuple! (because guessing the atom is not necessary if the body is false)
-    * transforms eatom in statement into auxiliary atom with all inputs and outputs
-    * creates a rule for guessing truth of the auxiliary eatom based on the auxiliary input tuple
-    '''
-    if __debug__:
-      logging.debug('NOEAH eatom {} with safevars {} and safeconditions {}'.format(
-        pprint.pformat(eatom), repr(safevars), pprint.pformat(safeconditions)))
-      logging.debug('NOEAH in statement '+pprint.pformat(statement))
-    out = []
-
-    # raise an exception if outputs are non-safe variables (this case will for sure not work)
-    if not eatom['outputvars'].issubset(safevars):
-      raise Exception("cannot use PregroundableOutputEAtomHandler for eatom {} with output vars {} and safe vars {} in statement {}".format(pprint.pformat(eatom), repr(eatom['outputvars']), repr(safevars), shp.shallowprint(statement)))
-
-    # auxiliary atom for relevance of external atom
-    args = eatom['inputs']+eatom['outputs']
-    arity = len(args)
-    # one auxiliary per arity (to rule out problems with multi-arity-predicates)
-    relAuxPred = aux.predEAtomRelevance(arity, eatom['name'])
-    relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
-
-    # auxiliary atoms for value of external atom
-    valueAuxPred = aux.predEAtomTruth(arity, eatom['name'])
-    valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
-    self.pcontext.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
-
-    # create input instantiation rule for eatom value based on safeconditions
-    # (this also determines if the atom needs to be guessed)
-    if len(safeconditions) == 0:
-      # fact (for keeping it uniform)
-      relevanceRule = shp.alist([ relAuxAtom ], right='.')
-    else:
-      # rule
-      relevanceRule = shp.alist([ relAuxAtom, shp.alist(safeconditions, sep=',') ], sep=':-', right='.')
-    logging.debug('NOEAH relevanceRule={}'.format(shp.shallowprint(relevanceRule)))
-    out.append(relevanceRule)
-
-    # create guessing rule for eatom value based on safeconditions
-    valueGuessHead = [ shp.alist([ valueAuxAtom ], left='{', right='}', sep=';') ]
-    valueGuessRule = shp.alist([ valueGuessHead, shp.alist([relAuxAtom], sep=',') ], sep=':-', right='.')
-    logging.debug('NOEAH valueGuessRule={}'.format(shp.shallowprint(valueGuessRule)))
-    out.append(valueGuessRule)
-
-    # replace eatom in statement
-    replacement = eatom['prefix'] + valueAuxAtom
-    # find position of eatom in body list
-    posInStatement = statement[1].index(eatom['shallow'])
-    logging.info('NOEAH replacing eatom '+shp.shallowprint(eatom['shallow'])+' by '+shp.shallowprint(replacement))
-    statement[1][posInStatement] = replacement
-
-    # find out if rule is completely rewritten XXX maybe the caller should decide this?
-    remainingEatoms = ast.deepCollect(statement, lambda x: isinstance(x, str) and x.startswith('&'))
-    assert(logging.debug('NOEAH remainingEatoms='+repr(remainingEatoms)) or True)
-    if len(remainingEatoms) == 0:
-      out.append(statement)
-
-    return out
-
-def classifyExternalAtoms():
-  '''
-  For now we can only handle the following:
-  * PregroundableOutputEAtomHandler:
-    external atom has no output and arbitrary input
-    -> we create an input instantiation (relevance) rule as in dlvhex2
-    -> we transform this atom into a regular atom and add a guessing rule as in dlvhex2
-    -> we use a propagator to evaluate during solving as in dlvhex2
-    external atom has only output variables that are safe (without using the external atom)
-    -> we create an input instantiation (relevance) rule as in dlvhex2
-    -> we transform this atom into a regular atom and add a guessing rule as in dlvhex2
-    -> we use a propagator to evaluate during solving as in dlvhex2
-  * PureInstantiationEAtomHandler:
-    external atom has only constant/tuple input(s)
-    -> we transform this atom into a gringo external
-    -> we do not (need to) consider it during solving
-  '''
-  for name, holder in dlvhex.eatoms.items():
-    # uses PureInstantiationEAtomHandler if possible (even if output is 0)
-    # (external atom functions cannot change during evaluation,
-    # hence it is safe to evaluate these atoms in grounding)
-    inspec_types = set(holder.inspec)
-    if dlvhex.PREDICATE not in inspec_types:
-      holder.executionHandler = PureInstantiationEAtomHandler(pcontext, holder)
-    #elif holder.outnum == 0:
-    else:
-      # let's try
-      holder.executionHandler = PregroundableOutputEAtomHandler(pcontext, holder)
-    #else:
-    #  raise Exception("cannot handle external atom '{}' from plugin '{}' because of input signature {} and nonempty ({}) output signature (please use dlvhex2)".format(
-    #    name, holder.module.__name__, repr(dlvhex.humanReadableSpec(holder.inspec)), holder.outnum))
-
 def interpretArguments(argv):
   parser = argparse.ArgumentParser(
     description='HEX-Lite - Answer Set Solver for fragment of the HEX formalism')
@@ -613,6 +459,7 @@ def main():
     setPaths(flatten(args.pluginpath))
     plugins = loadPlugins(flatten(args.plugin))
     program = loadProgram(flatten(args.hexfiles))
+    rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
     rewritten, facts = rewriteProgram(program, plugins, args)
     code = execute(rewritten, facts, plugins, args)
   except SystemExit:
@@ -628,7 +475,6 @@ def loadPlugins(plugins):
     pi = loadPlugin(p)
     logging.debug('for plugin '+p+' got plugin info '+repr(pi))
     ret.append(pi)
-  classifyExternalAtoms()
   return ret
 
 def setPaths(paths):
