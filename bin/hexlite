@@ -35,11 +35,9 @@ logging.addLevelName(10, 'D')
 # load rest after configuring logging
 import os, argparse, traceback, pprint, collections
 import hexlite
-import hexlite.ast as ast
 import hexlite.ast.shallowparser as shp
 import hexlite.rewriter as rewriter
 import hexlite.aux as aux
-Aux = aux.Aux
 
 # this is our own package for communicating with plugins
 import dlvhex
@@ -71,8 +69,6 @@ except ImportError:
 # import these after importing clingo, because it requires clingo too
 import hexlite.explicitflpcheck as flp
 import hexlite.clingobackend as cbackend
-import hexlite
-flatten=hexlite.flatten
 
 
 class Plugin:
@@ -122,7 +118,7 @@ class ModelReceiver:
     if self.args.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
     if not self.args.auxfacts:
-      strsyms = [ s for s in strsyms if not s.startswith(Aux.PREFIX) ]
+      strsyms = [ s for s in strsyms if not s.startswith(aux.Aux.PREFIX) ]
     if len(costs) > 0:
       # first entry = highest priority level
       # last entry = lowest priority level (1)
@@ -243,9 +239,9 @@ def main():
   code = 1
   try:
     args = interpretArguments(sys.argv[1:])
-    setPaths(flatten(args.pluginpath))
-    plugins = loadPlugins(flatten(args.plugin))
-    program = loadProgram(flatten(args.hexfiles))
+    setPaths(hexlite.flatten(args.pluginpath))
+    plugins = loadPlugins(hexlite.flatten(args.plugin))
+    program = loadProgram(hexlite.flatten(args.hexfiles))
     pcontext = hexlite.ProgramContext()
     rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
     pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)

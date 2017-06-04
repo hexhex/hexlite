@@ -222,18 +222,24 @@ class GringoContext:
     return self.ExternalAtomCall(self.eaeval, dlvhex.eatoms[attr])
 
 
-class EAtomVerification:
-  def __init__(self, relevance, replacement):
-    # symlit for ground eatom relevance
-    self.relevance = relevance
-    # symlit for ground eatom replacement
-    self.replacement = replacement
-    # key = argument position, value = list of ClingoID
-    self.predinputs = collections.defaultdict(list)
-    # list of all elements in self.predinputs (cache)
-    self.allinputs = None
-
 class ClingoPropagator:
+
+  class EAtomVerification:
+    """
+    stores everything required to evaluate truth of one ground external atom in propagation:
+    * relevance atom (do we need to evaluate it?)
+    * replacement atom (was it guessed true or false? which arguments does it have?)
+    * the full list of atoms relevant as predicate inputs (required to evaluate the external atom semantic function)
+    """
+    def __init__(self, relevance, replacement):
+      # symlit for ground eatom relevance
+      self.relevance = relevance
+      # symlit for ground eatom replacement
+      self.replacement = replacement
+      # key = argument position, value = list of ClingoID
+      self.predinputs = collections.defaultdict(list)
+      # list of all elements in self.predinputs (cache)
+      self.allinputs = None
 
   class Nogood:
     def __init__(self):
@@ -244,6 +250,7 @@ class ClingoPropagator:
         return False
       self.literals.add(lit)
       return True
+
 
   class StopPropagation(Exception):
     pass
@@ -275,7 +282,7 @@ class ClingoPropagator:
           logging.debug('CPinit   relevance atom {}'.format(str(xrel.symbol)))
           relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
 
-          verification = EAtomVerification(relevance, replacement)
+          verification = self.EAtomVerification(relevance, replacement)
 
           # get symbols given to predicate inputs and register their literals
           for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
