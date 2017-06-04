@@ -38,3 +38,6 @@ class ProgramContext:
       self.relevancePred = relevancePred
       self.replacementPred = replacementPred
       self.arity = arity
+
+def flatten(listoflists):
+  return [x for y in listoflists for x in y]

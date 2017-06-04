@@ -70,19 +70,17 @@ except ImportError:
 
 # import these after importing clingo, because it requires clingo too
 import hexlite.explicitflpcheck as flp
-from hexlite.clingocommon import ClaspContext, SymLit, ClingoID
-from hexlite import eatomeval as eatomeval
+import hexlite.clingobackend as cbackend
+import hexlite
+flatten=hexlite.flatten
 
-# TODO make this non-global
-pcontext = hexlite.ProgramContext()
 
 class Plugin:
   def __init__(self, mname, pmodule):
     self.mname = mname
     self.pmodule = pmodule
 
-def flatten(listoflists):
-  return [x for y in listoflists for x in y]
+
 
 def loadPlugin(mname):
   # returns plugin info
@@ -104,217 +102,6 @@ def loadProgram(hexfiles):
       logging.debug('from file '+repr(f)+' parsed program\n'+pprint.pformat(prog, indent=2, width=250))
       ret += prog
   return ret
-
-def rewriteProgram(program, plugins, args):
-  '''
-  go over all rules of program
-  for each rule find external atoms and handle them with EAtomHandler
-  (this can change the rule and create new rules)
-  '''
-  pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
-  return pr.rewrite()
-
-class GringoContext:
-  class ExternalAtomCall:
-    def __init__(self, eaeval, holder):
-      self.eaeval = eaeval
-      self.holder = holder
-    def __call__(self, *arguments):
-      logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      out = self.eaeval.evaluate(self.holder, arguments, None)
-      outarity = self.holder.outnum
-      # interpret special cases for gringo @eatom rewritings:
-      if outarity == 0:
-        # no output arguments: 1 or 0
-        if len(out) == 0:
-          out = 0
-        else:
-          out = 1
-      elif outarity == 1:
-        # list of terms, not list of tuples (I could not convince Gringo to process single-element-tuples)
-        if any([ len(x) != outarity for x in out ]):
-          wrongarity = [ x for x in out if len(x) != outarity ]
-          out = [ x for x in out if len(x) == outarity ]
-          logging.warning("ignored tuples {} with wrong arity from atom {}".format(repr(wrongarity), self.holder.name))
-        out = [ x[0] for x in out ]
-      # in other cases we can directly use what externalAtomCallHelper returned
-      logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
-      return out
-  def __init__(self, eaeval):
-    assert(isinstance(eaeval, eatomeval.EAtomEvaluator))
-    self.eaeval = eaeval
-  def __getattr__(self, attr):
-    #logging.debug('GC.%s called',attr)
-    return self.ExternalAtomCall(self.eaeval, dlvhex.eatoms[attr])
-
-class EAtomVerification:
-  def __init__(self, relevance, replacement):
-    # symlit for ground eatom relevance
-    self.relevance = relevance
-    # symlit for ground eatom replacement
-    self.replacement = replacement
-    # key = argument position, value = list of ClingoID
-    self.predinputs = collections.defaultdict(list)
-    # list of all elements in self.predinputs (cache)
-    self.allinputs = None
-
-class Nogood:
-  def __init__(self):
-    self.literals = set()
-  def add(self, lit):
-    if -lit in self.literals:
-      return False
-    self.literals.add(lit)
-    return True
-
-class ClingoPropagator:
-  class StopPropagation(Exception):
-    pass
-  def __init__(self, ccontext, eaeval):
-    # key = eatom
-    # value = list of EAtomVerification
-    self.eatomVerifications = collections.defaultdict(list)
-    # mapping from solver literals to lists of strings
-    self.debugMapping = collections.defaultdict(list)
-    # clasp context
-    self.ccontext = ccontext
-    # helper for external atom evaluation
-    self.eaeval = eaeval
-  def init(self, init):
-    # register mapping for solver/grounder atoms!
-    # no need for watches as long as we use only check()
-    for eatomname, signatures in pcontext.eatoms.items():
-      logging.info('CPinit processing eatom '+eatomname)
-      for siginfo in signatures:
-        logging.debug('CPinit processing eatom {} relpred {} reppred arity {}'.format(
-          eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
-        for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
-          logging.debug('CPinit   replacement atom {}'.format(str(xrep.symbol)))
-          replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
-          xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
-          logging.debug('CPinit   relevance atom {}'.format(str(xrel.symbol)))
-          relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
-
-          verification = EAtomVerification(relevance, replacement)
-
-          # get symbols given to predicate inputs and register their literals
-          for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
-            if argtype == dlvhex.PREDICATE:
-              argval = str(xrep.symbol.arguments[argpos])
-              logging.debug('CPinit     argument {} is {}'.format(argpos, str(argval)))
-              relevantSig = [ (aarity, apol) for (aname, aarity, apol) in init.symbolic_atoms.signatures if aname == argval ]
-              logging.debug('CPinit       relevantSig {}'.format(repr(relevantSig)))
-              for aarity, apol in relevantSig:
-                for ax in init.symbolic_atoms.by_signature(argval, aarity):
-                  logging.debug('CPinit         atom {}'.format(str(ax.symbol)))
-                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
-                  verification.predinputs[argpos].append(predinputid)
-
-          verification.allinputs = flatten([idlist for idlist in verification.predinputs.values()])
-          self.eatomVerifications[eatomname].append(verification)
-
-    # for debugging: get full symbol table
-    for aname, aarity, apol in init.symbolic_atoms.signatures:
-      for x in init.symbolic_atoms.by_signature(aname, aarity):
-        slit = init.solver_literal(x.literal)
-        if apol == True:
-          self.debugMapping[slit].append(str(x.symbol))
-        else:
-          self.debugMapping[slit].append('-'+str(x.symbol))
-
-    # TODO (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
-    # TODO (far future) create one propagator for each external atom (or even for each external atom literal)
-    #                   which watches predicate inputs, relevance, and replacement, and incrementally finds when it should compute
-    #                   [then we need to find out which grounded input tuple belongs to which atom, so we might need
-    #                    nonground-eatom-literal-unique input tuple auxiliaries (which might hurt efficiency)]
-  def check(self, control):
-    '''
-    * get valueAuxTrue and valueAuxFalse truth values
-    * get predicate input truth values/extension
-    * for each true/false external atom call the plugin and add corresponding nogood
-    '''
-    # called on total assignments (even without watches)
-    logging.info('CPcheck')
-    with self.ccontext(control):
-      try:
-        for eatomname, veriList in self.eatomVerifications.items():
-          for veri in veriList:
-            if control.assignment.is_true(veri.relevance.lit):
-              self.verifyTruthOfAtom(eatomname, control, veri)
-            else:
-              logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
-      except ClingoPropagator.StopPropagation:
-        # this is part of the intended behavior
-        logging.debug('CPcheck aborted propagation')
-        #logging.debug('aborted from '+traceback.format_exc())
-
-  def verifyTruthOfAtom(self, eatomname, control, veri):
-    targetValue = control.assignment.is_true(veri.replacement.lit)
-    if __debug__:
-      idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
-      logging.debug('CPvTOA checking if {} = {} with interpretation {}'.format(
-        str(targetValue), veri.replacement.sym, idebug))
-    holder = dlvhex.eatoms[eatomname]
-    # in replacement atom everything that is not output is relevant input
-    replargs = veri.replacement.sym.arguments
-    inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
-    outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
-    logging.debug('CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
-    out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug("CPvTOA output {}".format(pprint.pformat(out)))
-    realValue = outputtuple in out
-    if realValue == targetValue:
-      logging.debug("CPvTOA positively verified!")
-      # TODO somehow adding the (redundant) nogood aborts the propagation
-      # this was the case with bb7ab74
-      # benjamin said there is a bug, now i try the WIP branch 83038e
-      return
-    else:
-      logging.debug("CPvTOA verification failed!")
-    # add clause that ensures this value is always chosen correctly in the future
-    # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in 
-
-    # build nogood: solution is eliminated if ...
-
-    # ... eatom is relevant ...
-    nogood = Nogood()
-    nogood.add(veri.relevance.lit)
-
-    # ... and all inputs are as they were above ...
-    for atom in veri.allinputs:
-      value = control.assignment.value(atom.symlit.lit)
-      if value == True:
-        if not nogood.add(atom.symlit.lit):
-          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
-          return
-      elif value == False:
-        if not nogood.add(-atom.symlit.lit):
-          logging.debug("CPvTOA cannot build nogood (opposite literals)!")
-          return
-      # None case does not contribute to nogood
-
-    checklit = None
-    if realValue == True:
-      # ... and computation gave true but eatom replacement is false
-      checklit = -veri.replacement.lit
-    else:
-      # ... and computation gave false but eatom replacement is true
-      checklit = veri.replacement.lit
-
-    if not nogood.add(checklit):
-      logging.debug("CPvTOA cannot build nogood (opposite literals)!")
-      return
-
-    nogood = list(nogood.literals)
-    if __debug__:
-      logging.debug("CPcheck adding nogood {}".format(repr(nogood)))
-      for slit in nogood:
-        a = abs(slit)
-        logging.debug("CPcheck  {} ({}) is {}".format(a, control.assignment.value(a), repr(self.debugMapping[a])))
-    may_continue = control.add_nogood(nogood)
-    logging.debug("CPcheck add_nogood returned {}".format(repr(may_continue)))
-    if may_continue == False:
-      raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
   def __init__(self, facts, args, flpchecker):
@@ -362,7 +149,7 @@ class ModelReceiver:
       return ret
     return [normalize(f) for f in facts]
 
-def execute(rewritten, facts, plugins, args):
+def execute(pcontext, rewritten, facts, plugins, args):
   # XXX get settings from commandline
   cmdlineargs = []
   if args.number != 1:
@@ -382,24 +169,24 @@ def execute(rewritten, facts, plugins, args):
 
   # prepareing clasp context which does not hold concrete clasp information yet
   # (such information only exists during propagation)
-  ccontext = ClaspContext()
+  ccontext = cbackend.ClaspContext()
 
   # preparing evaluator for external atoms
   # it needs to know the clasp context
   # (this class could cache if desired/implemented?)
-  eaeval = eatomeval.EAtomEvaluator(ccontext)
+  eaeval = cbackend.EAtomEvaluator(ccontext)
 
   # preparing context for instantiation
   # (this class is specific to the gringo API)
   logging.info('grounding with gringo context')
-  ccc = GringoContext(eaeval)
+  ccc = cbackend.GringoContext(eaeval)
   #flpchecker = flp.ExplicitFLPChecker()
   flpchecker = flp.DummyFLPChecker()
   flpchecker.attach(cc)
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
-  checkprop = ClingoPropagator(ccontext, eaeval)
+  checkprop = cbackend.ClingoPropagator(pcontext, ccontext, eaeval)
   cc.register_propagator(checkprop)
   mr = ModelReceiver(facts, args, flpchecker)
 
@@ -459,9 +246,11 @@ def main():
     setPaths(flatten(args.pluginpath))
     plugins = loadPlugins(flatten(args.plugin))
     program = loadProgram(flatten(args.hexfiles))
+    pcontext = hexlite.ProgramContext()
     rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-    rewritten, facts = rewriteProgram(program, plugins, args)
-    code = execute(rewritten, facts, plugins, args)
+    pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
+    rewritten, facts = pr.rewrite()
+    code = execute(pcontext, rewritten, facts, plugins, args)
   except SystemExit:
     pass
   except:
