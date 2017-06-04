@@ -53,12 +53,12 @@ class GroundProgramObserver:
     self.preliminaryrules = []
     # rules for eatom replacement guessing
     self.eareplrules = []
-    # all other rules
+    # all other rules (index starts in self.rules and continues in self.weightrules)
     self.rules = []
-    # TODO: weight rules
+    self.weightrules = []
+    # helpers
     self.maxAtom = 1
     self.waitingForStuff = True
-    logging.debug("GP.__init__")
 
   def init_program(self, incr):
     logging.debug("GPInit")
@@ -73,7 +73,6 @@ class GroundProgramObserver:
     self.waitingForStuff = False
     self.printall()
   def __getattr__(self, name):
-    logging.debug("GPWARN"+name)
     return self.WarnMissing(name)
   def rule(self, choice, head, body):
     logging.debug("GPRule ch=%s hd=%s b=%s", repr(choice), repr(head), repr(body))
@@ -86,7 +85,7 @@ class GroundProgramObserver:
       self.preliminaryrules.append( (choice, head, body) )
   def weight_rule(self, choice, head, lower_bound, body):
     logging.debug("GPWeightRule ch=%s hd=%s lb=%s, b=%s", repr(choice), repr(head), repr(lower_bound), repr(body))
-    raise Exception("weight_rule [aggregates] not yet implemented in FLP checker")
+    self.weightrules.append( (choice, head, lower_bound, body) )
   def output_atom(self, symbol, atom):
     logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
     if atom == 0L:
@@ -112,11 +111,17 @@ class GroundProgramObserver:
     del(self.preliminaryrules)
 
   def formatAtom(self, atom):
-    # XXX if atom is x we segfault (we cannot catch an exception here!)
-    if atom > 0L:
-      return str(self.int2atom[atom])
+    # XXX if atom is x we segfault (we also cannot catch an exception here!)
+    # XXX if we do return "foo"+self.int2atom[atom] we segfault because we cannot add a string to a symbol (bug, because an exception should be thrown, maybe clingo does not handle __getattr__ or __add__ correctly)
+    absatom = abs(atom)
+    if absatom in self.int2atom:
+      stratom = str(self.int2atom[absatom])
     else:
-      return 'not '+str(self.int2atom[-atom])
+      stratom = 'claspaux'+str(absatom)
+    if atom >= 0L:
+      return stratom
+    else:
+      return 'not '+stratom
 
   def formatBody(self, body):
     return ','.join([self.formatAtom(x) for x in body])
@@ -130,7 +135,31 @@ class GroundProgramObserver:
       bodystr = self.formatBody(body)
       return headstr+':-'+bodystr+'.'
 
-  # TODO formatWeightRule
+  def formatWeightBody(self, lower_bound, body):
+    def formatElement(e):
+      atom, weight = e
+      a = self.formatAtom(atom)
+      if atom < 0:
+        aa = self.formatAtom(abs(atom))
+        return "{w},n{aa}:{a}".format(a=a, aa=aa, w=weight)
+      else:
+        return "{w},{a}:{a}".format(a=a, w=weight)
+    assert(len(body) > 0)
+    return str(lower_bound)+'<=#sum{'+ ';'.join([formatElement(e) for e in body]) + '}'
+
+  def formatWeightRule(self, weightrule):
+    choice, head, lower_bound, body = weightrule
+    headstr = HBEG[choice] + HSEP[choice].join([self.formatAtom(x) for x in head]) + HEND[choice]
+    # XXX having the following line here creates a segfault
+    #elements = [formatElement(e) for e in body]
+    assert(len(body) > 0)
+    return headstr + ':-' + self.formatWeightBody(lower_bound, body) + '.'
+
+  def formatAnyRule(self, anyrule):
+    if len(anyrule) == 3:
+      return self.formatRule(anyrule)
+    else:
+      return self.formatWeightRule(anyrule)
 
   def printall(self):
     if __debug__:
@@ -142,11 +171,20 @@ class GroundProgramObserver:
       logging.debug("rules:")
       for r in self.rules:
         logging.debug('  '+self.formatRule(r))
-      # TODO weight rules
+      logging.debug("weight rules:")
+      for r in self.weightrules:
+        logging.debug('  '+self.formatWeightRule(r))
 
   def finished(self):
     # true if at least one program was fully received
     return not self.waitingForStuff
+
+  def rule_by_index(self, idx):
+    lsr = len(self.rules)
+    if idx < lsr:
+      return self.rules[idx]
+    else:
+      return self.weightrules[idx-lsr]
 
 class RuleActivityProgram:
   '''
@@ -176,14 +214,21 @@ class RuleActivityProgram:
     return [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
 
   def _build(self):
-    def headActivityRule(idx, chb):
-      choice, head, body = chb
-      # we only use the body!
-      if len(body) == 0:
-        return '{}({}).'.format(Aux.RHPRED, idx)
+    def headActivityRule(idx, rule):
+      # TODO it is ugly to do it like this but if we iterate separately then we need to make special index treatment
+      activityatom = '{}({})'.format(Aux.RHPRED, idx)
+      if len(rule) == 3:
+        choice, head, body = rule
+        # we only use the body!
+        if len(body) == 0:
+          return activityatom + '.'
+        else:
+          sbody = self.po.formatBody(body)
       else:
-        sbody = self.po.formatBody(body)
-        return '{}({}) :- {}.'.format(Aux.RHPRED, idx, sbody)
+        choice, head, lbub, body = rule
+        assert(len(body) > 0)
+        sbody = self.po.formatWeightBody(lbub, body)
+      return activityatom+':-'+sbody+'.'
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
       
@@ -192,7 +237,8 @@ class RuleActivityProgram:
     # (I) guess for each atom
     raguesses = [ atomGuessRule(atom) for atom in self.po.atom2int.keys() ]
     # (II) rules with special auxiliary heads
-    rarules = [ headActivityRule(idx, chb) for idx, chb in enumerate(self.po.eareplrules + self.po.rules) ]
+    rarules = [ headActivityRule(idx, rule) for idx, rule in
+                enumerate(self.po.eareplrules + self.po.rules + self.po.weightrules) ]
     # we are interested in which rule is active
     rashow = ['#show {}/1.'.format(Aux.RHPRED)]
     return rarules + raguesses + rashow
@@ -275,11 +321,20 @@ class CheckOptimizedProgram:
       return  '{'+Aux.RHPRED+'('+str(ruleidx)+')}.'
     def ruleToReductConstraint(ruleidx, rule):
       activator = '{}({})'.format(Aux.RHPRED, ruleidx)
-      choice, head, body = rule
-      bodies = [activator]
-      bodies += [ self.po.formatAtom(-h) for h in head ]
-      bodies += [ self.po.formatAtom(b) for b in body ]
-      return ':-'+','.join(bodies)+'.'
+      if len(rule) == 3:
+        # normal rule
+        choice, head, body = rule
+        bodies = [activator]
+        bodies += [ self.po.formatAtom(-h) for h in head ]
+        bodies += [ self.po.formatAtom(b) for b in body ]
+        return ':-'+','.join(bodies)+'.'
+      else:
+        # weight rule
+        choice, head, lbub, body = rule
+        bodies = [activator]
+        bodies += [ self.po.formatAtom(-h) for h in head ]
+        bodies += [ self.po.formatWeightBody(lbub, body) ]
+        return ':-'+','.join(bodies)+'.'
 
     def atomGuessRule(atom):
       return  '{'+str(atom)+'}.'
@@ -287,11 +342,11 @@ class CheckOptimizedProgram:
     assert(self.po.finished())
 
     # (I) guess which rules are marked as active (will be determined with assumption)
-    rhguess = [ rhGuessRule(idx) for idx in range(0, len(self.po.rules)) ]
+    rhguess = [ rhGuessRule(idx) for idx in range(0, len(self.po.rules+self.po.weightrules)) ]
     # (II) check model of reduct (not for choice rules, because they are always satisfied)
     reductconstr = [
       ruleToReductConstraint(idx, rule)
-      for idx, rule in enumerate(self.po.rules)
+      for idx, rule in enumerate(self.po.rules+self.po.weightrules)
       if rule[0] != True ]
     # (III) guess each atom in Pi
     atomguess = [ atomGuessRule(atom) for atom in self.po.atom2int ]
@@ -340,7 +395,7 @@ class CheckOptimizedProgram:
     return res.unsatisfiable
 
 class FLPCheckerBase:
-  def __init__(self, pcontext, ccontext, eaeval):
+  def __init__(self, propagatorFactory):
     pass
   def attach(self, clingocontrol):
     pass
@@ -371,16 +426,19 @@ class ExplicitFLPChecker(FLPCheckerBase):
 
   def checkModel(self, mdl):
     # returns True if mdl passes the FLP check (= is an answer set)
-    logging.debug("FLP check for "+repr(mdl))
+    if __debug__:
+      logging.debug("FLP check for "+repr(mdl))
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
-    logging.info("Rules in reduct:")
-    for ridx in activeRules:
-      r = self.__programObserver.rules[ridx]
-      logging.info("  R rule: "+repr(self.__programObserver.formatRule(r)))
+    if __debug__:
+      logging.info("Rules in reduct:")
+      for ridx in activeRules:
+        r = self.__programObserver.rule_by_index(ridx)
+        logging.info("  R rule: "+repr(self.__programObserver.formatAnyRule(r)))
     checkProgram = self.checkProgram()
     is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl)
-    logging.debug("FLP check for {} returned {}".format(repr(mdl), repr(is_answer_set)))
+    if __debug__:
+      logging.debug("FLP check for {} returned {}".format(repr(mdl), repr(is_answer_set)))
     return is_answer_set
 
   def ruleActivityProgram(self):
