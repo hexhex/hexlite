@@ -199,8 +199,8 @@ def p_error(p):
 
 # TODO manage installation of yacc-generated scripts somehow and reactivate write_tables
 # , optimize=not __debug__
-myparser = yacc.yacc(start='content', write_tables=False)
-mytermparser = yacc.yacc(start='elist', write_tables=False, errorlog=None)
+myparser = yacc.yacc(start='content', write_tables=False, errorlog=yacc.NullLogger())
+mytermparser = yacc.yacc(start='elist', write_tables=False, errorlog=yacc.NullLogger())
 
 def parseTerm(content):
   '''
