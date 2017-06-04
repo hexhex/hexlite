@@ -467,8 +467,11 @@ def execute(pcontext, rewritten, facts, plugins, args):
 
   propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval)
 
-  flp_checker_factory = flp.ExplicitFLPChecker
-  #flp_checker_factory = flp.DummyFLPChecker
+  if args.flpcheck == 'explicit':
+    flp_checker_factory = flp.ExplicitFLPChecker
+  else:
+    assert(args.flpcheck == 'none')
+    flp_checker_factory = flp.DummyFLPChecker
   flpchecker = flp_checker_factory(propagatorFactory)
 
   # TODO get settings from commandline

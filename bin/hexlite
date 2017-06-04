@@ -104,6 +104,8 @@ def interpretArguments(argv):
     help='Whether liberal safety is requested (ignored).')
   parser.add_argument('--strongnegation-enable', action='store_true', default=False,
     help='Whether strong negation is enabled (ignored).')
+  parser.add_argument('--flpcheck', choices=['explicit', 'none'], action='store', default='explicit',
+    help='Which type of FLP check to use (explicit FLP check currently does not work for strong negation and optimization).')
   parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
     help='Number of models to enumerate.')
   parser.add_argument('-N', '--maxint', metavar='N', action='store', default=None,
