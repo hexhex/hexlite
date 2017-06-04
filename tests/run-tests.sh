@@ -3,7 +3,7 @@
 DLVHEX="python2 ../bin/hexlite --pluginpath=../plugins/ --plugin=testplugin"
 EXAMPLESDIR="./"
 OUTDIR="./outputs/"
-TESTS="suites/complete.test"
+TESTS="suites/complete.test suites/flpcheck.test"
 
 #
 # brief documentation of this script
