@@ -68,8 +68,10 @@ except ImportError:
     logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
     sys.exit(-1)
 
-# import this after importing clingo, because it requires clingo too
+# import these after importing clingo, because it requires clingo too
 import hexlite.explicitflpcheck as flp
+from hexlite.clingocommon import ClaspContext, SymLit, ClingoID
+from hexlite import eatomeval as eatomeval
 
 # TODO make this non-global
 pcontext = hexlite.ProgramContext()
@@ -112,78 +114,14 @@ def rewriteProgram(program, plugins, args):
   pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
   return pr.rewrite()
 
-def convertClingoToHex(term):
-  assert(isinstance(term, clingo.Symbol))
-  #logging.debug("convertClingoToHex got {} with type {}".format(repr(term), term.type))
-  return ClingoID(SymLit(term, None))
-  #if term.type is clingo.SymbolType.Number:
-  #  ret = term.number
-  #elif term.type in [clingo.SymbolType.String, clingo.SymbolType.Function]:
-  #  ret = str(term)
-  #else:
-  #  raise Exception("cannot convert clingo term {} of type {} to external atom term!".format(
-  #    repr(term), str(term.type)))
-  #return ret
-
-def convertHexToClingo(term):
-  if isinstance(term, ClingoID):
-    return term.symlit.sym
-  elif isinstance(term, str):
-    if term[0] == '"':
-      ret = clingo.String(term[1:-1])
-    else:
-      ret = clingo.parse_term(term)
-  elif isinstance(term, int):
-    ret = clingo.Number(term)
-  else:
-    raise Exception("cannot convert external atom term {} to clingo term!".format(repr(term)))
-  return ret
-
-def externalAtomCallHelper(holder, inputtuple, predicateinputatoms):
-  '''
-  * converts input tuple for execution
-  * prepares dlvhex.py for execution
-  * executes
-  * converts output tuples
-  * cleans up
-  * return result
-  '''
-  out = None
-  dlvhex.startExternalAtomCall(predicateinputatoms)
-  try:
-    # prepare input tuple
-    plugin_arguments = []
-    for spec_idx, inp in enumerate(holder.inspec):
-      if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
-        arg = convertClingoToHex(inputtuple[spec_idx])
-        plugin_arguments.append(arg)
-      elif inp == dlvhex.TUPLE:
-        if (spec_idx + 1) != len(holder.inspec):
-          raise Exception("got TUPLE type which is not in final argument position")
-        # give all remaining arguments as one tuple
-        args = [ convertClingoToHex(x) for x in inputtuple[spec_idx:] ]
-        plugin_arguments.append(tuple(args))
-      else:
-        raise Exception("unknown input type "+repr(inp))
-
-    # call external atom in plugin
-    logging.debug('calling plugin eatom with arguments '+repr(plugin_arguments))
-    holder.func(*plugin_arguments)
-    
-    # interpret output
-    # list of tuple of terms (maybe empty tuple)
-    out = [ tuple([ convertHexToClingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
-  finally:
-    dlvhex.cleanupExternalAtomCall()
-  return out
-
 class GringoContext:
   class ExternalAtomCall:
-    def __init__(self, holder):
+    def __init__(self, eaeval, holder):
+      self.eaeval = eaeval
       self.holder = holder
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      out = externalAtomCallHelper(self.holder, arguments, None)
+      out = self.eaeval.evaluate(self.holder, arguments, None)
       outarity = self.holder.outnum
       # interpret special cases for gringo @eatom rewritings:
       if outarity == 0:
@@ -202,64 +140,12 @@ class GringoContext:
       # in other cases we can directly use what externalAtomCallHelper returned
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
       return out
-  def __init__(self):
-    pass
+  def __init__(self, eaeval):
+    assert(isinstance(eaeval, eatomeval.EAtomEvaluator))
+    self.eaeval = eaeval
   def __getattr__(self, attr):
     #logging.debug('GC.%s called',attr)
-    return self.ExternalAtomCall(dlvhex.eatoms[attr])
-
-class SymLit:
-  def __init__(self, sym, lit):
-    self.sym = sym
-    self.lit = lit
-
-class ClingoID:
-  # the ID class as passed to plugins, from view of Clingo backend
-  def __init__(self, symlit):
-    self.symlit = symlit
-    self.__value = str(symlit.sym)
-
-  def value(self):
-    return self.__value
-
-  def intValue(self):
-    if self.symlit.sym.type == clingo.SymbolType.Number:
-      return self.symlit.sym.number
-    else:
-      raise Exception('intValue called on ID {} which is not a number!'.format(self.__value))
-
-  def isTrue(self):
-    global clingoPropControl
-    if not self.symlit.lit:
-      raise Exception("cannot call isTrue on term that is not an atom")
-    return clingoPropControl.assignment.is_true(self.symlit.lit)
-
-  def isFalse(self):
-    global clingoPropControl
-    if not self.symlit.lit:
-      raise Exception("cannot call isFalse on term that is not an atom")
-    return clingoPropControl.assignment.is_false(self.symlit.lit)
-
-  def isAssigned(self):
-    global clingoPropControl
-    if not self.symlit.lit:
-      raise Exception("cannot call isAssigned on term that is not an atom")
-    return clingoPropControl.assignment.value(self.symlit.lit) != None
-
-  def tuple(self):
-    tup = tuple([ ClingoID(SymLit(sym, None)) for sym in
-                  [clingo.Function(self.symlit.sym.name)]+self.symlit.sym.arguments])
-    return tup
-
-  def __str__(self):
-    return self.__value
-
-  def __repr__(self):
-    return "ClingoID({})".format(str(self))
-
-  def __getattr__(self, name):
-    raise Exception("not (yet) implemented: ClingoID.{}".format(name))
-
+    return self.ExternalAtomCall(self.eaeval, dlvhex.eatoms[attr])
 
 class EAtomVerification:
   def __init__(self, relevance, replacement):
@@ -284,12 +170,16 @@ class Nogood:
 class ClingoPropagator:
   class StopPropagation(Exception):
     pass
-  def __init__(self):
+  def __init__(self, ccontext, eaeval):
     # key = eatom
     # value = list of EAtomVerification
     self.eatomVerifications = collections.defaultdict(list)
     # mapping from solver literals to lists of strings
     self.debugMapping = collections.defaultdict(list)
+    # clasp context
+    self.ccontext = ccontext
+    # helper for external atom evaluation
+    self.eaeval = eaeval
   def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
@@ -317,7 +207,7 @@ class ClingoPropagator:
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
                   logging.debug('CPinit         atom {}'.format(str(ax.symbol)))
-                  predinputid = ClingoID(SymLit(ax.symbol, init.solver_literal(ax.literal)))
+                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
                   verification.predinputs[argpos].append(predinputid)
 
           verification.allinputs = flatten([idlist for idlist in verification.predinputs.values()])
@@ -345,22 +235,18 @@ class ClingoPropagator:
     '''
     # called on total assignments (even without watches)
     logging.info('CPcheck')
-    global clingoPropControl
-    clingoPropControl = control
-    try:
-      for eatomname, veriList in self.eatomVerifications.items():
-        for veri in veriList:
-          if control.assignment.is_true(veri.relevance.lit):
-            self.verifyTruthOfAtom(eatomname, control, veri)
-          else:
-            logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
-    except ClingoPropagator.StopPropagation:
-      # this is part of the intended behavior
-      logging.debug('CPcheck aborted propagation')
-      #logging.debug('aborted from '+traceback.format_exc())
-    finally:
-      # reset
-      clingoPropControl = None
+    with self.ccontext(control):
+      try:
+        for eatomname, veriList in self.eatomVerifications.items():
+          for veri in veriList:
+            if control.assignment.is_true(veri.relevance.lit):
+              self.verifyTruthOfAtom(eatomname, control, veri)
+            else:
+              logging.debug('CP no need to verify atom {}'.format(veri.replacement.sym))
+      except ClingoPropagator.StopPropagation:
+        # this is part of the intended behavior
+        logging.debug('CPcheck aborted propagation')
+        #logging.debug('aborted from '+traceback.format_exc())
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
     targetValue = control.assignment.is_true(veri.replacement.lit)
@@ -374,7 +260,7 @@ class ClingoPropagator:
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
     logging.debug('CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
-    out = externalAtomCallHelper(holder, inputtuple, veri.allinputs)
+    out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
     logging.debug("CPvTOA output {}".format(pprint.pformat(out)))
     realValue = outputtuple in out
     if realValue == targetValue:
@@ -494,15 +380,26 @@ def execute(rewritten, facts, plugins, args):
   except:
     raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
 
+  # prepareing clasp context which does not hold concrete clasp information yet
+  # (such information only exists during propagation)
+  ccontext = ClaspContext()
+
+  # preparing evaluator for external atoms
+  # it needs to know the clasp context
+  # (this class could cache if desired/implemented?)
+  eaeval = eatomeval.EAtomEvaluator(ccontext)
+
+  # preparing context for instantiation
+  # (this class is specific to the gringo API)
   logging.info('grounding with gringo context')
-  ccc = GringoContext()
+  ccc = GringoContext(eaeval)
   #flpchecker = flp.ExplicitFLPChecker()
   flpchecker = flp.DummyFLPChecker()
   flpchecker.attach(cc)
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
-  checkprop = ClingoPropagator()
+  checkprop = ClingoPropagator(ccontext, eaeval)
   cc.register_propagator(checkprop)
   mr = ModelReceiver(facts, args, flpchecker)
 
