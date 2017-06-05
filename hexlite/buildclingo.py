@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
 #
