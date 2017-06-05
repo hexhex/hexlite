@@ -23,6 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import sys
 
 # assume that the main program has handled possible import problems
 import clingo
@@ -33,6 +34,11 @@ from .aux import Aux
 HBEG = { True: '{', False: '' }
 HSEP = { True: ' ; ', False: ' | ' }
 HEND = { True: '}', False: '' }
+
+# make it python2 and python3 compatible
+if sys.version_info > (3,):
+  # python3 has no long, everything is long
+  long = int
 
 class GroundProgramObserver:
   class WarnMissing:
@@ -88,7 +94,8 @@ class GroundProgramObserver:
     self.weightrules.append( (choice, head, lower_bound, body) )
   def output_atom(self, symbol, atom):
     logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
-    if atom == 0L:
+    if atom == long(0):
+      # this is not a literal but a signal that symbol is always true (i.e., a fact)
       self.facts.add(symbol)
       assert(not symbol.name.startswith(Aux.EAREPL))
     else:
@@ -118,9 +125,12 @@ class GroundProgramObserver:
       stratom = str(self.int2atom[absatom])
     else:
       stratom = 'claspaux'+str(absatom)
-    if atom >= 0L:
+    assert(atom != long(0))
+    if atom > long(0):
+      # positive literal
       return stratom
     else:
+      # negative literal
       return 'not '+stratom
 
   def formatBody(self, body):

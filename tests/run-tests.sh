@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DLVHEX="python2 ../bin/hexlite --pluginpath=../plugins/ --plugin=testplugin"
+DLVHEX="hexlite --pluginpath=../plugins/ --plugin=testplugin"
 EXAMPLESDIR="./"
 OUTDIR="./outputs/"
 TESTS="suites/complete.test suites/flpcheck.test"
