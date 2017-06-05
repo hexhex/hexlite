@@ -82,13 +82,10 @@ class GroundProgramObserver:
     return self.WarnMissing(name)
   def rule(self, choice, head, body):
     logging.debug("GPRule ch=%s hd=%s b=%s", repr(choice), repr(head), repr(body))
-    if choice == False and len(head) == 1 and len(body) == 0:
-      # ignore rules for facts,
-      # because we get facts separately in output_atom, and
-      # because they are eliminated from bodies anyways
-      pass
-    else:
-      self.preliminaryrules.append( (choice, head, body) )
+    # it seems we cannot ignore "deterministic" rules
+    # sometimes they are necessary, and they concern atoms that have no symbol
+    # (for an example, see tests/choicerule4.hex)
+    self.preliminaryrules.append( (choice, head, body) )
   def weight_rule(self, choice, head, lower_bound, body):
     logging.debug("GPWeightRule ch=%s hd=%s lb=%s, b=%s", repr(choice), repr(head), repr(lower_bound), repr(body))
     self.weightrules.append( (choice, head, lower_bound, body) )
