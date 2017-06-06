@@ -40,6 +40,11 @@ if sys.version_info > (3,):
   # python3 has no long, everything is long
   long = int
 
+def formatAssumptions(assumptions):
+  return "{} not({})".format(
+    repr([a for (a,t) in assumptions if t == True]),
+    repr([a for (a,t) in assumptions if t == False]))
+
 class GroundProgramObserver:
   class WarnMissing:
     def __init__(self, name):
@@ -51,6 +56,8 @@ class GroundProgramObserver:
     # a program is a set of rules, we assume gringo/clasp are clever enough to eliminate duplicates
     self.atom2int = {}
     self.int2atom = {}
+    # clasp auxiliary atoms
+    self.auxatoms = set()
     # eatom truth replacement atoms (cache)
     self.replatoms = set()
     # facts
@@ -74,7 +81,10 @@ class GroundProgramObserver:
     self.waitingForStuff = True
   def end_step(self):
     logging.debug("GPEndStep")
-    # here we got rules and atoms so only here we can separate rules from eareplrules
+    # here we got rules and atoms so only here we can
+    # * separate symbol atoms from auxiliary (and maybe projected/hidden) atoms
+    self.extractAuxAtoms()
+    # * separate rules from eareplrules
     self.extractEAtomReplacementGuesses()
     self.waitingForStuff = False
     self.printall()
@@ -101,6 +111,17 @@ class GroundProgramObserver:
       self.maxAtom = max(self.maxAtom, atom)
       if symbol.name.startswith(Aux.EAREPL):
         self.replatoms.add(atom)
+
+  def extractAuxAtoms(self):
+    def extractAuxFromLits(lits):
+      for lit in lits:
+        alit = abs(lit)
+        if alit not in self.int2atom:
+          self.auxatoms.add(alit)
+    for choice, head, body in self.preliminaryrules:
+      extractAuxFromLits(head+body)
+    for choice, head, lower_bound, body in self.weightrules:
+      extractAuxFromLits(head+[at for (at,w) in body])
 
   def extractEAtomReplacementGuesses(self):
     for choice, head, body in self.preliminaryrules:
@@ -199,6 +220,7 @@ class RuleActivityProgram:
 
   It contains:
   (I) a guess for each atom in Pi (non-fact rules are stored in self.po.eareplrules and self.po.rules)
+      (auxiliary atoms in self.po.auxatoms)
   (II) for each non-fact rule in Pi a rule with a unique head <Aux.RHPRED>(ruleidx) and the body of the original rule.
 
   The purpose of this program is to find out which rule bodies are satisfied (i.e., which rules are in the FLP reduct) in a given answer set.
@@ -214,11 +236,16 @@ class RuleActivityProgram:
         logging.debug('RAP rule: '+repr(rule))
         # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
+    logging.debug("RAP grounding starts")
     self.cc.ground([("base", [])])
+    logging.debug("RAP grounding finished")
 
   def _assumptionFromModel(self, mdl):
     syms = mdl.symbols(atoms=True, terms=True)
-    return [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
+    ret = [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
+    ret += [ (clingo.Function(self.po.formatAtom(auxatm)), mdl.contains(auxatm))
+             for auxatm in self.po.auxatoms ]
+    return ret
 
   def _build(self):
     def headActivityRule(idx, rule):
@@ -243,6 +270,7 @@ class RuleActivityProgram:
 
     # (I) guess for each atom
     raguesses = [ atomGuessRule(atom) for atom in self.po.atom2int.keys() ]
+    raguesses += [ atomGuessRule(self.po.formatAtom(auxatom)) for auxatom in self.po.auxatoms ]
     # (II) rules with special auxiliary heads
     rarules = [ headActivityRule(idx, rule) for idx, rule in
                 enumerate(self.po.eareplrules + self.po.rules + self.po.weightrules) ]
@@ -261,7 +289,8 @@ class RuleActivityProgram:
         assert(all([isinstance(r, (int, long)) for r in self.activeRules]))
 
     assumptions = self._assumptionFromModel(mdl)
-    #logging.debug("solving with assumption"+repr(assumptions))
+    if __debug__:
+      logging.debug("solving RAP with assumptions "+formatAssumptions(assumptions))
     modelcb = OnModel()
     res = self.cc.solve(on_model=modelcb, assumptions=assumptions)
     assert(res.satisfiable)
@@ -273,12 +302,11 @@ class CheckOptimizedProgram:
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
   It contains:
-  (I) a guess for <Aux.RHPRED>(ruleidx) for each non-fact rule in Pi (will be determined by an assumption)
-      (non-fact rules are stored in self.eareplrules and self.po.rules)
+  (I) a guess for <Aux.RHPRED>(ruleidx) for each rule in Pi (will be determined by an assumption)
   (II) a constraint :- <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
       (except guessing rules for external atom replacements)
       [this seems to be merely an optimization].
-  (III) for each atom in Pi (stored in self.po.int2atom/atom2int) a guess.
+  (III) for each atom in Pi (stored in self.po.int2atom/atom2int and self.po.auxatoms) a guess.
   (IV) for each atom A in Pi a guess for <Aux.CATOMTRUE>_A (will be determined by an assumption)
   (V) for each atom A in Pi that is not an external atom replacement, the rules
       % A cannot become true if it was not true in the compatible set
@@ -311,7 +339,9 @@ class CheckOptimizedProgram:
         logging.debug('COP rule: '+repr(rule))
         # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
         clingo.parse_program(rule, lambda ast: b.add(ast))
+    logging.debug("COP grounding starts")
     self.cc.ground([("base", [])])
+    logging.debug("COP grounding finished")
     # register propagator for upcoming solve calls
     self.cc.register_propagator(self.eatomPropagator)
 
@@ -357,8 +387,10 @@ class CheckOptimizedProgram:
       if rule[0] != True ]
     # (III) guess each atom in Pi
     atomguess = [ atomGuessRule(atom) for atom in self.po.atom2int ]
+    atomguess += [ atomGuessRule(self.po.formatAtom(auxa)) for auxa in self.po.auxatoms ]
     # this is A(Pi) in the paper
     nonreplatoms = [ str(atom) for idx, atom in self.po.int2atom.items() if idx not in self.po.replatoms ]
+    nonreplatoms += [ self.po.formatAtom(auxa) for auxa in self.po.auxatoms ]
     # (IV) guess <Aux.CATOMTRUE>_A for each atom except eareplacements (will be determined by an assumption)
     csatomguess = [ atomGuessRule(Aux.CATOMTRUE+"_"+at) for at in nonreplatoms ]
     # (V) ensure model is equal or smaller except eareplacements
@@ -383,10 +415,14 @@ class CheckOptimizedProgram:
 
   def _assumptionFromModel(self, mdl):
     syms = mdl.symbols(atoms=True, terms=True)
-    return [
+    ret = [
       (clingo.parse_term(Aux.CATOMTRUE+'_'+str(atm)), mdl.contains(atm))
       for atm, iatm in self.po.atom2int.items()
       if iatm not in self.po.replatoms ]
+    ret += [
+      (clingo.Function(name=Aux.CATOMTRUE+'_'+self.po.formatAtom(auxatm)), mdl.contains(auxatm))
+      for auxatm in self.po.auxatoms ]
+    return ret
 
   def checkFLPViolation(self, activeRules, mdl):
     class OnModel:
@@ -395,7 +431,8 @@ class CheckOptimizedProgram:
 
     assumptions = self._assumptionFromActiveRules(activeRules) + self._assumptionFromModel(mdl)
     modelcb = OnModel()
-    #logging.debug("assumptions:"+repr(assumptions))
+    if __debug__:
+      logging.debug("solving COP with assumptions "+formatAssumptions(assumptions))
     res = self.cc.solve(on_model=modelcb, assumptions=assumptions)
     logging.debug("res=%s", res)
     # if it is unsatisfiable, it has passed the test, i.e., it is an answer set
