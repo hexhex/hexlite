@@ -132,6 +132,7 @@ class GitCheckoutInstaller(InstallerBase):
   def checkout(self):
     logging.info("Checking out {}".format(self.VERSION))
     self.run_cmd(['git', 'checkout', self.VERSION], cwd=self.tmpdir.name)
+    self.run_cmd(['git', 'submodule', 'update', '--recursive'], cwd=self.tmpdir.name)
 
   def doit(self, packages):
     self.prepare(packages)
@@ -144,7 +145,10 @@ def build():
     lsbid = subprocess.check_output(['lsb_release', '--short', '--id']).decode('utf8').strip()
     lsbrelease = subprocess.check_output(['lsb_release', '--short', '--release']).decode('utf8').strip()
     logging.debug('got LSB id {} and release {}'.format(lsbid, lsbrelease))
-    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++']
+    # for installing from release packages
+    #USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'python3-dev']
+    # for installing from git
+    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'python3-dev', 'bison', 're2c']
     IMPOSSIBLE = {
       ('Ubuntu', '14.04'): 'Does not contain sufficiently new cmake and g++ for automatic build (you can try to manually install these)'
     }
