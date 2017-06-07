@@ -136,8 +136,6 @@ class GroundProgramObserver:
     del(self.preliminaryrules)
 
   def formatAtom(self, atom):
-    # XXX if atom is x we segfault (we also cannot catch an exception here!)
-    # XXX if we do return "foo"+self.int2atom[atom] we segfault because we cannot add a string to a symbol (bug, because an exception should be thrown, maybe clingo does not handle __getattr__ or __add__ correctly)
     absatom = abs(atom)
     if absatom in self.int2atom:
       stratom = str(self.int2atom[absatom])
@@ -178,8 +176,6 @@ class GroundProgramObserver:
   def formatWeightRule(self, weightrule):
     choice, head, lower_bound, body = weightrule
     headstr = HBEG[choice] + HSEP[choice].join([self.formatAtom(x) for x in head]) + HEND[choice]
-    # XXX having the following line here creates a segfault
-    #elements = [formatElement(e) for e in body]
     assert(len(body) > 0)
     return headstr + ':-' + self.formatWeightBody(lower_bound, body) + '.'
 
