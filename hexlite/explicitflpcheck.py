@@ -1,10 +1,5 @@
 # encoding: utf8
 # This module provides functionality for finding out if a compatible set is or is not an answer set.
-#
-# We effectively make use of Proposition 2 from the following paper:
-# Eiter, T., Fink, M., Krennwallner, T., Redl, C., & Schüller, P. (2014).
-# Efficient HEX-Program Evaluation Based on Unfounded Sets.
-# Journal of Artificial Intelligence Research, 49, 269–321.
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
@@ -239,7 +234,7 @@ class RuleActivityProgram:
   def _assumptionFromModel(self, mdl):
     syms = mdl.symbols(atoms=True, terms=True)
     ret = [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
-    ret += [ (clingo.Function(self.po.formatAtom(auxatm)), mdl.contains(auxatm))
+    ret += [ (clingo.Function(self.po.formatAtom(auxatm)), mdl.is_true(auxatm))
              for auxatm in self.po.auxatoms ]
     return ret
 
@@ -297,13 +292,41 @@ class CheckOptimizedProgram:
   '''
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
-  It contains:
-  (I) a guess for <Aux.RHPRED>(ruleidx) for each rule in Pi (will be determined by an assumption)
-  (II) a constraint :- <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each rule in Pi
-      (except guessing rules for external atom replacements)
-      [this seems to be merely an optimization].
-  (III) for each atom in Pi (stored in self.po.int2atom/atom2int and self.po.auxatoms) a guess.
-  (IV) for each atom A in Pi a guess for <Aux.CATOMTRUE>_A (will be determined by an assumption)
+  It is an adaptation of Proposition 2 from the following paper:
+  Eiter, T., Fink, M., Krennwallner, T., Redl, C., & Schüller, P. (2014).
+  Efficient HEX-Program Evaluation Based on Unfounded Sets.
+  Journal of Artificial Intelligence Research, 49, 269–321.
+
+  (The adaptation is about choice rules.)
+
+  Let _atoms be all atoms with ID != 0 observed in GroundProgramObserver
+    (some of these are clasp auxiliaries).
+  Let _replatoms be atoms used in choice heads of external replacement guesses.
+  Let _auxatoms be auxiliary atoms observed in GroundProgramObserver.
+  Let _facts be facts observed in GroundProgramObserver.
+  Let _rules and _weightrules be observed sequences of rules and weight rules.
+  Given a set X of rules or weight rules,
+    let CH(X) be the set of choice rules in X, and
+    let noCH(X) be the set of non-choice rules in X.
+  Let _chatoms = atoms in heads of rules CH(_rules+_weightrules) - _replatoms.
+    (Atoms in heads of choice rules, except external atom guess rules.)
+  Let _nchatoms = { <Aux_CHOICENEG>a | a \in _chatoms }.
+    (Negations of atoms in _chatoms.)
+  Let _minchatoms = _atoms - _replatoms + _nchatoms.
+    (These atoms will be checked for minimality.)
+
+  The check program contains:
+  (I) a guess { <Aux.RHPRED>(ruleidx) }. for each index of a rule/weightrule
+      (these truths will be fully determined by a solver assumption)
+  (II) a guess { <Aux.CATOMTRUE>_A }. for each atom A in _minchatoms
+      (will be determined by an assumption)
+  (III) a guess { A }. for each atom A in _minchatoms in Pi (stored in self.po.int2atom/atom2int and self.po.auxatoms) a guess '{a}.'
+
+  (IIa) a constraint :- <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each non-choice rule in Pi
+  (IIb) a constraint :- <Aux.RHPRED>(ruleidx), not a, not <Aux.CHOICENEG>a, <POSBODYATOMS>.
+      for each head atom a in each choice rule in Pi.
+  (IIIb) for each atom a in the head of a choice rule in Pi a guess '{<Aux.CHOICENEG>a}.'
+
   (V) for each atom A in Pi that is not an external atom replacement, the rules
       % A cannot become true if it was not true in the compatible set
       :- A, not <Aux.CATOMTRUE>_A.
@@ -314,6 +337,9 @@ class CheckOptimizedProgram:
   (VI) the rule
       :- not smaller
   (VII) all facts from the original ground program (stored in self.po.facts)
+
+  (VIII) for all head atoms a_i in all ground choice rules { a1, .. am } :- body:
+    a disjunctive guess 'a_i | auxneg_a_i :- body.'
 
   The purpose of this program is to check if the FLP reduct has a model that is smaller than the original compatible set.
 
@@ -416,7 +442,7 @@ class CheckOptimizedProgram:
       for atm, iatm in self.po.atom2int.items()
       if iatm not in self.po.replatoms ]
     ret += [
-      (clingo.Function(name=Aux.CATOMTRUE+'_'+self.po.formatAtom(auxatm)), mdl.contains(auxatm))
+      (clingo.Function(name=Aux.CATOMTRUE+'_'+self.po.formatAtom(auxatm)), mdl.is_true(auxatm))
       for auxatm in self.po.auxatoms ]
     return ret
 
