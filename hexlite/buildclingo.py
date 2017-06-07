@@ -21,10 +21,7 @@ import os, sys, subprocess, logging, tempfile, traceback
 def msg(m):
   sys.stderr.write(m+'\n')
 
-class Installer:
-  ARCHIVE = 'v5.2.0.tar.gz'
-  URL = 'https://github.com/potassco/clingo/archive/'+ARCHIVE
-  DIR_IN_ARCHIVE = 'clingo-5.2.0'
+class InstallerBase:
   # you can change this to reduce/increase number of parallel jobs
   MAKEARGS = ['VERBOSE=1', '--jobs=4']
 
@@ -78,6 +75,34 @@ class Installer:
       except:
         raise Exception('could not create output directory '+d)
 
+  def prepare(self, packages):
+    self.ensurepackages(packages)
+    self.maketargetdir()
+    self.tmpdir = tempfile.TemporaryDirectory()
+
+  def build_install(self, srcdir):
+    cmd = [
+      'cmake', '.', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX='+self.INSTALLDIR,
+      '-DCLINGO_BUILD_PY_SHARED=ON', '-DPYCLINGO_INSTALL_DIR='+self.INSTALLDIR,
+      '-DPYTHON_EXECUTABLE=/usr/bin/python3']
+    prompt = "Will next run cmake in {} with command {}".format(srcdir, repr(cmd))
+    if self.prompt_user(prompt):
+      self.run_cmd(cmd, cwd=srcdir)
+    prompt = "Will next run make and make install with arguments MAKEARGS={}".format(repr(self.MAKEARGS))
+    if self.prompt_user(prompt):
+      self.run_cmd(['make']+self.MAKEARGS, cwd=srcdir)
+      self.run_cmd(['make', 'install'], cwd=srcdir)
+      logging.info("removing temporary directory")
+      self.tmpdir.cleanup()
+
+class ArchivedReleaseInstaller(InstallerBase):
+  ARCHIVE = 'v5.2.0.tar.gz'
+  URL = 'https://github.com/potassco/clingo/archive/'+ARCHIVE
+  DIR_IN_ARCHIVE = 'clingo-5.2.0'
+
+  def __init__(self):
+    InstallerBase.__init__(self)
+
   def download(self):
     logging.info("Dowloading " + self.URL)
     self.run_cmd(['wget', self.URL, '--output-document='+os.path.join(self.tmpdir.name, self.ARCHIVE)])
@@ -87,38 +112,46 @@ class Installer:
     self.run_cmd(['tar', 'xzf', self.ARCHIVE], cwd=self.tmpdir.name)
     self.SRCDIR = os.path.join(self.tmpdir.name, self.DIR_IN_ARCHIVE)
 
-  def build_install(self):
-    cmd = [
-      'cmake', '.', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX='+self.INSTALLDIR,
-      '-DCLINGO_BUILD_PY_SHARED=ON', '-DPYCLINGO_INSTALL_DIR='+self.INSTALLDIR,
-      '-DPYTHON_EXECUTABLE=/usr/bin/python3']
-    prompt = "Will next run cmake in {} with command {}".format(self.tmpdir.name, repr(cmd))
-    if self.prompt_user(prompt):
-      self.run_cmd(cmd, cwd=self.SRCDIR)
-    prompt = "Will next run make and make install with arguments MAKEARGS={}".format(repr(self.MAKEARGS))
-    if self.prompt_user(prompt):
-      self.run_cmd(['make']+self.MAKEARGS, cwd=self.SRCDIR)
-      self.run_cmd(['make', 'install'], cwd=self.SRCDIR)
-      logging.info("removing temporary directory")
-      self.tmpdir.cleanup()
-
   def doit(self, packages):
-    self.ensurepackages(packages)
-    self.maketargetdir()
-    self.tmpdir = tempfile.TemporaryDirectory()
+    self.prepare(packages)
     self.download()
     self.unpack()
-    self.build_install()
+    self.build_install(self.SRCDIR)
+
+class GitCheckoutInstaller(InstallerBase):
+  GITURL = 'https://github.com/potassco/clingo.git'
+  VERSION = '01dffb'
+
+  def __init__(self):
+    InstallerBase.__init__(self)
+
+  def clone(self):
+    logging.info("Cloning {} into {}".format(self.GITURL, self.tmpdir.name))
+    self.run_cmd(['git', 'clone', '--recursive', self.GITURL, os.path.join(self.tmpdir.name)])
+
+  def checkout(self):
+    logging.info("Checking out {}".format(self.VERSION))
+    self.run_cmd(['git', 'checkout', self.VERSION], cwd=self.tmpdir.name)
+
+  def doit(self, packages):
+    self.prepare(packages)
+    self.clone()
+    self.checkout()
+    self.build_install(self.tmpdir.name)
 
 def build():
   try:
-    lsbid = subprocess.check_output(['lsb_release', '--short', '--id']).strip()
-    lsbrelease = subprocess.check_output(['lsb_release', '--short', '--release']).strip()
+    lsbid = subprocess.check_output(['lsb_release', '--short', '--id']).decode('utf8').strip()
+    lsbrelease = subprocess.check_output(['lsb_release', '--short', '--release']).decode('utf8').strip()
     logging.debug('got LSB id {} and release {}'.format(lsbid, lsbrelease))
     USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++']
+    IMPOSSIBLE = {
+      ('Ubuntu', '14.04'): 'Does not contain sufficiently new cmake and g++ for automatic build (you can try to manually install these)'
+    }
     UBUNTU_TESTED = ['16.04', '16.10', '17.04']
     DEBIAN_TESTED = ['?']
-    inst = Installer()
+    inst = ArchivedReleaseInstaller()
+    inst = GitCheckoutInstaller()
     if lsbid == 'Ubuntu':
       if lsbrelease == '14.04':
         raise Exception("Ubuntu 14.04 does not contain modern cmake required for building clingo")
