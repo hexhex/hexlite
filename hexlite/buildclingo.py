@@ -146,9 +146,9 @@ def build():
     lsbrelease = subprocess.check_output(['lsb_release', '--short', '--release']).decode('utf8').strip()
     logging.debug('got LSB id {} and release {}'.format(lsbid, lsbrelease))
     # for installing from release packages
-    #USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'python3-dev']
+    #USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'libpython3-dev']
     # for installing from git
-    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'python3-dev', 'bison', 're2c']
+    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'libpython3-dev', 'bison', 're2c']
     IMPOSSIBLE = {
       ('Ubuntu', '14.04'): 'Does not contain sufficiently new cmake and g++ for automatic build (you can try to manually install these)'
     }
