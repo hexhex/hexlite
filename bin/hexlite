@@ -21,6 +21,12 @@
 # TODO make this a real script, move most content to hexlite package
 
 import sys
+import platform
+
+if platform.python_version().startswith('2'):
+  sys.stdout.write("Please use Python 3 instead of Python 2!\n")
+  sys.exit(-1)
+
 import logging
 # initially log everything
 logging.basicConfig(

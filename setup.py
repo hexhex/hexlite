@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
-from setuptools import setup
+import sys
+import platform
+import setuptools
+
+if platform.python_version().startswith('2'):
+  sys.stdout.write("Please use Python 3 instead of Python 2!\n")
+  sys.exit(-1)
 
 def readme():
   with open('README', 'wb') as of:
@@ -9,12 +15,12 @@ def readme():
       of.write(out)
       return out.decode('utf8')
 
-setup(name='hexlite',
-      version='0.3.13',
+setuptools.setup(name='hexlite',
+      version='0.3.14',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Programming Language :: Python :: 3',
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
