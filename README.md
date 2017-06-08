@@ -12,7 +12,15 @@ The intention is to provide a lightweight system for an easy start with HEX.
 The vision is that HEXLite can use existing Python plugins and runs based on
 the Clingo or WASP python interface, without realizing the full power of HEX.
 
-The system is currently under development and *only works for certain programs*.
+The system is currently under development and only works for certain programs:
+* External atoms with only constant inputs are evaluated during grounding in Gringo
+* External atoms with predicate input(s) and no constant outputs are evaluated during solving in a clasp Propagator
+* External atoms with predicate input(s) and constant outputs that have a domain predicate can also be evaluated
+* Liberal Safety is not implemented
+* Properties of external atoms are not used
+* If it has a finite grounding, it will terminate, otherwise, it will not - as usual with Gringo
+* FLP Check is implemented explicitly and does not work with strong negation and weak constraints
+* FLP Check can be deactivated
 
 A manuscript about the system is under preparation.
 

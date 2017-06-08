@@ -1,13 +1,13 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from setuptools import setup
 
 def readme():
-  with open('README', 'w') as of:
-    with open('README.md') as i:
-      out = ''.join([ line for line in i if not line.startswith('[')])
+  with open('README', 'wb') as of:
+    with open('README.md', 'rb') as i:
+      out = b''.join([ line for line in i if not line.startswith(b'[')])
       of.write(out)
-      return out
+      return out.decode('utf8')
 
 setup(name='hexlite',
       version='0.3.13',
@@ -15,7 +15,7 @@ setup(name='hexlite',
       long_description=readme(),
       classifiers=[
         'Development Status :: 3 - Alpha',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',

@@ -19,9 +19,9 @@
 """
 The parser can be used as follows:
 
-import shallowhexparser
-structure = shallowhexparser.parse(text)
-structure = shallowhexparser.parseTerm(text)
+import hexlite.ast.shallowparser as shp
+structure = shp.parse(text)
+structure = shp.parseTerm(text)
 
 The parser recognizes all HEX/ASP programs but distinguishes
 in the structure only the following structural elements:
@@ -42,85 +42,14 @@ import sys
 import inspect
 import logging
 
+# this imports the class alist from package ast (we are in package ast)
+from . import alist
+
 literals = ('(', ')', '[', ']', '{', '}', ',', ';')
 tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER', 'OPERATOR')
 
 def message(s):
   logging.info(s)
-
-class alist(list):
-  '''
-  a generic list with some special properties
-  used to store lists separated by ',' or ':' or ';'
-  used to store lists enclosed with '()' or '[]' or '{}'
-  '''
-  def sleft(self):
-    if self.left:
-      return self.left
-    else:
-      return ''
-  def sright(self):
-    if self.right:
-      return self.right
-    else:
-      return ''
-  def ssep(self):
-    if self.sep:
-      return self.sep
-    else:
-      return ''
-  def __init__(self, content=[], left=None, right=None, sep=None):
-    #logging.debug("alist.__init__ {} {} {} {}".format(repr(content), left, right, sep))
-    assert(isinstance(content, list) and not isinstance(content, alist))
-    class MyError(Exception):
-      pass
-    def takeOrThrow(first, second):
-      if first is None:
-        return second
-      elif second is None:
-        return first
-      else:
-        raise MyError()
-    # collapse one-element-alists if left, right, sep can be merged without losing information
-    if not isinstance(content, alist) and len(content) == 1 and isinstance(content[0], alist):
-      try:
-        self.left = takeOrThrow(left, content[0].left)
-        self.right = takeOrThrow(right, content[0].right)
-        self.sep = takeOrThrow(sep, content[0].sep)
-        list.__init__(self,[ x for x in content[0] ])
-        #logging.debug("alist.__init__ incorporated {} {} {} {}".format(repr(content), left, sep, right))
-        return
-      except MyError:
-        # if not possible continue with normal constructor
-        pass
-    list.__init__(self, content)
-    self.left = left
-    self.right = right
-    self.sep = sep
-
-  def dupModify(self, content=None, left=None, right=None, sep=None):
-    out = alist(self.content, self.left, right.left, sep=sep)
-    if content:
-      out.content = content
-    if left:
-      out.left = left
-    if right:
-      out.right = right
-    if sep:
-      out.sep = sep
-    return out
-
-  def __add__(self, other):
-    # preserve list property
-    if isinstance(other, alist):
-      assert(other.left == self.left and other.right == self.right and other.sep == self.sep)
-    return alist(list.__add__(self, other), self.left, self.right, self.sep)
-
-  def __repr__(self):
-    left = 'alist<{}^{}^{}<'.format(self.left, self.sep, self.right)
-    right = '>>'
-    return '{}{}{}'.format(left, list.__repr__(self), right)
-  __str__ = __repr__
 
 # count line numbers and ignore them
 def t_newline(t):
@@ -270,8 +199,8 @@ def p_error(p):
 
 # TODO manage installation of yacc-generated scripts somehow and reactivate write_tables
 # , optimize=not __debug__
-myparser = yacc.yacc(start='content', write_tables=False)
-mytermparser = yacc.yacc(start='elist', write_tables=False, errorlog=None)
+myparser = yacc.yacc(start='content', write_tables=False, errorlog=yacc.NullLogger())
+mytermparser = yacc.yacc(start='elist', write_tables=False, errorlog=yacc.NullLogger())
 
 def parseTerm(content):
   '''

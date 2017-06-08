@@ -1,6 +1,6 @@
 import dlvhex
 
-import hexlite.shallowhexparser as shp
+import hexlite.ast.shallowparser as shp
 
 import logging
 
@@ -290,6 +290,40 @@ def testSetMinus2(p, q):
 					))
 			dlvhex.output(x)
 
+def testNonmon(p):
+	pset = set()
+	for x in dlvhex.getTrueInputAtoms():
+		tup = x.tuple()
+		pset.add(tup[1].intValue())
+	mapping = {
+		frozenset([]):    [2],
+		frozenset([1]):   [1],
+		frozenset([2]):   [1],
+		frozenset([1,2]): [1,2],
+	}
+	pset = frozenset(pset)
+	if pset not in mapping:
+		raise Exception("testNonmon is supposed to handle only input domain {1,2}")
+	for o in mapping[pset]:
+		dlvhex.output( (o,) )
+
+def testNonmon2(p):
+	pset = set()
+	for x in dlvhex.getTrueInputAtoms():
+		tup = x.tuple()
+		pset.add(tup[1].intValue())
+	mapping = {
+		frozenset([]):    [2],
+		frozenset([1]):   [2],
+		frozenset([2]):   [ ],
+		frozenset([1,2]): [1,2],
+	}
+	pset = frozenset(pset)
+	if pset not in mapping:
+		raise Exception("testNonmon2 is supposed to handle only input domain {1,2}")
+	for o in mapping[pset]:
+		dlvhex.output( (o,) )
+
 def rdf(uri):
 	logging.warning('TODO implement &rdf (and #namespace)')
 	dlvhex.output(('s', 'p', 'o'))
@@ -321,6 +355,9 @@ def register():
 	#TODO testCautiousQuery
 	dlvhex.addAtom("testSetMinus", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
 	dlvhex.addAtom("testSetMinus2", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
+
+	dlvhex.addAtom("testNonmon", (dlvhex.PREDICATE,), 1)
+	dlvhex.addAtom("testNonmon2", (dlvhex.PREDICATE,), 1)
 
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
