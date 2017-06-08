@@ -407,14 +407,11 @@ class CheckOptimizedProgram:
     :- not AUX_SMALLER.
   (VII) All facts from the original ground program (only needed for external atom evaluation):
     x.   for all $x \in facts$
-  (VIII) For each disjunctive rule $r_i = HEAD :- BODY$ with $r_i \in djrules$:
+  (VIII) For each rule $r_i \in djrules/replrules/chrules$:
     HEAD :- AUX_RH(i), BODY.
-  (IX) For each external atom replacement rule $r_i = { eareplatom } :- BODY$ with $r_i \in replrules$:
-    { eareplatom } :- AUX_RH(i), BODY.
-  (X) For each choice rule $r_i = { ch_1 ; ... ; ch_n } :- BODY$ with $r_i \in chrules$:
-    ch_1 | AUX_CS(ch_1) :- AUX_RH(i), BODY.
-    ...
-    ch_n | AUX_CS(ch_n) :- AUX_RH(i), BODY.
+  (IX) For each choice rule $r_i = { ch_1 ; ... ; ch_n } :- BODY$ with $r_i \in chrules$:
+    ch_i | AUX_CH(ch_i).  for all i \in 1,...,n
+    [Without condition, for a choice head atom there is a disjunctive guess].
 
   The purpose of this program is to check if the FLP reduct has a model that is smaller than the original compatible set.
 
@@ -488,26 +485,20 @@ class CheckOptimizedProgram:
       choice, head = rule[1], rule[2]
       # automagic body formatting
       return self.po.formatHead(choice, head)+':-'+ruleHeadAux(idx)+prefixIfNonempty(self.po.formatBody(rule),',')+'.'
-    djrules = [ formatAnyRuleInjectAux(rule, idx) for idx, rule
-                in enumerate(self.po.djrules, self.po.djrules_base) ]
-    replrules = [ formatAnyRuleInjectAux(rule, idx) for idx, rule
-                  in enumerate(self.po.replrules, self.po.replrules_base) ]
-    chrules = []
-    for idx, rule in enumerate(self.po.chrules, self.po.chrules_base):
-      # normal rule (0,choice,head,body)
-      # weight rule (1,choice,head,lowerbound,body)
-      assert(rule[1] == True) # must be choice here
-      head = rule[2]
-      chrules += [ self.po.formatAtom(iatm)+'|'+self.chauxatoms[iatm]+':-'+
-                   ruleHeadAux(idx)+prefixIfNonempty(self.po.formatBody(rule),',')+'.'
-                   for iatm in head ]
+    allrules = [ formatAnyRuleInjectAux(rule, idx) for idx, rule
+                in enumerate(self.po.allrules) ]
+    # normal rule (0,choice,head,body)
+    # weight rule (1,choice,head,lowerbound,body)
+    chrules = [ self.po.formatAtom(iatm)+'|'+self.chauxatoms[iatm]+'.'
+                for rule in self.po.chrules
+                for iatm in rule[2] ]
 
     # transform cmatoms into clingo terms of the compatible set auxiliaries
     # (we no longer need them in their original form)
     # (we will need them in this way for the assumptions)
     #self.cmatoms = [ clingo.parse_term(a) for a in self.cmatoms ]
 
-    return rhguess + csguess + atomguess + ensureng + defsmaller + needsmaller + sfacts + djrules + replrules + chrules
+    return rhguess + csguess + atomguess + ensureng + defsmaller + needsmaller + sfacts + allrules + chrules
 
   def _assumptionFromActiveRules(self, activeRules):
     # activeRules is a set of integers (indices into self.po.allrules)

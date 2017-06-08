@@ -12,16 +12,23 @@ agg7.hex agg7.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
 #XFAIL FLP+weak weak1.hex weak1.out
 weak1.hex weak1.out --flpcheck=none
-weak2.hex weak2.out
+#XFAIL FLP+weak weak2.hex weak2.out
+weak2.hex weak2.out --flpcheck=none
 #XFAIL predinput-valueinvention weak3.hex weak3.out
-weak4.hex weak4.out
-weak5.hex weak5.out
+#XFAIL FLP+weak weak4.hex weak4.out
+weak4.hex weak4.out --flpcheck=none
+#XFAIL FLP+weak weak5.hex weak5.out
+weak5.hex weak5.out --flpcheck=none
 #XFAIL FLP+weak weak_bench_small.hex weak_bench_small.out
 weak_bench_small.hex weak_bench_small.out --flpcheck=none
-weak6a.hex weak6a.out 
-weak6b.hex weak6b.out 
-weak6c.hex weak6c.out 
-weak7.hex weak7.out
+#XFAIL FLP+weak weak6a.hex weak6a.out 
+weak6a.hex weak6a.out --flpcheck=none
+#XFAIL FLP+weak weak6b.hex weak6b.out 
+weak6b.hex weak6b.out --flpcheck=none
+#XFAIL FLP+weak weak6c.hex weak6c.out 
+weak6c.hex weak6c.out --flpcheck=none
+#XFAIL FLP+weak weak7.hex weak7.out
+weak7.hex weak7.out --flpcheck=none
 anonymousvariable1.hex anonymousvariable1.out --nofacts
 #XFAIL old DLV builtin_safety1.hex builtin_safety1.stderr
 #XFAIL old DLV builtin_safety1a.hex builtin_safety1a.stderr
