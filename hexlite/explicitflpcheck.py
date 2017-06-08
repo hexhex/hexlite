@@ -550,7 +550,7 @@ class CheckOptimizedProgram:
     for ichatom, chauxatom in self.chauxatoms.items():
       # TODO cache csAtom <-> iauxatm
       csAtom = clingo.parse_term(prefixAtom(chauxatom, Aux.CSATOM))
-      ret.append( (csAtom, mdl.is_true(ichatom)) )
+      ret.append( (csAtom, not mdl.is_true(ichatom)) )
     return ret
 
   def checkFLPViolation(self, activeRules, mdl):
