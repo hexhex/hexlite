@@ -49,24 +49,39 @@ class GroundProgramObserver:
 
   def __init__(self):
     # a program is a set of rules, we assume gringo/clasp are clever enough to eliminate duplicates
-    self.atom2int = {}
-    self.int2atom = {}
-    # clasp auxiliary atoms
+
+    # facts (list of clingo.Symbol)
+    self.facts = []
+    # clasp non-fact and non-auxiliary atoms
+    self.atom2int = {} # clingo.Symbol to int
+    self.int2atom = {} # int to clingo.Symbol
+    # clasp auxiliary atoms (set of int)
     self.auxatoms = set()
-    # eatom truth replacement atoms (cache)
+    # eatom truth replacement atoms (set of int)
     self.replatoms = set()
-    # facts
-    self.facts = set()
-    # received rules (will be erased at end_step! use only eareplrules and rules!)
-    self.preliminaryrules = []
-    # rules for eatom replacement guessing
-    self.eareplrules = []
-    # all other rules (index starts in self.rules and continues in self.weightrules)
-    self.rules = []
-    self.weightrules = []
+    # atoms in choice rule heads that are not replatoms (set of int)
+    self.chatoms = set()
+
+    # weight rules and normal rules are stored together, distinguished by first tuple element
+    # normal rule (0,choice,head,body)
+    # weight rule (1,choice,head,lowerbound,body)
+    # choice is the same for all rules in one of the following three (disjoint) lists
+    # constraints are disjunctive rules with empty head
+
+    # choice rules for eatom replacement guessing
+    self.replrules = []
+    # choice rules that are not for eatom replacement guessing
+    self.chrules = []
+    # disjunctive rules
+    self.djrules = []
+
     # helpers
     self.maxAtom = 1
+
+    # for receiving rules
     self.waitingForStuff = True
+    self.preliminaryrules = []
+    self.preliminaryweightrules = []
 
   def init_program(self, incr):
     logging.debug("GPInit")
@@ -76,13 +91,16 @@ class GroundProgramObserver:
     self.waitingForStuff = True
   def end_step(self):
     logging.debug("GPEndStep")
-    # here we got rules and atoms so only here we can
-    # * separate symbol atoms from auxiliary (and maybe projected/hidden) atoms
+    # auxatoms
     self.extractAuxAtoms()
-    # * separate rules from eareplrules
-    self.extractEAtomReplacementGuesses()
+    # replatoms
+    self.extractReplAtoms()
+    # chatoms replrules chrules djrules
+    self.preliminaryToCategorizedRules()
+    # done!
     self.waitingForStuff = False
-    self.printall()
+    if __debug__:
+      self.printall()
   def __getattr__(self, name):
     return self.WarnMissing(name)
   def rule(self, choice, head, body):
@@ -93,49 +111,77 @@ class GroundProgramObserver:
     self.preliminaryrules.append( (choice, head, body) )
   def weight_rule(self, choice, head, lower_bound, body):
     logging.debug("GPWeightRule ch=%s hd=%s lb=%s, b=%s", repr(choice), repr(head), repr(lower_bound), repr(body))
-    self.weightrules.append( (choice, head, lower_bound, body) )
+    self.preliminaryweightrules.append( (choice, head, lower_bound, body) )
   def output_atom(self, symbol, atom):
     logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
     if atom == long(0):
       # this is not a literal but a signal that symbol is always true (i.e., a fact)
-      self.facts.add(symbol)
-      assert(not symbol.name.startswith(Aux.EAREPL))
+      self.facts.append(symbol)
     else:
       self.atom2int[symbol] = atom
       self.int2atom[atom] = symbol
       self.maxAtom = max(self.maxAtom, atom)
-      if symbol.name.startswith(Aux.EAREPL):
-        self.replatoms.add(atom)
 
   def extractAuxAtoms(self):
-    def extractAuxFromLits(lits):
+    def from_lits(lits):
       for lit in lits:
         alit = abs(lit)
         if alit not in self.int2atom:
           self.auxatoms.add(alit)
     for choice, head, body in self.preliminaryrules:
-      extractAuxFromLits(head+body)
-    for choice, head, lower_bound, body in self.weightrules:
-      extractAuxFromLits(head+[at for (at,w) in body])
+      from_lits(head+body)
+    for choice, head, lower_bound, body in self.preliminaryweightrules:
+      from_lits(head+[at for (at,w) in body])
 
-  def extractEAtomReplacementGuesses(self):
+  def extractReplAtoms(self):
+    self.replatoms |= set([ at for at, sym in self.int2atom.items()
+      if sym.name.startswith(Aux.EAREPL) ])
+
+  def preliminaryToCategorizedRules(self):
     for choice, head, body in self.preliminaryrules:
-      if choice and len(head) == 2 and head[0] in self.replatoms:
-        assert(head[1] in self.replatoms)
-        self.eareplrules.append( (choice, head, body) )
+      if not choice:
+        self.djrules.append( (0,choice,head,body) )
       else:
-        assert(len(head) != 2 or (head[0] not in self.replatoms and head[1] not in self.replatoms))
-        self.rules.append( (choice, head, body) )
-    # after that we should not use this anymore
-    # XXX solve this in a more elegant way, without ever storing in self
+        assert(len(head) > 0) # constraints should be disjunctive rules
+        if head[0] in self.replatoms:
+          assert(all([x in self.replatoms for x in head]))
+          self.replrules.append( (0,choice,head,body) )
+        else:
+          assert(all([x not in self.replatoms for x in head]))
+          self.chrules.append( (0,choice,head,body) )
+          self.chatoms.add(set(head))
+    for choice, head, lowerbound, body in self.preliminaryweightrules:
+      if not choice:
+        self.djrules.append( (1,choice,head,lowerbound,body) )
+      else:
+        assert(len(head) > 0) # weight constraints should be disjunctive rules
+        if head[0] in self.replatoms:
+          assert(all([x in self.replatoms for x in head]))
+          self.replrules.append( (1,choice,head,lowerbound,body) )
+        else:
+          assert(all([x not in self.replatoms for x in head]))
+          self.chrules.append( (1,choice,head,lowerbound,body) )
+          self.chatoms.add(set(head))
+
+    # after this categorization we should not use the following containers anymore
     del(self.preliminaryrules)
+    del(self.preliminaryweightrules)
+
+  ### above = building data structures, below = accessing data structures
+
+  def prefixAtom(self, orig, prefix):
+    # prefix without breaking with strong negation
+    if orig[0] == '-':
+      return '-'+prefix+orig[1:]
+    else:
+      return prefix+orig
 
   def formatAtom(self, atom):
     absatom = abs(atom)
     if absatom in self.int2atom:
       stratom = str(self.int2atom[absatom])
     else:
-      stratom = 'claspaux'+str(absatom)
+      stratom = Aux.CLATOM+str(absatom)
     assert(atom != long(0))
     if atom > long(0):
       # positive literal
@@ -147,8 +193,7 @@ class GroundProgramObserver:
   def formatBody(self, body):
     return ','.join([self.formatAtom(x) for x in body])
 
-  def formatRule(self, rule):
-    choice, head, body = rule
+  def formatNormalRule(self, choice, head, body):
     headstr = HBEG[choice] + HSEP[choice].join([self.formatAtom(x) for x in head]) + HEND[choice]
     if len(body) == 0:
       return headstr+'.'
@@ -162,43 +207,45 @@ class GroundProgramObserver:
       a = self.formatAtom(atom)
       if atom < 0:
         aa = self.formatAtom(abs(atom))
-        return "{w},n{aa}:{a}".format(a=a, aa=aa, w=weight)
+        return "{w},{aa}:{a}".format(a=a, aa=self.prefixAtom(aa,'n'), w=weight)
       else:
         return "{w},{a}:{a}".format(a=a, w=weight)
     assert(len(body) > 0)
     return str(lower_bound)+'<=#sum{'+ ';'.join([formatElement(e) for e in body]) + '}'
 
-  def formatWeightRule(self, weightrule):
-    choice, head, lower_bound, body = weightrule
+  def formatWeightRule(self, choice, head, lower_bound, body):
     headstr = HBEG[choice] + HSEP[choice].join([self.formatAtom(x) for x in head]) + HEND[choice]
     assert(len(body) > 0)
     return headstr + ':-' + self.formatWeightBody(lower_bound, body) + '.'
 
-  def formatAnyRule(self, anyrule):
-    if len(anyrule) == 3:
-      return self.formatRule(anyrule)
+  def formatRule(self, anyrule):
+    if anyrule[0] == 0:
+      return self.formatNormalRule(*anyrule[1:])
     else:
-      return self.formatWeightRule(anyrule)
+      assert(anyrule[0] == 1)
+      return self.formatWeightRule(*anyrule[1:])
 
   def printall(self):
-    if __debug__:
-      logging.debug("facts:")
-      logging.debug('  '+', '.join([ str(f) for f in self.facts]))
-      logging.debug("eareplrules:")
-      for r in self.eareplrules:
-        logging.debug('  '+self.formatRule(r))
-      logging.debug("rules:")
-      for r in self.rules:
-        logging.debug('  '+self.formatRule(r))
-      logging.debug("weight rules:")
-      for r in self.weightrules:
-        logging.debug('  '+self.formatWeightRule(r))
+    logging.debug('facts:'+', '.join([ str(f) for f in self.facts]))
+    logging.debug('auxatoms:'+', '.join([ self.formatAtom(a) for a in self.auxatoms]))
+    logging.debug('replatoms:'+', '.join([ self.formatAtom(a) for a in self.replatoms]))
+    logging.debug('chatoms:'+', '.join([ self.formatAtom(a) for a in self.chatoms]))
+    logging.debug("replrules:")
+    for r in self.replrules:
+      logging.debug('  '+self.formatRule(r))
+    logging.debug("chrules:")
+    for r in self.chrules:
+      logging.debug('  '+self.formatRule(r))
+    logging.debug("djrules:")
+    for r in self.djrules:
+      logging.debug('  '+self.formatRule(r))
 
   def finished(self):
     # true if at least one program was fully received
     return not self.waitingForStuff
 
   def rule_by_index(self, idx):
+    # TODO move this function out of here, it belongs somewhere else
     lsr = len(self.rules)
     if idx < lsr:
       return self.rules[idx]
@@ -305,7 +352,7 @@ class CheckOptimizedProgram:
   Let $atoms$ be all atoms with ID != 0.
     (Some of these are clasp auxiliaries, all others have a symbol, maybe strong negation.)
   Let $replatoms \subseteq atoms$ be atoms used in choice heads of external replacement guesses.
-  Let $chatoms \subseteq atoms$ be atoms used in choice heads.
+  Let $chatoms \subseteq atoms$ be atoms used in choice heads that are not external replacement guesses.
   Let $rules$ be all normal and weight rules.
   Let $replrules \subseteq rules$ be all choice rules (normal and weight rules) with only replatoms as heads.
   Let $chrules \subseteq$ be all choice rules (normal and weight rules) without replatoms in the head.
@@ -314,9 +361,9 @@ class CheckOptimizedProgram:
     [assumption: disjunctive rules never have replatoms in their head]
 
   Then the set of \emph{counter-model atoms} is the set
-    $cmatoms = atoms \setminus replatoms \cup { CHAUX(b) | b \in chatoms \setminus replatoms }$
+    $cmatoms = atoms \setminus replatoms \cup { CHAUX(b) | b \in chatoms }$
   which contains original atoms without external atom replacements,
-    plus auxiliaries for all choice heads that are not external atom replacements.
+    plus auxiliaries for all atoms in (non-replacement rule) choice heads.
 
   Then the check program contains:
   (I) A guess for activity of each rule $r_i \in rules$:
@@ -506,7 +553,7 @@ class ExplicitFLPChecker(FLPCheckerBase):
       logging.info("Rules in reduct:")
       for ridx in activeRules:
         r = self.__programObserver.rule_by_index(ridx)
-        logging.info("  R rule: "+repr(self.__programObserver.formatAnyRule(r)))
+        logging.info("  R rule: "+repr(self.__programObserver.formatRule(r)))
     checkProgram = self.checkProgram()
     is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl)
     if __debug__:

@@ -33,8 +33,16 @@ class Aux:
 
   # auxiliary for rule heads in explicitflpcheck.RuleActivityProgram
   RHPRED = PREFIX+'h'
-  # auxiliary for atoms in compatible set in explicitflpcheck.CheckOptimizedProgram
-  CATOMTRUE = PREFIX+'c'
+
+  # for explicitflpcheck.CheckOptimizedProgram
+  # auxilary for unnamed clasp atoms
+  CLATOM = PREFIX+'C'
+  # auxiliary for atoms in compatible set
+  CSATOM = PREFIX+'c'
+  # auxiliary for atoms in choice heads 
+  CHATOM = PREFIX+'H'
+  # auxiliary for smaller atom
+  SMALLER = PREFIX+'smaller'
 
 def predEAtomRelevance(arity, eatomname):
   return Aux.EAREL+'_'+str(arity)+'_'+eatomname
