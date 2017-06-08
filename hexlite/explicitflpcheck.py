@@ -306,7 +306,7 @@ class RuleActivityProgram:
 
   def _assumptionFromModel(self, mdl):
     syms = mdl.symbols(atoms=True, terms=True)
-    ret = [ (atm, mdl.contains(atm)) for atm in self.po.atom2int ]
+    ret = [ (atm, mdl.contains(atm)) for atm in self.po.atom2int.keys() ]
     ret += [ (clingo.Function(self.po.formatAtom(auxatm)), mdl.is_true(auxatm))
              for auxatm in self.po.auxatoms ]
     return ret
