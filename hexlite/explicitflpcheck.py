@@ -505,7 +505,7 @@ class CheckOptimizedProgram:
     # transform cmatoms into clingo terms of the compatible set auxiliaries
     # (we no longer need them in their original form)
     # (we will need them in this way for the assumptions)
-    self.cmatoms = [ clingo.parse_term(a) for a in self.cmatoms ]
+    #self.cmatoms = [ clingo.parse_term(a) for a in self.cmatoms ]
 
     return rhguess + csguess + atomguess + ensureng + defsmaller + needsmaller + sfacts + djrules + replrules + chrules
 
