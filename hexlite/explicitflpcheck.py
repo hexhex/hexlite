@@ -224,17 +224,15 @@ class GroundProgramObserver:
       return headstr+':-'+bodystr+'.'
 
   def formatWeightBody(self, lower_bound, body):
-    def formatElement(e):
+    # XXX DANGER: the weight rules in ASPIF have no collapsing mechanism
+    # -> getting (1,-13), (1,-13) as body atoms needs to count 2 if 13 is false!
+    def formatElement(idx, e):
       iatom, weight = e
       a = self.formatAtom(iatom)
-      if iatom < 0:
-        # NAF literal, but we cannot put NAF into tuple before ":"
-        aa = self.formatAtom(abs(iatom))
-        return "{w},{aa}:{a}".format(a=a, aa=prefixAtom(aa,'n'), w=weight)
-      else:
-        return "{w},{a}:{a}".format(a=a, w=weight)
+      return "{w},{idx}:{a}".format(a=a, idx=idx, w=weight)
     assert(len(body) > 0)
-    return str(lower_bound)+'<=#sum{'+ ';'.join([formatElement(e) for e in body]) + '}'
+    selems = ';'.join([formatElement(idx, e) for idx, e in enumerate(body)])
+    return str(lower_bound)+'<=#sum{'+ selems + '}'
 
   def formatWeightRule(self, choice, head, lower_bound, body):
     headstr = self.formatHead(choice, head)
