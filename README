@@ -27,8 +27,31 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 * License: GPL (3.0)
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
-* Installation: ```sudo pip install hexlite```
-  (You might need to install python-pip under Ubuntu ```sudo apt-get install python-pip```.)
-  Ubuntu 16.04 works
-  Debian 8.6 (jessie) works
-  Ubuntu 14.04 does not work automatically (CMake 3.1 or higher is required by clingo)
+* Installation:
+  * If you do not have it: install `python-pip`: for example under Ubuntu via
+    
+    ```$ sudo apt-get install python-pip```
+
+  * Install hexlite:
+
+    ```$ pip install hexlite --user```
+
+  * Setup Python to use the "Userinstall" environment that allows you
+    to install Python programs without overwriting system packages:
+
+    Add the following to your `.profile` or `.bashrc` file:
+
+    export PYTHONUSERBASE=~/.local/
+    export PATH=$PATH:~/.local/bin
+
+  * Run hexlite the first time. This will help to download and build pyclingo unless it is already usable via `import clingo`:
+
+    ```$ hexlite```
+
+    The first run of hexlite might ask you to enter the sudo password
+    to install several packages.
+    (You can do this manually. Simply abort and later run `hexlite` again.)
+
+  * Ubuntu 16.04 is tested
+  * Debian 8.6 (jessie) is tested
+  * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
