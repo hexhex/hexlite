@@ -292,62 +292,68 @@ class CheckOptimizedProgram:
   '''
   This program is a transformed version of the ground program Pi with HEX replacement atoms.
 
-  It is an adaptation of Proposition 2 from the following paper:
+  It is an adaptation of Proposition 1 from the following paper:
   Eiter, T., Fink, M., Krennwallner, T., Redl, C., & Schüller, P. (2014).
   Efficient HEX-Program Evaluation Based on Unfounded Sets.
   Journal of Artificial Intelligence Research, 49, 269–321.
 
   (The adaptation is about choice rules.)
 
-  Let _atoms be all atoms with ID != 0 observed in GroundProgramObserver
-    (some of these are clasp auxiliaries).
-  Let _replatoms be atoms used in choice heads of external replacement guesses.
-  Let _auxatoms be auxiliary atoms observed in GroundProgramObserver.
-  Let _facts be facts observed in GroundProgramObserver.
-  Let _rules and _weightrules be observed sequences of rules and weight rules.
-  Given a set X of rules or weight rules,
-    let CH(X) be the set of choice rules in X, and
-    let noCH(X) be the set of non-choice rules in X.
-  Let _chatoms = atoms in heads of rules CH(_rules+_weightrules) - _replatoms.
-    (Atoms in heads of choice rules, except external atom guess rules.)
-  Let _nchatoms = { <Aux_CHOICENEG>a | a \in _chatoms }.
-    (Negations of atoms in _chatoms.)
-  Let _minchatoms = _atoms - _replatoms + _nchatoms.
-    (These atoms will be checked for minimality.)
+  We classify the following information from GroundProgramObserver:
+  Let $facts$ be all symbols of facts.
+    [assumption (ensured by clasp/clingo API) atoms and facts are disjoint]
+  Let $atoms$ be all atoms with ID != 0.
+    (Some of these are clasp auxiliaries, all others have a symbol, maybe strong negation.)
+  Let $replatoms \subseteq atoms$ be atoms used in choice heads of external replacement guesses.
+  Let $chatoms \subseteq atoms$ be atoms used in choice heads.
+  Let $rules$ be all normal and weight rules.
+  Let $replrules \subseteq rules$ be all choice rules (normal and weight rules) with only replatoms as heads.
+  Let $chrules \subseteq$ be all choice rules (normal and weight rules) without replatoms in the head.
+    [assumption: a choice rule either has a single replatom in the head, or only non-replatoms in their head]
+  Let $djrules \subseteq rules$ be all non-choice rules (normal and weight rules).
+    [assumption: disjunctive rules never have replatoms in their head]
 
-  The check program contains:
-  (I) a guess { <Aux.RHPRED>(ruleidx) }. for each index of a rule/weightrule
-      (these truths will be fully determined by a solver assumption)
-  (II) a guess { <Aux.CATOMTRUE>_A }. for each atom A in _minchatoms
-      (will be determined by an assumption)
-  (III) a guess { A }. for each atom A in _minchatoms in Pi (stored in self.po.int2atom/atom2int and self.po.auxatoms) a guess '{a}.'
+  Then the set of \emph{counter-model atoms} is the set
+    $cmatoms = atoms \setminus replatoms \cup { CHAUX(b) | b \in chatoms \setminus replatoms }$
+  which contains original atoms without external atom replacements,
+    plus auxiliaries for all choice heads that are not external atom replacements.
 
-  (IIa) a constraint :- <Aux.RHPRED>(ruleidx), {not <HEADATOMS>}, <POSBODYATOMS>. for each non-choice rule in Pi
-  (IIb) a constraint :- <Aux.RHPRED>(ruleidx), not a, not <Aux.CHOICENEG>a, <POSBODYATOMS>.
-      for each head atom a in each choice rule in Pi.
-  (IIIb) for each atom a in the head of a choice rule in Pi a guess '{<Aux.CHOICENEG>a}.'
-
-  (V) for each atom A in Pi that is not an external atom replacement, the rules
-      % A cannot become true if it was not true in the compatible set
-      :- A, not <Aux.CATOMTRUE>_A.
-      % A is guessed to be true if it was true in the compatible set
-      {A} :- <Aux.CATOMTRUE>_A.
-      % model is smaller than compatible set if an atom is not true that is true in the compatible set
-      smaller :- not A, <Aux.CATOMTRUE>_A.
-  (VI) the rule
-      :- not smaller
-  (VII) all facts from the original ground program (stored in self.po.facts)
-
-  (VIII) for all head atoms a_i in all ground choice rules { a1, .. am } :- body:
-    a disjunctive guess 'a_i | auxneg_a_i :- body.'
+  Then the check program contains:
+  (I) A guess for activity of each rule $r_i \in rules$:
+    { AUX_RH(i) }.
+    (These truths will be fully determined by a solver assumption to fix the FLP reduct.)
+  (II) A guess of the compatible set that is investigated:
+    for all atoms $x \in cmatoms$ (including choice auxiliaries) we have
+    { AUX_CS(x) }.
+    (These truths will be fully determined by a solver assumption to fix the compatible set.)
+  (III) A guess { x } :- AUX_CS(x). for each atom $x \in cmatoms$ to guess countermodel atoms wrt a compatible set.
+  (IV) A constraint that ensures that the countermodel is not greater than the compatible set:
+    :- x, not AUX_CS(x).  for each atom $x \in cmatoms$
+  (V) A rule that detects if the model is smaller than the compatible set:
+    AUX_SMALLER :- not x, AUX_CS(x).  for each $x \in cmatoms$
+  (VI) A constraint that requires to find a smaller answer set:
+    :- not AUX_SMALLER.
+  (VII) All facts from the original ground program (only needed for external atom evaluation):
+    x.   for all $x \in facts$
+  (VIII) For each disjunctive rule $r_i = HEAD :- BODY$ with $r_i \in djrules$:
+    HEAD :- AUX_RH(i), BODY.
+  (IX) For each external atom replacement rule $r_i = { eareplatom } :- BODY$ with $r_i \in replrules$:
+    { eareplatom } :- AUX_RH(i), BODY.
+  (X) For each choice rule $r_i = { ch_1 ; ... ; ch_n } :- BODY$ with $r_i \in chrules$:
+    ch_1 | AUX_CS(ch_1) :- AUX_RH(i), BODY.
+    ...
+    ch_n | AUX_CS(ch_n) :- AUX_RH(i), BODY.
 
   The purpose of this program is to check if the FLP reduct has a model that is smaller than the original compatible set.
 
-  This is determined using solver assumptions which fully determine the guesses (I) to determine the reduct and the guess (IV) to determine the compatible set.
+  This is determined using solver assumptions which
+  * fully determine the guesses (I) to determine the FLP reduct, and
+  * fully determine the guess (II) to determine the compatible set.
 
   For this program we also need to check if external atom semantics are correctly captured by the guesses,
   so we include the propagator from the main solver in the search.
-  (Input/output cache can be reused so we use the same instance as in the main search.)
+
+  TODO share input/output cache for external atoms (if we implement one)
   '''
   def __init__(self, programObserver, propagatorFactory):
     self.po = programObserver
