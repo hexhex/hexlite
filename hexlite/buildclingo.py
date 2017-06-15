@@ -52,9 +52,10 @@ class InstallerBase:
     return False
 
   def ensurepackages(self, packages):
-    logging.debug('obtaining list of installed packages with dpkg')
-    allpackages = subprocess.check_output(['dpkg-query', '-W', "-f=${binary:Package}\\n"]).decode('utf8')
-    #logging.debug('got list: '+repr(allpackages))
+    cmd = ['dpkg-query', '-W', r"-f=${binary:Package}\n"]
+    logging.info('obtaining list of installed packages with command '+repr(cmd))
+    allpackages = subprocess.check_output(cmd).decode('utf8')
+    logging.info('got list '+repr(allpackages))
     allpackages = set([pkg.strip() for pkg in allpackages.split('\n')])
     need = [pkg for pkg in packages if pkg not in allpackages]
     if len(need) > 0:
@@ -173,7 +174,8 @@ def build():
         logging.info('installing for untested Debian version {} (tested = {})'.format(lsbrelease, repr(DEBIAN_TESTED)))
         inst.doit(USUALPACKAGES)
     else:
-      logging.info('installing for untested Linux version (tested = Ubuntu {} and Debian {})'.format(
+      logging.info('installing for untested Linux id {} and release {} (tested = Ubuntu {} and Debian {})'.format(
+        repr(lsbid), repr(lsbrelease),
         repr(UBUNTU_TESTED), repr(DEBIAN_TESTED)))
       inst.doit(USUALPACKAGES)
   except IOError:
