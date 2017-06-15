@@ -16,7 +16,7 @@ def readme():
       return out.decode('utf8')
 
 setuptools.setup(name='hexlite',
-      version='0.3.15',
+      version='0.3.16',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
@@ -36,7 +36,7 @@ setuptools.setup(name='hexlite',
       author='Peter Schuller',
       author_email='schueller.p@gmail.com',
       license='GPL3',
-      packages=['hexlite', 'dlvhex'],
+      packages=['hexlite', 'hexlite.ast', 'dlvhex'],
       install_requires=[
         'ply',
       ],
