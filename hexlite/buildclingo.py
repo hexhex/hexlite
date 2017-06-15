@@ -52,7 +52,7 @@ class InstallerBase:
     return False
 
   def ensurepackages(self, packages):
-    cmd = ['dpkg-query', '-W', r"-f=${binary:Package}\n"]
+    cmd = ['dpkg-query', '-W', "-f=${Package}\\n"]
     logging.info('obtaining list of installed packages with command '+repr(cmd))
     allpackages = subprocess.check_output(cmd).decode('utf8')
     logging.info('got list '+repr(allpackages))
