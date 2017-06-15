@@ -149,7 +149,7 @@ def build():
     # for installing from release packages
     #USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'libpython3-dev']
     # for installing from git
-    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'libpython3-dev', 'bison', 're2c']
+    USUALPACKAGES = ['wget', 'tar', 'gzip', 'cmake', 'g++', 'libpython3-dev', 'bison', 're2c', 'git']
     IMPOSSIBLE = {
       ('Ubuntu', '14.04'): 'Does not contain sufficiently new cmake and g++ for automatic build (you can try to manually install these)'
     }
