@@ -80,9 +80,9 @@ def getTrueInputAtoms():
 eatoms = {}
 # plugin module that is currently registering eatoms
 callingModule = None
-# list of ID objects that are predicate input for the currently called external atom
+# frozen set of ID objects that are predicate input for the currently called external atom
 # None if eatom does not take predicate input
-currentInput = []
+currentInput = frozenset()
 # tuples returned by the current/previously called external atom
 currentOutput = []
 

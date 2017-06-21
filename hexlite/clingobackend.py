@@ -117,6 +117,8 @@ class EAtomEvaluator:
   using the same API as in the dlvhex solver (but fully realized in Python).
 
   This closely interacts with the dlvhex package.
+
+  This is one object that evaluates all external atoms in the context of a clasp context.
   '''
   def __init__(self, claspcontext):
     assert(isinstance(claspcontext, ClaspContext))
@@ -190,6 +192,26 @@ class EAtomEvaluator:
     finally:
       dlvhex.cleanupExternalAtomCall()
     return out
+
+class CachedEAtomEvaluator(EAtomEvaluator):
+  def __init__(self, claspcontext):
+    EAtomEvaluator.__init__(self, claspcontext)
+    # cache = defaultdict:
+    # key = eatom name
+    # value = defaultdict
+    #   key = inputtuple
+    #   value = dict:
+    #     key = predicateinputatoms
+    #     value = output
+    self.cache = collections.defaultdict(lambda: collections.defaultdict(dict))
+
+  def evaluate(self, holder, inputtuple, predicateinputatoms):
+    # this is handled by defaultdict
+    storage = self.cache[holder.name][inputtuple]
+    if predicateinputatoms not in storage:
+      storage[predicateinputatoms] = EAtomEvaluator.evaluate(
+        self, holder, inputtuple, predicateinputatoms)
+    return storage[predicateinputatoms]
 
 class GringoContext:
   class ExternalAtomCall:
@@ -271,6 +293,7 @@ class ClingoPropagator:
     self.ccontext = ccontext
     # helper for external atom evaluation - to perform external atom evaluation
     self.eaeval = eaeval
+
   def init(self, init):
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
@@ -301,7 +324,7 @@ class ClingoPropagator:
                   predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
                   verification.predinputs[argpos].append(predinputid)
 
-          verification.allinputs = hexlite.flatten([idlist for idlist in verification.predinputs.values()])
+          verification.allinputs = frozenset(hexlite.flatten([idlist for idlist in verification.predinputs.values()]))
           self.eatomVerifications[eatomname].append(verification)
 
     # for debugging: get full symbol table
@@ -463,7 +486,8 @@ def execute(pcontext, rewritten, facts, plugins, args):
   ccontext = ClaspContext()
 
   # preparing evaluator for external atoms which needs to know the clasp context
-  eaeval = EAtomEvaluator(ccontext)
+  #eaeval = EAtomEvaluator(ccontext)
+  eaeval = CachedEAtomEvaluator(ccontext)
 
   propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval)
 
