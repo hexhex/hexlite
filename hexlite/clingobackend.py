@@ -116,6 +116,8 @@ class ClingoID:
       return self.value() == other
     elif isinstance(other, int) and self.symlit.sym.type == clingo.SymbolType.Number:
       return self.intValue() == other
+    elif isinstance(other, ClingoID):
+      return self.symlit.sym == other.symlit.sym
     else:
       return self.value() == other
 
