@@ -16,7 +16,7 @@ def readme():
       return out.decode('utf8')
 
 setuptools.setup(name='hexlite',
-      version='0.3.18',
+      version='0.3.19',
       description='HEXLite Python-based solver for a fragment of HEX',
       long_description=readme(),
       classifiers=[
