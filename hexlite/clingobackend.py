@@ -108,6 +108,17 @@ class ClingoID:
   def __repr__(self):
     return "ClingoID({})".format(str(self))
 
+  def __hash__(self):
+    return hash(self.symlit)
+
+  def __eq__(self, other):
+    if isinstance(other, str):
+      return self.value() == other
+    elif isinstance(other, int) and self.symlit.sym.type == clingo.SymbolType.Number:
+      return self.intValue() == other
+    else:
+      return self.value() == other
+
   def __getattr__(self, name):
     raise Exception("not (yet) implemented: ClingoID.{}".format(name))
 
