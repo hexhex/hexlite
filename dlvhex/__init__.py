@@ -71,7 +71,14 @@ def getInputAtoms():
 def getTrueInputAtoms():
   global currentInput
   return [ i for i in currentInput if i.isTrue() ]
-  
+
+outputUnknownWarnOnce = False
+def outputUnknown(tuple_):
+  global outputUnknownWarnOnce
+  if not outputUnknownWarnOnce:
+    logging.warning("not implemented: dlvhex.outputUnkown (warning only once)")
+    outputUnknownWarnOnce = True
+
 #
 # used by engine
 #
