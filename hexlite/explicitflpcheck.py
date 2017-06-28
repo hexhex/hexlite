@@ -544,13 +544,39 @@ class CheckOptimizedProgram:
       ret.append( (csAtom, not mdl.is_true(ichatom)) )
     return ret
 
-  def checkFLPViolation(self, activeRules, mdl):
+  def checkFLPViolation(self, activeRules, cmdl, explain, explainID):
+    '''
+    perform FLP check
+    * for set activeRules of rules that are in the FLP reduct (wrt cmdl)
+    * for the candidate compatible set cmdl
+    * for debugging id explainID
+    '''
     class OnModel:
+      def __init__(self, cmdl, po, explain, explainID):
+        self.cmdl = cmdl
+        self.po = po
+        self.explain = explain
+        self.explainID = explainID
       def __call__(self, mdl):
         logging.debug('flpModel = '+str(mdl)) 
+        if self.explain:
+          logging.info('FLP Check (#{}) yielded countermodel:'.format(self.explainID)) 
+          # this model is an answer set from the auxiliary FLP model checking program
+          # (IDs are completely independent from those in self.__programObserver)
+          # (symbols are partially the same with several auxiliaries with special meaning)
+          po = self.po
+          logging.info("  Program Atoms that are not true in the counterexample but true in candidate:"+repr(sorted([
+            str(sym) for lit, sym in po.int2atom.items()
+            if lit not in po.replatoms and not mdl.contains(sym) and cmdl.contains(sym)])))
+          logging.info("  True Replacement Atoms (all):"+repr(sorted([
+            str(sym) for lit, sym in po.int2atom.items()
+            if lit in po.replatoms and mdl.contains(sym)])))
+          auxSyms = [clingo.Function(name=self.po.formatAtom(lit)) for lit in po.auxatoms]
+          logging.info("  True Auxiliary Atoms (those also in main program):"+repr(sorted([
+            str(aux) for aux in auxSyms if mdl.contains(aux)])))
 
-    assumptions = self._assumptionFromActiveRules(activeRules) + self._assumptionFromModel(mdl)
-    modelcb = OnModel()
+    assumptions = self._assumptionFromActiveRules(activeRules) + self._assumptionFromModel(cmdl)
+    modelcb = OnModel(cmdl, self.po, explain, explainID)
     if __debug__:
       logging.debug("solving COP with assumptions "+formatAssumptions(assumptions))
     res = self.cc.solve(on_model=modelcb, assumptions=assumptions)
@@ -583,26 +609,46 @@ class ExplicitFLPChecker(FLPCheckerBase):
     # because we cannot force clingo to finish instantiation without running solve()
     self.__checkProgram = None
     self.__programObserver = None
+    # whether to explain FLP checking in logging
+    self.explain = True
+    # running number for explanations
+    self.explainID = 1
 
   def attach(self, clingocontrol):
     self.__programObserver = GroundProgramObserver()
     clingocontrol.register_observer(self.__programObserver)
 
   def checkModel(self, mdl):
+    '''
+    is called from the on_model callback of clingo
+    '''
     # returns True if mdl passes the FLP check (= is an answer set)
-    if __debug__:
-      logging.debug("FLP check for "+repr(mdl))
+    if self.explain:
+      logging.info("FLP Check (#{}) for the following Compatible Set (true atoms):".format(self.explainID))
+      # this is an answer set from the main search (IDs as in self.__programObserver)
+      po = self.__programObserver
+      logging.info("  Program Atoms:"+repr(sorted([
+        str(sym) for lit, sym in po.int2atom.items()
+        if lit not in po.replatoms and mdl.is_true(lit)])))
+      logging.info("  Replacement Atoms:"+repr(sorted([
+        str(sym) for lit, sym in po.int2atom.items()
+        if lit in po.replatoms and mdl.is_true(lit)])))
+      logging.info("  Auxiliary Atoms:"+repr(sorted([
+        str(lit) for lit in po.auxatoms if mdl.is_true(lit)])))
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
-    if __debug__:
-      logging.info("Rules in reduct:")
+    if self.explain:
+      logging.info("FLP Reduct (#{}):".format(self.explainID))
       for ridx in activeRules:
         r = self.__programObserver.allrules[ridx]
-        logging.info("  R rule: "+repr(self.__programObserver.formatRule(r)))
+        logging.info("  "+repr(self.__programObserver.formatRule(r)))
     checkProgram = self.checkProgram()
-    is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl)
-    if __debug__:
-      logging.debug("FLP check for {} returned {}".format(repr(mdl), repr(is_answer_set)))
+    is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl, self.explain, self.explainID)
+    if self.explain:
+      expl = { True:'IS', False:'is NOT' }
+      logging.info("FLP check (#{}) returned {} (compatible set {} an answer set)".format(
+        self.explainID, repr(is_answer_set), expl[is_answer_set]))
+      self.explainID += 1
     return is_answer_set
 
   def ruleActivityProgram(self):
