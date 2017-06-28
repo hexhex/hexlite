@@ -260,16 +260,16 @@ def testparse():
         message('EXC: '+traceback.format_exc())
   message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
 
-def shallowprint(x):
+def shallowprint(x,sepspace=' ', listspace=' '):
   if isinstance(x, alist):
     ret = (
       x.sleft() +
-      (' '+x.ssep()+' ').join(
+      (sepspace+x.ssep()+sepspace).join(
         [ shallowprint(y) for y in x]) + 
       x.sright())
     return ret
   if isinstance(x, list):
-    return ' '.join([ shallowprint(y) for y in x ])
+    return listspace.join([ shallowprint(y) for y in x ])
   if isinstance(x, str):
     return x
   if isinstance(x, int):
