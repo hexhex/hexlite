@@ -265,11 +265,11 @@ def shallowprint(x,sepspace=' ', listspace=' '):
     ret = (
       x.sleft() +
       (sepspace+x.ssep()+sepspace).join(
-        [ shallowprint(y) for y in x]) + 
+        [ shallowprint(y, sepspace, listspace) for y in x]) + 
       x.sright())
     return ret
   if isinstance(x, list):
-    return listspace.join([ shallowprint(y) for y in x ])
+    return listspace.join([ shallowprint(y, sepspace, listspace) for y in x ])
   if isinstance(x, str):
     return x
   if isinstance(x, int):
