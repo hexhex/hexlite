@@ -27,7 +27,7 @@ class Aux:
   MAXINT = PREFIX+'maxint'
 
   # relevance of external atoms + input tuple grounding
-  EAREL = PREFIX+'r'
+  EARELV = PREFIX+'r'
   # truth of external atoms (in the papers "external replacement atoms")
   EAREPL = PREFIX+'t'
 
@@ -45,7 +45,7 @@ class Aux:
   SMALLER = PREFIX+'smaller'
 
 def predEAtomRelevance(arity, eatomname):
-  return Aux.EAREL+'_'+str(arity)+'_'+eatomname
+  return Aux.EARELV+'_'+str(arity)+'_'+eatomname
 
 def predEAtomTruth(arity, eatomname):
   return Aux.EAREPL+'_'+str(arity)+'_'+eatomname
