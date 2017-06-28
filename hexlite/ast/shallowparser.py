@@ -267,8 +267,6 @@ def shallowprint(x):
       (' '+x.ssep()+' ').join(
         [ shallowprint(y) for y in x]) + 
       x.sright())
-    if ret.endswith('.'):
-      ret += '\n'
     return ret
   if isinstance(x, list):
     return ' '.join([ shallowprint(y) for y in x ])
