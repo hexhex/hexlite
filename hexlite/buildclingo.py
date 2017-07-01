@@ -121,7 +121,7 @@ class ArchivedReleaseInstaller(InstallerBase):
 
 class GitCheckoutInstaller(InstallerBase):
   GITURL = 'https://github.com/potassco/clingo.git'
-  VERSION = '01dffb'
+  VERSION = '58ee38'
 
   def __init__(self):
     InstallerBase.__init__(self)
