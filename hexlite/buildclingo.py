@@ -55,7 +55,7 @@ class InstallerBase:
     cmd = ['dpkg-query', '-W', "-f=${Package}\\n"]
     logging.info('obtaining list of installed packages with command '+repr(cmd))
     allpackages = subprocess.check_output(cmd).decode('utf8')
-    logging.info('got list '+repr(allpackages))
+    #logging.debug('got list '+repr(allpackages))
     allpackages = set([pkg.strip() for pkg in allpackages.split('\n')])
     need = [pkg for pkg in packages if pkg not in allpackages]
     if len(need) > 0:
