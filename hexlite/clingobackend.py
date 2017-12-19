@@ -221,10 +221,12 @@ class CachedEAtomEvaluator(EAtomEvaluator):
   def evaluate(self, holder, inputtuple, predicateinputatoms):
     # this is handled by defaultdict
     storage = self.cache[holder.name][inputtuple]
-    if frozenset(x for x in predicateinputatoms if x.isTrue()) not in storage:
-      storage[frozenset(x for x in predicateinputatoms if x.isTrue())] = EAtomEvaluator.evaluate(
+    positiveinputatoms = frozenset(x for x in predicateinputatoms if x.isTrue())
+    assert(all(x.isTrue() or x.isFalse() for x in predicateinputatoms))
+    if positiveinputatoms not in storage:
+      storage[positiveinputatoms] = EAtomEvaluator.evaluate(
         self, holder, inputtuple, predicateinputatoms)
-    return storage[frozenset(x for x in predicateinputatoms if x.isTrue())]
+    return storage[positiveinputatoms]
 
 class GringoContext:
   class ExternalAtomCall:
