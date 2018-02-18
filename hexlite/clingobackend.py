@@ -235,7 +235,7 @@ class GringoContext:
       self.holder = holder
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      out = self.eaeval.evaluate(self.holder, arguments, None)
+      out = self.eaeval.evaluate(self.holder, arguments, [])
       outarity = self.holder.outnum
       # interpret special cases for gringo @eatom rewritings:
       if outarity == 0:
@@ -279,7 +279,7 @@ class ClingoPropagator:
       # key = argument position, value = list of ClingoID
       self.predinputs = collections.defaultdict(list)
       # list of all elements in self.predinputs (cache)
-      self.allinputs = None
+      self.allinputs = []
 
   class Nogood:
     def __init__(self):
