@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/hexhex/hexlite.svg?branch=master)](https://travis-ci.org/hexhex/hexlite)
 [![codebeat badge](https://codebeat.co/badges/5493bd59-f87f-470c-9069-86d4c14dd374)](https://codebeat.co/projects/github-com-hexhex-hexlite-master)
+[![Anaconda-Server Badge](https://anaconda.org/peterschueller/hexlite/badges/installer/conda.svg)](https://conda.anaconda.org/peterschueller)
 
 # HEXLite Python-based solver for a fragment of HEX
 
@@ -29,7 +30,18 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 * License: GPL (3.0)
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
-* Installation:
+* Installation with Conda:
+
+  The easiest way to install `hexlite` is Conda.
+  
+  ```$ conda install -c peterschueller hexlite```
+
+  This will automatically install Python-enabled `clingo` dependencies.
+
+* Installation with pip:
+
+  This will download, build, and locally install Python-enabled `clingo` modules.
+
   * If you do not have it: install `python-pip`: for example under Ubuntu via
     
     ```$ sudo apt-get install python-pip```
@@ -57,3 +69,15 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   * Ubuntu 16.04 is tested
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
+
+# Developer Readme
+
+* Build and upload new conda package.
+  
+  * Update version in `meta.yaml`.
+
+  * Run
+
+  ```$ conda build .```
+
+  * Run `anaconda upload` command at the end of the output.
