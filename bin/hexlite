@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# needs clingo.so to be built with the correct Python version, this software supports python2 and python3
-
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
 #
@@ -48,33 +46,37 @@ import hexlite.rewriter as rewriter
 # this is our own package for communicating with plugins
 import dlvhex
 
-# clingo python API
-try:
-  # try without any settings
-  import clingo
-except ImportError:
-  # try in ~/.hexlite/
+def importClingoAPI():
+  # clingo python API
   try:
-    sys.path.append(os.path.expanduser('~/.hexlite/'))
+    # try to import global clingo package
+    logging.debug("attempting global clingo import")
     import clingo
   except ImportError:
-    logging.warning("Could not find clingo python module in global or local (~/.hexlite/) installation")
-    import hexlite.buildclingo as bcm
-    if not bcm.build():
-      logging.critical("Could not install clingo python module. Please retry or install manually and retry running hexlite.")
+    logging.debug("Global clingo import:"+traceback.format_exc())
+    # try in ~/.hexlite/
+    try:
+      sys.path.append(os.path.expanduser('~/.hexlite/'))
+      import clingo
+    except ImportError:
+      logging.debug("Local clingo import:"+traceback.format_exc())
+      logging.warning("Could not find clingo python module in global or local (~/.hexlite/) installation.")
+      import hexlite.buildclingo as bcm
+      if not bcm.build():
+        logging.critical("Could not install clingo python module. Please retry or install manually and retry running hexlite.")
+        sys.exit(-1)
+    # now it should work
+    try:
+      # add a NEW path (non-existence of clingo module seems to be cached)
+      sys.path.append(os.path.expanduser('~/.hexlite//'))
+      import clingo
+    except ImportError:
+      logging.debug("Clingo build:"+traceback.format_exc())
+      logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
       sys.exit(-1)
-  # now it should work
-  try:
-    # add a NEW path (non-existence of clingo module seems to be cached)
-    sys.path.append(os.path.expanduser('~/.hexlite//'))
-    import clingo
-  except ImportError:
-    logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
-    sys.exit(-1)
 
-# import these after importing clingo, because it requires clingo too
-import hexlite.clingobackend
-
+  # import these after importing clingo, because it requires clingo too
+  import hexlite.clingobackend
 
 def loadPlugin(mname):
   # returns plugin info
@@ -136,9 +138,9 @@ def interpretArguments(argv):
 def setupLogging(args):
   level = logging.WARNING
   if args.verbose:
-    level=logging.INFO
+    level = logging.INFO
   if args.debug:
-    level=logging.DEBUG
+    level = logging.DEBUG
   # call only once
   logging.getLogger().setLevel(level)
   
@@ -146,6 +148,9 @@ def main():
   code = 1
   try:
     args = interpretArguments(sys.argv[1:])
+    # import API here to fail early if clingo module does not exist
+    importClingoAPI()
+    # now set additional paths for plugin imports
     setPaths(hexlite.flatten(args.pluginpath))
     plugins = loadPlugins(hexlite.flatten(args.plugin))
     program = loadProgram(hexlite.flatten(args.hexfiles))
