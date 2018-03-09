@@ -34,9 +34,21 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
   The easiest way to install `hexlite` is Conda.
   
+  First you need to install the `clingo` dependency:
+
+  ```$ conda install -c potassco clingo```
+
+  Then you install hexlite:
+
   ```$ conda install -c peterschueller hexlite```
 
-  This will automatically install Python-enabled `clingo` dependencies.
+  (If you wonder why we do not automatically install clingo as a dependency:
+  certain conda restrictions prevent that `clingo` is automatically installed
+  unless the potassco channel is **manually** added by the user.)
+
+  Then you test hexlite:
+
+  ```$ hexlite -h```
 
 * Installation with pip:
 
@@ -71,6 +83,27 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
 
 # Developer Readme
+
+* For developing hexlite without uploading to anaconda repository:
+
+  * Install clingo with conda, but but do **not** install hexlite with conda.
+
+  ```$ conda install -c potassco clingo```
+
+  * checkout hexlite with git
+
+  ```$ git clone git@github.com:hexhex/hexlite.git```
+
+  * install `hexlite` in develop mode into your user-defined Python space:
+
+  ```$ python3 setup.py develop --user```
+
+  * If you want to remove this development installation:
+
+  ```$ python3 setup.py develop --uninstall --user```
+  ```$ rm ~/.local/bin/hexlite```
+
+  (Installed scripts are not automatically uninstalled.)
 
 * Build and upload new conda package.
   

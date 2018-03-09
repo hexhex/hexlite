@@ -15,10 +15,11 @@ def readme():
       of.write(out)
       return out.decode('utf8')
 
+readme_txt = readme()
 setuptools.setup(name='hexlite',
       version='0.3.20',
       description='HEXLite Python-based solver for a fragment of HEX',
-      long_description=readme(),
+      long_description=readme_txt,
       classifiers=[
         'Development Status :: 4 - Beta',
         'Programming Language :: Python :: 3',

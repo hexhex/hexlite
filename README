@@ -27,7 +27,30 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 * License: GPL (3.0)
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
-* Installation:
+* Installation with Conda:
+
+  The easiest way to install `hexlite` is Conda.
+  
+  First you need to install the `clingo` dependency:
+
+  ```$ conda install -c potassco clingo```
+
+  Then you install hexlite:
+
+  ```$ conda install -c peterschueller hexlite```
+
+  (If you wonder why we do not automatically install clingo as a dependency:
+  certain conda restrictions prevent that `clingo` is automatically installed
+  unless the potassco channel is **manually** added by the user.)
+
+  Then you test hexlite:
+
+  ```$ hexlite -h```
+
+* Installation with pip:
+
+  This will download, build, and locally install Python-enabled `clingo` modules.
+
   * If you do not have it: install `python-pip`: for example under Ubuntu via
     
     ```$ sudo apt-get install python-pip```
@@ -55,3 +78,36 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   * Ubuntu 16.04 is tested
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
+
+# Developer Readme
+
+* For developing hexlite without uploading to anaconda repository:
+
+  * Install clingo with conda, but but do **not** install hexlite with conda.
+
+  ```$ conda install -c potassco clingo```
+
+  * checkout hexlite with git
+
+  ```$ git clone git@github.com:hexhex/hexlite.git```
+
+  * install `hexlite` in develop mode into your user-defined Python space:
+
+  ```$ python3 setup.py develop --user```
+
+  * If you want to remove this development installation:
+
+  ```$ python3 setup.py develop --uninstall --user```
+  ```$ rm ~/.local/bin/hexlite```
+
+  (Installed scripts are not automatically uninstalled.)
+
+* Build and upload new conda package.
+  
+  * Update version in `meta.yaml`.
+
+  * Run
+
+  ```$ conda build .```
+
+  * Run `anaconda upload` command at the end of the output.
