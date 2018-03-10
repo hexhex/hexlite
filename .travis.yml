@@ -1,38 +1,24 @@
 language: python
 
-sudo: required
-dist: trusty
-group: edge
+python:
+  - "3.5"
 
 before_install:
-  - deactivate
-  - sudo apt-get -qq update
-  - sudo apt-get install -y wget
-  - sudo apt-get install -y tar
-  - sudo apt-get install -y gzip
-  - sudo apt-get install -y cmake
-  - sudo apt-get install -y libpython3-dev
-  - sudo apt-get install -y bison
-  - sudo apt-get install -y re2c
-  - sudo apt-get install -y g++
-  - sudo apt-get install -y python3.4
-  - sudo apt-get install python3-setuptools
-  - export PATH=/usr/bin:$PATH
-  - alias python3=/usr/bin/python3.4
+  - sudo apt-get update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
 
 install:
+  - conda create -q -n test python=$TRAVIS_PYTHON_VERSION
+  - source activate test
+  - conda install -c potassco clingo
   - python3 setup.py develop --user
-  - temp1=$PWD
-  - cd /tmp
-  - wget http://www.peterschueller.com/clingo-5-01dffb-python34-ubuntu1404.tar.gz
-  - cd /usr/local/
-  - sudo tar xvzf /tmp/clingo-5-01dffb-python34-ubuntu1404.tar.gz
-  - export PYTHONUSERBASE=~/.local/
-  - export PATH=$PATH:~/.local/bin
-  - export PYTHONPATH=/usr/local/lib/pyclingo/:$PYTHONPATH
-  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-  - sudo ldconfig
+
 script:
-  - cd $temp1
   - cd tests/
   - ./run-tests.sh
