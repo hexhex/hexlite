@@ -1,12 +1,22 @@
 language: python
 
+python:
+  - "3.5"
+
 before_install:
-  - echo "before install"
+  - sudo apt-get update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
 
 install:
-  - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
+  - conda create -q -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test
-  - conta install --yes -c potassco clingo
+  - conda install -c potassco clingo
   - python3 setup.py develop --user
 
 script:
