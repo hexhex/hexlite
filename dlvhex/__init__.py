@@ -57,10 +57,20 @@ def output(tpl):
   global currentOutput
   currentOutput.append(tpl)
 
+def learn(nogood):
+  # add nogood (given as IDs) to search process
+  raise Exception("TODO implement")
+
 def storeAtom(tpl):
-  # in dlvhex2 this function registers a new ID for an atom specified in a tuple or retrieves its existing ID
-  # WARNING we cannot extend the theory so we will just lookup in the backend
-  # WARNING if we do not find in the backend we return an ID with None backend to let other backend code ignore this ID
+  # build an atom specified in a tuple and retrieves its existing ID or registers a new atom (and ID)
+  # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
+  # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
+  raise Exception("TODO implement")
+
+def storeOutputAtom(args, sign=True):
+  # build a replacement atom for the currently called external atom with the given tuple as arguments and retrieves its ID or registers a new atom (and ID)
+  # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
+  # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
   raise Exception("TODO implement")
 
 def getInputAtoms():
