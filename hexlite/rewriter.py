@@ -82,11 +82,27 @@ class ProgramRewriter:
             ret.append(StatementRewriterHash(self, stm))
             continue
           else:
-            # fact (maybe disjunctive)
+            # fact (maybe disjunctive) (parsed as :-separated list or as list with | or v inside)
             logging.debug('ASR fact/passthrough %s', dbgstm)
             ret.append(StatementRewriterHead(self, stm))
             facts.append(stm)
             continue
+        # this would eliminate some warnings in the tests but it is no solution to the real problem (=missing deep parser)
+        #elif sig == (None, ';', '.'):
+        #  # disjunctive fact (parsed as ;-separated list
+        #  # transform into one-element list with disjunctive parts (so that it is processed like other disjunctive syntaxes)
+        #  # TODO make a proper AST datastructure and a proper parser and get rid of such issues
+        #  logging.debug('ASR disjunctive fact %s', dbgstm)
+        #  newlist = [stm[0]] + [ ['|'] + x for x in stm[1:] ] # put | between disjunctive atoms
+        #  newlist = [x for y in newlist for x in y] # flatten 1 layer to get one list with | in between
+        #  if __debug__:
+        #    logging.debug('ASR newlist %s', repr(newlist))
+        #  newstm = shp.alist([newlist], right='.')
+        #  if __debug__:
+        #    logging.debug('ASR disjunctive fact newstm %s', pprint.pformat(newstm, width=1000))
+        #  ret.append(StatementRewriterHead(self, newstm))
+        #  facts.append(newstm)
+        #  continue
         elif sig == (None, ':-', '.'):
           # rule/constraint
           logging.debug('ASR rule/rulecstr %s', dbgstm)
@@ -350,6 +366,7 @@ class StatementRewriterHead(StatementRewriterBase):
     logging.debug('SRH head='+pprint.pformat(head))
     # if head is a normal list that contains more than 2 elements and some 'v' items on top level,
     # transform it into an alist with separator '|' instead of 'v'
+    # FIXME this represents v-separated lists as alist<;|;> and |-separated lists as alist<;;>([X,|,Y,...]) which is weird
     ret = head
     if isinstance(head, list) and not isinstance(head, shp.alist) and len(head) > 2:
       # collect parts between top-level 'v'
