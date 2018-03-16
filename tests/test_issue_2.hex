@@ -1,0 +1,5 @@
+
+d(0). d(1).
+a(b) ; n_a(b).
+num(X) :- &issue_2_num[a](X), d(X).
+

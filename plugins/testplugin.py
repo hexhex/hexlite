@@ -328,6 +328,13 @@ def rdf(uri):
 	logging.warning('TODO implement &rdf (and #namespace)')
 	dlvhex.output(('s', 'p', 'o'))
 
+def issue_2_num(a):
+	n = 0
+	for x in dlvhex.getInputAtoms():
+		if x.tuple()[0] == a and x.isTrue():
+			n += 1
+	dlvhex.output((n, ))
+
 def register():
 	#XFAIL = expected failure
 	dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
@@ -406,4 +413,5 @@ def register():
 
 	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 
+	dlvhex.addAtom("issue_2_num", (dlvhex.PREDICATE, ), 1)
 # vim:list:noet:

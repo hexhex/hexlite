@@ -149,3 +149,4 @@ choicerule5.hex choicerule5.out -N=10
 choicerule6.hex choicerule6.out -N=10
 conditional1.hex conditional1.out
 conditional2.hex conditional2.out
+test_issue_2.hex test_issue_2.out
