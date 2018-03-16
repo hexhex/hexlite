@@ -20,6 +20,7 @@
 import sys
 import logging
 import collections
+import itertools
 import pprint
 import dlvhex
 
@@ -34,21 +35,28 @@ import clingo
 class ClaspContext:
   '''
   context within the propagator
+  * clasp context with PropagateControl object
+  * ClingoPropagator object that contains, e.g., propagation init symbol information
   '''
   def __init__(self):
     self.propcontrol = None
-  def __call__(self, control):
+    self.propagator = None
+  def __call__(self, control, propagator):
     '''
     initialize context with control object
     '''
     assert(self.propcontrol == None)
     assert(control != None)
+    assert(isinstance(control, clingo.PropagateControl))
     self.propcontrol = control
+    assert(isinstance(propagator, ClingoPropagator))
+    self.propagator = propagator
     return self
   def __enter__(self):
     pass
   def __exit__(self, type, value, traceback):
     self.propcontrol = None
+    self.propagator = None
 
 class SymLit:
   '''
@@ -69,6 +77,9 @@ class ClingoID:
     self.ccontext = ccontext
     self.symlit = symlit
     self.__value = str(symlit.sym)
+
+  def negate(self):
+    return ClingoID(self.ccontext, SymLit(self.symlit.sym, -self.symlit.lit))
 
   def value(self):
     return self.__value
@@ -99,6 +110,20 @@ class ClingoID:
                   [clingo.Function(self.symlit.sym.name)]+self.symlit.sym.arguments])
     return tup
 
+  def extension(self):
+    '''
+    returns a sequence of tuples of true atoms with predicate using this ClingoID
+    fails if this ClingoID does not hold a constant
+    '''
+    if self.symlit.sym.type != clingo.SymbolType.Function or self.symlit.sym.arguments != []:
+      raise Exception("cannot call extension() on term that is not a constant. was called on {}".format(self.__value))
+    ret = frozenset([
+      tuple([ClingoID(self.ccontext, SymLit(term, None)) for term in x.symlit.sym.arguments])
+      for x in dlvhex.currentInput
+        if x.symlit.sym.type == clingo.SymbolType.Function and x.symlit.sym.name == self.__value ])
+    #logging.warning("extension of {} returned {}".format(self.__value, repr(ret)))
+    return ret
+
   def __assignment(self):
     return self.ccontext.propcontrol.assignment
 
@@ -124,7 +149,7 @@ class ClingoID:
   def __getattr__(self, name):
     raise Exception("not (yet) implemented: ClingoID.{}".format(name))
 
-class EAtomEvaluator:
+class EAtomEvaluator(dlvhex.Backend):
   '''
   Clingo-backend-specific evaluation of external atoms implemented in Python
   using the same API as in the dlvhex solver (but fully realized in Python).
@@ -164,7 +189,6 @@ class EAtomEvaluator:
       raise Exception("cannot convert external atom term {} to clingo term!".format(repr(term)))
     return ret
 
-
   def evaluate(self, holder, inputtuple, predicateinputatoms):
     '''
     Convert input tuple (from clingo to dlvhex) and call external atom semantics function.
@@ -177,27 +201,27 @@ class EAtomEvaluator:
     * cleans up
     * return result
     '''
-    out = None
-    dlvhex.startExternalAtomCall(predicateinputatoms)
-    try:
-      # prepare input tuple
-      plugin_arguments = []
-      for spec_idx, inp in enumerate(holder.inspec):
-        if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
-          arg = self.clingo2hex(inputtuple[spec_idx])
-          plugin_arguments.append(arg)
-        elif inp == dlvhex.TUPLE:
-          if (spec_idx + 1) != len(holder.inspec):
-            raise Exception("got TUPLE type which is not in final argument position")
-          # give all remaining arguments as one tuple
-          args = [ self.clingo2hex(x) for x in inputtuple[spec_idx:] ]
-          plugin_arguments.append(tuple(args))
-        else:
-          raise Exception("unknown input type "+repr(inp))
+    # prepare input tuple
+    input_arguments = []
+    for spec_idx, inp in enumerate(holder.inspec):
+      if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
+        arg = self.clingo2hex(inputtuple[spec_idx])
+        input_arguments.append(arg)
+      elif inp == dlvhex.TUPLE:
+        if (spec_idx + 1) != len(holder.inspec):
+          raise Exception("got TUPLE type which is not in final argument position")
+        # give all remaining arguments as one tuple
+        args = [ self.clingo2hex(x) for x in inputtuple[spec_idx:] ]
+        input_arguments.append(tuple(args))
+      else:
+        raise Exception("unknown input type "+repr(inp))
 
-      # call external atom in plugin
-      logging.debug('calling plugin eatom with arguments '+repr(plugin_arguments))
-      holder.func(*plugin_arguments)
+    # call external atom in plugin
+    dlvhex.startExternalAtomCall(input_arguments, predicateinputatoms, self, holder)
+    out = None
+    try:
+      logging.debug('calling plugin eatom with arguments '+repr(input_arguments))
+      holder.func(*input_arguments)
       
       # interpret output
       # list of tuple of terms (maybe empty tuple)
@@ -205,6 +229,67 @@ class EAtomEvaluator:
     finally:
       dlvhex.cleanupExternalAtomCall()
     return out
+  
+  # implementation of Backend method
+  def storeAtom(self, tpl):
+    '''
+    this can only be called from an external atom code of a user
+    it is called after
+      dlvhex.startExternalAtomCall(predicateinputatoms, self)
+    has been called and the only atoms we can store here are from predicateinputatoms
+    (because we do not invent new variables and we cannot access variables that are not about our predicate inputs)
+
+    so we only need to check if tpl is in predicateinputatoms and return the corresponding ClingoID
+    '''
+    match_name = tpl[0].symlit.sym.name
+    match_arguments = [t.symlit.sym for t in tpl[1:]]
+    #print("match_name = {} match_arguments = {}".format(repr(match_name), repr(match_arguments)))
+    for x in dlvhex.currentInput:
+      #print("comparing {} with {}".format(repr(x), repr(tpl)))
+      #print("xsxn {} xssa {}".format(repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
+      if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
+        #print("found {}".format(repr(x)))
+        return x
+    logging.warning("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
+    return None
+
+  # implementation of Backend method
+  def storeOutputAtom(self, args, sign):
+    '''
+    this can only be called from an external atom code of a user
+    it is called after
+      dlvhex.startExternalAtomCall(predicateinputatoms, self, holder)
+    has been called and the only atoms we can store here are external atom replacement atoms that exist in the theory
+
+    so we only need to assemble the correct tuple and check if it exists in clingo and return the corresponding ClingoID (only literal matters)
+    '''
+    #logging.debug("got dlvhex.currentHolder.name {}".format(dlvhex.currentHolder.name))
+    #logging.debug("got self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name] {}".format(repr([ x.replacement.sym for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name]])))
+
+    match_args = [t.symlit.sym for t in itertools.chain(dlvhex.currentInputTuple, args)]
+    #print("looking up {}".format(repr(match_args)))
+    # find those verification objects that contain the tuple to be stored
+    for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name]:
+      #print("comparing {}".format(repr(x.replacement.sym.arguments)))
+      if x.replacement.sym.arguments == match_args:
+        #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
+        return ClingoID(self.ccontext, x.replacement)
+    #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
+    logging.warning("did not find literal to return in storeOutputAtom for {} will return None".format(repr(args)))
+    return None
+
+  # implementation of Backend method
+  def learn(self, ng):
+    if __debug__:
+      logging.debug("learning user-specified nogood "+repr(ng))
+    nogood = self.ccontext.propagator.Nogood()
+    for clingoid in ng:
+      assert(isinstance(clingoid, ClingoID))
+      if not nogood.add(clingoid.symlit.lit):
+        logging.debug("cannot build nogood (opposite literals)!")
+        return
+    logging.info("learn() adding nogood")
+    self.ccontext.propagator.addNogood(nogood)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
   def __init__(self, claspcontext):
@@ -291,7 +376,6 @@ class ClingoPropagator:
       self.literals.add(lit)
       return True
 
-
   class StopPropagation(Exception):
     pass
 
@@ -351,7 +435,8 @@ class ClingoPropagator:
         else:
           self.debugMapping[slit].append('-'+str(x.symbol))
 
-    # TODO (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
+    # WONTFIX (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
+    # TODO (near future) use partial checks and stay in check()
     # TODO (far future) create one propagator for each external atom (or even for each external atom literal)
     #                   which watches predicate inputs, relevance, and replacement, and incrementally finds when it should compute
     #                   [then we need to find out which grounded input tuple belongs to which atom, so we might need
@@ -364,7 +449,7 @@ class ClingoPropagator:
     '''
     # called on total assignments (even without watches)
     logging.info(self.name+'CPcheck')
-    with self.ccontext(control):
+    with self.ccontext(control, self):
       try:
         for eatomname, veriList in self.eatomVerifications.items():
           for veri in veriList:
@@ -434,17 +519,20 @@ class ClingoPropagator:
       logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
       return
 
+    logging.debug(self.name+"CPcheck adding nogood {}".format(repr(nogood)))
+    self.addNogood(nogood)
+
+  def addNogood(self, nogood):
     nogood = list(nogood.literals)
     if __debug__:
-      logging.debug(self.name+"CPcheck adding nogood {}".format(repr(nogood)))
+      logging.debug(self.name+" adding nogood {}".format(repr(nogood)))
       for slit in nogood:
         a = abs(slit)
-        logging.debug(self.name+"CPcheck  {} ({}) is {}".format(a, control.assignment.value(a), repr(self.debugMapping[a])))
-    may_continue = control.add_nogood(nogood)
-    logging.debug(self.name+"CPcheck add_nogood returned {}".format(repr(may_continue)))
+        logging.debug(self.name+"  {} ({}) is {}".format(a, self.ccontext.propcontrol.assignment.value(a), repr(self.debugMapping[a])))
+    may_continue = self.ccontext.propcontrol.add_nogood(nogood)
+    logging.debug(self.name+" add_nogood returned {}".format(repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
-
 
 class ModelReceiver:
   def __init__(self, facts, args, flpchecker):

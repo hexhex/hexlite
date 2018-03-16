@@ -59,19 +59,19 @@ def output(tpl):
 
 def learn(nogood):
   # add nogood (given as IDs) to search process
-  raise Exception("TODO implement")
+  currentBackend.learn(nogood)
 
 def storeAtom(tpl):
   # build an atom specified in a tuple and retrieves its existing ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
-  raise Exception("TODO implement")
+  return currentBackend.storeAtom(tpl)
 
 def storeOutputAtom(args, sign=True):
   # build a replacement atom for the currently called external atom with the given tuple as arguments and retrieves its ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
-  raise Exception("TODO implement")
+  return currentBackend.storeOutputAtom(args, sign)
 
 def getInputAtoms():
   global currentInput
@@ -93,15 +93,33 @@ def outputUnknown(tuple_):
 # used by engine
 #
 
+class Backend:
+  def learn(self, nogood):
+    logging.warning("not implemented: Backend::learn")
+
+  def storeAtom(self, tpl):
+    logging.warning("not implemented: Backend::storeAtom")
+    return None
+
+  def storeOutputAtom(self, args, sign):
+    logging.warning("not implemented: Backend::storeOutputAtom")
+    return None
+
 # key = eatom name, value = ExternalAtomHolder instance
 eatoms = {}
 # plugin module that is currently registering eatoms
 callingModule = None
+# current input tuple (also passed directly to function, but for storeOutputAtom we need to know this, too)
+currentInputTuple = ()
 # frozen set of ID objects that are predicate input for the currently called external atom
 # None if eatom does not take predicate input
 currentInput = frozenset()
 # tuples returned by the current/previously called external atom
 currentOutput = []
+# object realizing the Backend interface for the currently calling backend
+currentBackend = Backend()
+# currently processed eatom holder
+currentHolder = None
 
 # called by engine before calling <pluginmodule>.register()
 def startRegistration(caller):
@@ -109,16 +127,22 @@ def startRegistration(caller):
   callingModule = caller
 
 # called by engine before calling external atom function
-def startExternalAtomCall(inputs):
-  global currentOutput, currentInput
+def startExternalAtomCall(input_tuple, inputs, backend, holder):
+  global currentOutput, currentInputTuple, currentInput, currentBackend, currentHolder
   currentOutput = []
+  currentInputTuple = input_tuple
   currentInput = inputs
+  currentBackend = backend
+  currentHolder = holder
 
 # called by engine after calling external atom function
 def cleanupExternalAtomCall():
-  global currentOutput, currentInput
+  global currentOutput, currentInputTuple, currentInput, currentBackend, currentHolder
   currentOutput = []
+  currentInputTUple = ()
   currentInput = []
+  currentBackend = Backend()
+  currentHolder = None
 
 class ExternalAtomHolder:
   def __init__(self, name, inspec, outnum, props, module, func):
@@ -142,3 +166,4 @@ _specToString = {
 }
 def humanReadableSpec(spec):
   return [ _specToString[s] for s in spec ]
+
