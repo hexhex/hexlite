@@ -180,6 +180,8 @@ class EAtomEvaluator(dlvhex.Backend):
   def __init__(self, claspcontext):
     assert(isinstance(claspcontext, ClaspContext))
     self.ccontext = claspcontext
+    # keep list of learned nogoods so that we do not add the same one twice
+    self.learnedNogoods = set()
 
   def clingo2hex(self, term):
     assert(isinstance(term, clingo.Symbol))
@@ -301,14 +303,18 @@ class EAtomEvaluator(dlvhex.Backend):
   def learn(self, ng):
     if __debug__:
       logging.debug("learning user-specified nogood "+repr(ng))
-    nogood = self.ccontext.propagator.Nogood()
-    for clingoid in ng:
-      assert(isinstance(clingoid, ClingoID))
-      if not nogood.add(clingoid.symlit.lit):
-        logging.debug("cannot build nogood (opposite literals)!")
-        return
-    logging.info("learn() would add nogood %s", repr(nogood.literals))
-    self.ccontext.propagator.addNogood(nogood)
+    assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
+    if ng in self.learnedNogoods:
+      logging.info("learn() skips adding known nogood")
+    else:
+      self.learnedNogoods.add(ng)
+      nogood = self.ccontext.propagator.Nogood()
+      for clingoid in ng:
+        if not nogood.add(clingoid.symlit.lit):
+          logging.debug("cannot build nogood (opposite literals)!")
+          return
+      logging.info("learn() adds nogood %s", repr(nogood.literals))
+      self.ccontext.propagator.addNogood(nogood)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
   def __init__(self, claspcontext):
