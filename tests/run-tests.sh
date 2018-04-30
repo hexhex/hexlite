@@ -3,7 +3,7 @@
 DLVHEX="hexlite --pluginpath=../plugins/ --plugin=testplugin"
 EXAMPLESDIR="./"
 OUTDIR="./outputs/"
-TESTS="suites/complete.test suites/flpcheck.test"
+TESTS="suites/complete.test suites/flpcheck.test suites/partial.test"
 
 #
 # brief documentation of this script

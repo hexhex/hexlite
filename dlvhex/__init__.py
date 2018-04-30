@@ -128,6 +128,9 @@ def startRegistration(caller):
 
 # called by engine before calling external atom function
 def startExternalAtomCall(input_tuple, inputs, backend, holder):
+  '''
+  inputs: frozenset of all ClingoIDs that are relevant to the current eatom evaluation as predicate inputs
+  '''
   global currentOutput, currentInputTuple, currentInput, currentBackend, currentHolder
   currentOutput = []
   currentInputTuple = input_tuple

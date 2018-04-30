@@ -287,14 +287,27 @@ def testSetMinusLearn(p, q):
 	# is true for all constants in extension of p but not in extension of q
 	# (same as testSetMinus)
 	# uses learning
-	for x in p.extension():
-		if not x in q.extension():
+	pe = p.extension()
+	#logging.error("ATOM got pe {}".format(repr(pe)))
+	#for y in pe:
+	#	logging.error("ATOM y in pe {} {} {}".format(str(y), repr(y[0].symlit.lit), hash(y)))
+	qe = q.extension()
+	#logging.error("ATOM got qe {}".format(repr(qe)))
+	#for y in qe:
+	#	logging.error("ATOM y in qe {} {} {}".format(str(y), repr(y[0].symlit.lit), hash(y)))
+	for x in pe:
+		#logging.error("ATOM x = {} {}".format(repr(x), x.__class__))
+		if x not in qe:
+			#logging.error("ATOM {} not in qe".format(x))
 			# learn that it is not allowed that p(x) and -q(x) and this atom is false for x
-			dlvhex.learn((
+			nogood = (
 					dlvhex.storeAtom((p, ) + x),
 					dlvhex.storeAtom((q, ) + x).negate(),
 					dlvhex.storeOutputAtom(x).negate()
-					))
+					)
+			#logging.error("ATOM nogood {}".format(repr(nogood)))
+			dlvhex.learn(nogood)
+			#logging.error("ATOM output {}".format(repr(x)))
 			dlvhex.output(x)
 
 def testNonmon(p):

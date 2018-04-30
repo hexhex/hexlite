@@ -69,9 +69,8 @@ class ProgramRewriter:
     ret = []
     facts = []
     for stm in self.shallowprog:
-      if __debug__:
-        dbgstm = pprint.pformat(stm, width=1000)
-        logging.debug('ASR stm='+dbgstm)
+      dbgstm = pprint.pformat(stm, width=1000)
+      logging.debug('ASR stm='+dbgstm)
       if isinstance(stm, shp.alist):
         sig = (stm.left, stm.sep, stm.right)
         #logging.debug('ASR alist {}'.format(repr(sig)))
@@ -123,7 +122,7 @@ class ProgramRewriter:
         ret.append(StatementRewriterWeakCstr(self, stm))
         continue
       # unclassified
-      logging.warning('ASR unclassified/passthrough '+dbgstm)
+      logging.warning('ASR unclassified/passthrough %s', dbgstm)
       ret.append(StatementRewriterPassthrough(self, stm))
     return ret, facts
 

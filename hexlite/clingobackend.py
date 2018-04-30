@@ -22,6 +22,8 @@ import logging
 import collections
 import itertools
 import pprint
+import traceback
+
 import dlvhex
 
 from . import common as hexlite
@@ -65,10 +67,20 @@ class SymLit:
   x <- init.symbolic_atoms.by_signature
   sym <- x.symbol
   lit <- init.solver_literal(x.literal)
+
+  if lit is None, then
+  * sym is a term and not an atom and there is no solver literal
+  * sym is used as a non-predicate-input to an external atom (TODO ensure this is always true)
+  * TODO document other cases
   '''
   def __init__(self, sym, lit):
     self.sym = sym
+    #if lit is None:
+    #  logging.warning("SYMLIT {} with empty LIT from {}".format(sym, '\n'.join(traceback.format_stack())))
     self.lit = lit
+
+  def __hash__(self):
+    return hash(self.sym)
 
 class ClingoID:
   # the ID class as passed to plugins, from view of Clingo backend
@@ -117,10 +129,14 @@ class ClingoID:
     '''
     if self.symlit.sym.type != clingo.SymbolType.Function or self.symlit.sym.arguments != []:
       raise Exception("cannot call extension() on term that is not a constant. was called on {}".format(self.__value))
+    # extract all true atoms with matching predicate name
+    ret_atoms = [
+      x for x in dlvhex.getTrueInputAtoms()
+      if x.symlit.sym.type == clingo.SymbolType.Function and x.symlit.sym.name == self.__value ]
+    # convert into tuples of ClingoIDs without literal (they are terms, not atoms)
     ret = frozenset([
       tuple([ClingoID(self.ccontext, SymLit(term, None)) for term in x.symlit.sym.arguments])
-      for x in dlvhex.currentInput
-        if x.symlit.sym.type == clingo.SymbolType.Function and x.symlit.sym.name == self.__value ])
+      for x in ret_atoms ])
     #logging.warning("extension of {} returned {}".format(self.__value, repr(ret)))
     return ret
 
@@ -131,7 +147,10 @@ class ClingoID:
     return self.__value
 
   def __repr__(self):
-    return "ClingoID({})".format(str(self))
+    sign = ''
+    if self.symlit.lit and self.symlit.lit < 0:
+      sign = '-'
+    return "{}ClingoID({})".format(sign, str(self))
 
   def __hash__(self):
     return hash(self.symlit)
@@ -288,7 +307,7 @@ class EAtomEvaluator(dlvhex.Backend):
       if not nogood.add(clingoid.symlit.lit):
         logging.debug("cannot build nogood (opposite literals)!")
         return
-    logging.info("learn() adding nogood")
+    logging.info("learn() would add nogood %s", repr(nogood.literals))
     self.ccontext.propagator.addNogood(nogood)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
@@ -380,12 +399,14 @@ class ClingoPropagator:
     pass
 
   def __init__(self, name, pcontext, ccontext, eaeval):
-    self.name = name
+    self.name = 'ClingoProp('+name+'):'
     # key = eatom
     # value = list of EAtomVerification
     self.eatomVerifications = collections.defaultdict(list)
     # mapping from solver literals to lists of strings
-    self.debugMapping = collections.defaultdict(list)
+    self.dbgSolv2Syms = collections.defaultdict(list)
+    # mapping from symbol to solver literal
+    self.dbgSym2Solv = {}
     # program context - to get external atoms and signatures to initialize EAtomVerification instances
     self.pcontext = pcontext
     # clasp context - to store the propagator for external atom verification
@@ -394,18 +415,19 @@ class ClingoPropagator:
     self.eaeval = eaeval
 
   def init(self, init):
+    name = self.name+'init:'
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
     for eatomname, signatures in self.pcontext.eatoms.items():
-      logging.info(self.name+'CPinit processing eatom '+eatomname)
+      logging.info(name+' processing eatom '+eatomname)
       for siginfo in signatures:
-        logging.debug(self.name+'CPinit processing eatom {} relpred {} reppred arity {}'.format(
+        logging.debug(name+' init processing eatom {} relpred {} reppred arity {}'.format(
           eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
         for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
-          logging.debug(self.name+'CPinit   replacement atom {}'.format(str(xrep.symbol)))
+          logging.debug(name+'   replacement atom {}'.format(str(xrep.symbol)))
           replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
           xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
-          logging.debug(self.name+'CPinit   relevance atom {}'.format(str(xrel.symbol)))
+          logging.debug(name+'   relevance atom {}'.format(str(xrel.symbol)))
           relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
 
           verification = self.EAtomVerification(relevance, replacement)
@@ -414,12 +436,12 @@ class ClingoPropagator:
           for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
             if argtype == dlvhex.PREDICATE:
               argval = str(xrep.symbol.arguments[argpos])
-              logging.debug(self.name+'CPinit     argument {} is {}'.format(argpos, str(argval)))
+              logging.debug(name+'     argument {} is {}'.format(argpos, str(argval)))
               relevantSig = [ (aarity, apol) for (aname, aarity, apol) in init.symbolic_atoms.signatures if aname == argval ]
-              logging.debug(self.name+'CPinit       relevantSig {}'.format(repr(relevantSig)))
+              logging.debug(name+'       relevantSig {}'.format(repr(relevantSig)))
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
-                  logging.debug(self.name+'CPinit         atom {}'.format(str(ax.symbol)))
+                  logging.debug(name+'         atom {}'.format(str(ax.symbol)))
                   predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
                   verification.predinputs[argpos].append(predinputid)
 
@@ -427,13 +449,15 @@ class ClingoPropagator:
           self.eatomVerifications[eatomname].append(verification)
 
     # for debugging: get full symbol table
-    for aname, aarity, apol in init.symbolic_atoms.signatures:
-      for x in init.symbolic_atoms.by_signature(aname, aarity):
+    if __debug__:
+      for x in init.symbolic_atoms:
         slit = init.solver_literal(x.literal)
-        if apol == True:
-          self.debugMapping[slit].append(str(x.symbol))
-        else:
-          self.debugMapping[slit].append('-'+str(x.symbol))
+        logging.debug("PropInit symbol:{} lit:{} isfact:{} slit:{}".format(x.symbol, x.literal, x.is_fact, slit))
+        prefix = 'F'
+        if not x.is_fact:
+          prefix = str(x.literal)
+        self.dbgSolv2Syms[slit].append(prefix+'/'+str(x.symbol))
+        self.dbgSym2Solv[x.symbol] = slit
 
     # WONTFIX (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
     # TODO (near future) use partial checks and stay in check()
@@ -448,7 +472,27 @@ class ClingoPropagator:
     * for each true/false external atom call the plugin and add corresponding nogood
     '''
     # called on total assignments (even without watches)
-    logging.info(self.name+'CPcheck')
+    name = self.name+'check:'
+    logging.info(self.name+' entering')
+    #for t in traceback.format_stack():
+    #  logging.info(self.name+'   '+t)
+    if __debug__:
+      true = []
+      false = []
+      unassigned = []
+      for slit, syms in self.dbgSolv2Syms.items():
+        info = "{}={{{}}}".format(slit, ','.join(syms))
+        if control.assignment.is_true(slit):
+          true.append(info)
+        elif control.assignment.is_false(slit):
+          false.append(info)
+        else:
+          assert(control.assignment.value(slit) == None)
+          unassigned.append(info)
+      if len(true) > 0: logging.debug(name+" assignment has true slits "+' '.join(true))
+      if len(false) > 0: logging.debug(name+" assignment has false slits "+' '.join(false))
+      if len(unassigned) > 0: logging.debug(name+" assignment has unassigned slits "+' '.join(unassigned))
+      logging.info(name+"assignment is "+' '.join([ str(x[0]) for x in self.dbgSym2Solv.items() if control.assignment.is_true(x[1]) ]))
     with self.ccontext(control, self):
       try:
         for eatomname, veriList in self.eatomVerifications.items():
@@ -456,35 +500,38 @@ class ClingoPropagator:
             if control.assignment.is_true(veri.relevance.lit):
               self.verifyTruthOfAtom(eatomname, control, veri)
             else:
-              logging.debug(self.name+'CP no need to verify atom {}'.format(veri.replacement.sym))
+              logging.debug(name+' no need to verify atom {}'.format(veri.replacement.sym))
       except ClingoPropagator.StopPropagation:
         # this is part of the intended behavior
-        logging.debug(self.name+'CPcheck aborted propagation')
+        logging.debug(name+' aborted propagation')
         #logging.debug('aborted from '+traceback.format_exc())
+    logging.info(self.name+' leaving')
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
+    name = self.name+'vTOA:'
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
       idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
-      logging.debug(self.name+'CPvTOA checking if {} = {} with interpretation {}'.format(
+      logging.debug(name+' checking if {} = {} with interpretation {}'.format(
         str(targetValue), veri.replacement.sym, idebug))
     holder = dlvhex.eatoms[eatomname]
     # in replacement atom everything that is not output is relevant input
     replargs = veri.replacement.sym.arguments
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
-    logging.debug(self.name+'CPvTOA inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
+    logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug(self.name+"CPvTOA output {}".format(pprint.pformat(out)))
+    logging.debug(name+" outputtuple {} output {}".format(pprint.pformat(outputtuple), pprint.pformat(out)))
     realValue = outputtuple in out
+    # TODO now handle all outputs in out!
     if realValue == targetValue:
-      logging.debug(self.name+"CPvTOA positively verified!")
+      logging.debug(name+" positively verified!")
       # TODO somehow adding the (redundant) nogood aborts the propagation
       # this was the case with bb7ab74
       # benjamin said there is a bug, now i try the WIP branch 83038e
       return
     else:
-      logging.debug(self.name+"CPvTOA verification failed!")
+      logging.debug(name+" verification failed!")
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
@@ -496,14 +543,15 @@ class ClingoPropagator:
 
     # ... and all inputs are as they were above ...
     for atom in veri.allinputs:
+      # TODO exclude inputs fixed on the top level?
       value = control.assignment.value(atom.symlit.lit)
       if value == True:
         if not nogood.add(atom.symlit.lit):
-          logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
+          logging.debug(name+" cannot build nogood (opposite literals)!")
           return
       elif value == False:
         if not nogood.add(-atom.symlit.lit):
-          logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
+          logging.debug(name+" cannot build nogood (opposite literals)!")
           return
       # None case does not contribute to nogood
 
@@ -523,14 +571,15 @@ class ClingoPropagator:
     self.addNogood(nogood)
 
   def addNogood(self, nogood):
+    name = self.name+'addNogood:'
     nogood = list(nogood.literals)
     if __debug__:
-      logging.debug(self.name+" adding nogood {}".format(repr(nogood)))
+      logging.debug(name+" adding {}".format(repr(nogood)))
       for slit in nogood:
         a = abs(slit)
-        logging.debug(self.name+"  {} ({}) is {}".format(a, self.ccontext.propcontrol.assignment.value(a), repr(self.debugMapping[a])))
-    may_continue = self.ccontext.propcontrol.add_nogood(nogood)
-    logging.debug(self.name+" add_nogood returned {}".format(repr(may_continue)))
+        logging.debug(name+"  {} ({}) is {}".format(a, self.ccontext.propcontrol.assignment.value(a), repr(self.dbgSolv2Syms[a])))
+    may_continue = self.ccontext.propcontrol.add_nogood(nogood, tag=False, lock=True)
+    logging.debug(name+" may_continue={}".format(repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
 
