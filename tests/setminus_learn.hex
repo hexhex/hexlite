@@ -1,0 +1,16 @@
+domain(a).
+domain(b).
+domain(c).
+domain(d).
+domain(e).
+domain(f).
+domain(g).
+%domain(h).
+%domain(i).
+%domain(j).
+
+% see setminus.hex
+
+sel(X) :- domain(X), &testSetMinusLearn[domain, nsel](X).
+nsel(X) :- domain(X), &testSetMinusLearn[domain, sel](X).
+:- sel(X), sel(Y), sel(Z), X != Y, X != Z, Y != Z.

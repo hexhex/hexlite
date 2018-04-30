@@ -5,9 +5,17 @@ domain(d).
 domain(e).
 domain(f).
 domain(g).
-domain(h).
-domain(i).
-domain(j).
+%domain(h).
+%domain(i).
+%domain(j).
+
+% 7 domain elements
+% select 2 of them
+% binomial coefficient 7 over 2 = 21
+% -> 21 solutions of two selected elements
+% + 7 solutions of single selected element
+% + 1 solution without any selected
+% = 29 solutions
 
 sel(X) :- domain(X), &testSetMinus[domain, nsel](X).
 nsel(X) :- domain(X), &testSetMinus[domain, sel](X).

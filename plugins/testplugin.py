@@ -243,6 +243,7 @@ testNumberOfBallsSE = numberOfBallsSE
 testNumberOfBallsGE = numberOfBallsGE
 
 def partialTest(assignment):
+	# returns true if the predicate input is true for more than 1 constant
 
 	true = 0
 	false = 0
@@ -270,6 +271,7 @@ def partialTest(assignment):
 		dlvhex.outputUnknown(())
 
 def testSetMinus(p, q):
+	# is true for all constants in extension of p but not in extension of q
 	pset, qset = set(), set()
 	for x in dlvhex.getTrueInputAtoms():
 		tup = x.tuple()
@@ -281,10 +283,15 @@ def testSetMinus(p, q):
 	for r in rset:
 		dlvhex.output( (r,) )
 
-def testSetMinus2(p, q):
+def testSetMinusLearn(p, q):
+	# is true for all constants in extension of p but not in extension of q
+	# (same as testSetMinus)
+	# uses learning
 	for x in p.extension():
 		if not x in q.extension():
-			dlvhex.learn((	dlvhex.storeAtom((p, ) + x),
+			# learn that it is not allowed that p(x) and -q(x) and this atom is false for x
+			dlvhex.learn((
+					dlvhex.storeAtom((p, ) + x),
 					dlvhex.storeAtom((q, ) + x).negate(),
 					dlvhex.storeOutputAtom(x).negate()
 					))
@@ -361,7 +368,7 @@ def register():
 	dlvhex.addAtom("idc", (dlvhex.CONSTANT,), 1)
 	#TODO testCautiousQuery
 	dlvhex.addAtom("testSetMinus", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
-	dlvhex.addAtom("testSetMinus2", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
+	dlvhex.addAtom("testSetMinusLearn", (dlvhex.PREDICATE,dlvhex.PREDICATE), 1)
 
 	dlvhex.addAtom("testNonmon", (dlvhex.PREDICATE,), 1)
 	dlvhex.addAtom("testNonmon2", (dlvhex.PREDICATE,), 1)

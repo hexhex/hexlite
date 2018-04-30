@@ -1,0 +1,13 @@
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(0)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(3)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(7),nin(8),nin(9),nin(10),nin(11),in(6)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(8),nin(9),nin(10),nin(11),in(7)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(1)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(11),in(10)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(4)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(2)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(9),nin(10),nin(11),in(8)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(6),nin(7),nin(8),nin(9),nin(10),nin(11),in(5)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(10),nin(11),in(9)}
+{domain(0),domain(1),domain(2),domain(3),domain(4),domain(5),domain(6),domain(7),domain(8),domain(9),domain(10),domain(11),nin(0),nin(1),nin(2),nin(3),nin(4),nin(5),nin(6),nin(7),nin(8),nin(9),nin(10),in(11)}
