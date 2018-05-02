@@ -1,0 +1,25 @@
+d(c1).
+d(c2).
+d(c3).
+d(c4).
+d(c5).
+d(c6).
+d(c7).
+d(c8).
+d(c9).
+d(c10).
+d(c11).
+d(c12).
+d(c13).
+d(c14).
+d(c15).
+d(c16).
+d(c17).
+d(c18).
+d(c19).
+d(c20).
+
+sel(X) :- not n_sel(X), d(X).
+n_sel(X) :- not sel(X), d(X).
+
+:- &someSelectedLearning[sel]().

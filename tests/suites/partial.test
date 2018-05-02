@@ -1,3 +1,5 @@
 setminus.hex setminus.out
 setminus_learn.hex setminus.out
 partialTest.hex partialTest.out
+not_some_selected_partial.hex not_some_selected.out
+not_some_selected_learning.hex not_some_selected.out
