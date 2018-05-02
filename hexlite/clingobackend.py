@@ -308,6 +308,7 @@ class EAtomEvaluator(dlvhex.Backend):
     if __debug__:
       logging.debug("learning user-specified nogood "+repr(ng))
     assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
+    ng = tuple(ng) # make sure it is hashable
     if ng in self.learnedNogoods:
       logging.info("learn() skips adding known nogood")
     else:
