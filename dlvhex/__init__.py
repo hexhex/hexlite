@@ -55,42 +55,35 @@ def addAtom(name, inargumentspec, outargumentnum, props=None):
     props = ExtSourceProperties()
   eatoms[name] = ExternalAtomHolder(name, inargumentspec, outargumentnum, props, callingModule, func)
 
-def output(tpl):
-  global currentOutput
-  if currentOutput is None:
-    raise Exception("mistake in external atom implementation: dlvhex.outputUnknown() followed by dlvhex.output() in the same call") 
-  currentOutput.append(tpl)
+def output(tuple_):
+  assert(isinstance(tuple_, tuple)) # because we store it in a set
+  currentEvaluation().outputKnownTrue.add(tuple_)
+
+def outputUnknown(tuple_):
+  assert(isinstance(tuple_, tuple)) # because we store it in a set
+  currentEvaluation().outputUnknown.add(tuple_)
 
 def learn(nogood):
   # add nogood (given as IDs) to search process
-  currentBackend.learn(nogood)
+  currentEvaluation().backend.learn(nogood)
 
 def storeAtom(tpl):
   # build an atom specified in a tuple and retrieves its existing ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
-  return currentBackend.storeAtom(tpl)
+  return currentEvaluation().backend.storeAtom(tpl)
 
 def storeOutputAtom(args, sign=True):
   # build a replacement atom for the currently called external atom with the given tuple as arguments and retrieves its ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
-  return currentBackend.storeOutputAtom(args, sign)
+  return currentEvaluation().backend.storeOutputAtom(args, sign)
 
 def getInputAtoms():
-  global currentInput
-  assert(currentInput)
-  return currentInput
+  return currentEvaluation().input
 
 def getTrueInputAtoms():
-  global currentInput
-  return [ i for i in currentInput if i.isTrue() ]
-
-def outputUnknown(tuple_):
-  global currentOutput
-  if currentOutput != []:
-    raise Exception("mistake in external atom implementation: dlvhex.output() followed by dlvhex.outputUnknown() in the same call") 
-  currentOutput = None
+  return [ i for i in currentEvaluation().input if i.isTrue() ]
 
 #
 # used by engine
@@ -112,17 +105,30 @@ class Backend:
 eatoms = {}
 # plugin module that is currently registering eatoms
 callingModule = None
-# current input tuple (also passed directly to function, but for storeOutputAtom we need to know this, too)
-currentInputTuple = ()
-# frozen set of ID objects that are predicate input for the currently called external atom
-# None if eatom does not take predicate input
-currentInput = frozenset()
-# tuples returned by the current/previously called external atom
-currentOutput = []
-# object realizing the Backend interface for the currently calling backend
-currentBackend = Backend()
-# currently processed eatom holder
-currentHolder = None
+
+class CurrentExternalAtomEvaluation:
+  def __init__(self):
+    self.reset()
+
+  def reset(self, inputTuple=(), inputs=frozenset(), backend=Backend(), holder=None):
+    # current input tuple (also passed directly to function, but for storeOutputAtom we need to know this, too)
+    self.inputTuple = inputTuple
+    # frozen set of ID objects that are predicate input for the currently called external atom
+    # None if eatom does not take predicate input
+    self.input = inputs
+    # tuples returned by the current/previously called external atom
+    self.outputKnownTrue = set()
+    self.outputUnknown = set()
+    # object realizing the Backend interface for the currently calling backend
+    self.backend = backend
+    # currently processed eatom holder
+    self.holder = holder
+
+# all data relevant to external atom evaluation (dlvhex.* API)
+currentEvaluationStorage = CurrentExternalAtomEvaluation()
+
+def currentEvaluation():
+  return currentEvaluationStorage
 
 # called by engine before calling <pluginmodule>.register()
 def startRegistration(caller):
@@ -134,21 +140,11 @@ def startExternalAtomCall(input_tuple, inputs, backend, holder):
   '''
   inputs: frozenset of all ClingoIDs that are relevant to the current eatom evaluation as predicate inputs
   '''
-  global currentOutput, currentInputTuple, currentInput, currentBackend, currentHolder
-  currentOutput = []
-  currentInputTuple = input_tuple
-  currentInput = inputs
-  currentBackend = backend
-  currentHolder = holder
+  currentEvaluation().reset(input_tuple, inputs, backend, holder)
 
 # called by engine after calling external atom function
 def cleanupExternalAtomCall():
-  global currentOutput, currentInputTuple, currentInput, currentBackend, currentHolder
-  currentOutput = []
-  currentInputTUple = ()
-  currentInput = []
-  currentBackend = Backend()
-  currentHolder = None
+  currentEvaluation().reset()
 
 class ExternalAtomHolder:
   def __init__(self, name, inspec, outnum, props, module, func):

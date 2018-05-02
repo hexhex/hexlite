@@ -220,7 +220,7 @@ class EAtomEvaluator(dlvhex.Backend):
     * executes
     * converts output tuples
     * cleans up
-    * return result
+    * return result (known true tuples, unknown tuples)
     '''
     # prepare input tuple
     input_arguments = []
@@ -239,21 +239,26 @@ class EAtomEvaluator(dlvhex.Backend):
 
     # call external atom in plugin
     dlvhex.startExternalAtomCall(input_arguments, predicateinputatoms, self, holder)
-    out = None
+    outKnownTrue, outUnknown = set(), set()
     try:
       logging.debug('calling plugin eatom with arguments '+repr(input_arguments))
       holder.func(*input_arguments)
       
-      if dlvhex.currentOutput != None:
-        # interpret output
-        # list of tuple of terms (maybe empty tuple)
-        out = [ tuple([ self.hex2clingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
-      else:
-        # unknown output (during partial evaluation)
-        pass
+      # sanity check
+      inconsistent = set.intersection(dlvhex.currentEvaluation().outputKnownTrue, dlvhex.currentEvaluation().outputUnknown)
+      if len(inconsistent) > 0:
+        raise Exception('external atom {} with arguments {} provided the following tuples both as true and unknown: {} partial interpretation is {}'.format(holder.name, repr(input_arguments), repr(inconsistent), repr(predicateinputatoms)))
+
+      # interpret output that is known to be true
+      outKnownTrue = [ tuple([ self.hex2clingo(val) for val in _tuple ])
+                       for _tuple in dlvhex.currentEvaluation().outputKnownTrue ]
+
+      # interpret output that is unknown whether it is false or true (in partial evaluation)
+      outUnknown = [ tuple([ self.hex2clingo(val) for val in _tuple ])
+                     for _tuple in dlvhex.currentEvaluation().outputUnknown ]
     finally:
       dlvhex.cleanupExternalAtomCall()
-    return out
+    return outKnownTrue, outUnknown
   
   # implementation of Backend method
   def storeAtom(self, tpl):
@@ -269,7 +274,7 @@ class EAtomEvaluator(dlvhex.Backend):
     match_name = tpl[0].symlit.sym.name
     match_arguments = [t.symlit.sym for t in tpl[1:]]
     #print("match_name = {} match_arguments = {}".format(repr(match_name), repr(match_arguments)))
-    for x in dlvhex.currentInput:
+    for x in dlvhex.currentEvaluation().input:
       #print("comparing {} with {}".format(repr(x), repr(tpl)))
       #print("xsxn {} xssa {}".format(repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
       if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
@@ -288,13 +293,13 @@ class EAtomEvaluator(dlvhex.Backend):
 
     so we only need to assemble the correct tuple and check if it exists in clingo and return the corresponding ClingoID (only literal matters)
     '''
-    #logging.debug("got dlvhex.currentHolder.name {}".format(dlvhex.currentHolder.name))
-    #logging.debug("got self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name] {}".format(repr([ x.replacement.sym for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name]])))
+    #logging.debug("got dlvhex.currentEvaluation().holder.name {}".format(dlvhex.currentEvaluation().holder.name))
+    #logging.debug("got self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name] {}".format(repr([ x.replacement.sym for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name]])))
 
-    match_args = [t.symlit.sym for t in itertools.chain(dlvhex.currentInputTuple, args)]
+    match_args = [t.symlit.sym for t in itertools.chain(dlvhex.currentEvaluation().inputTuple, args)]
     #print("looking up {}".format(repr(match_args)))
     # find those verification objects that contain the tuple to be stored
-    for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentHolder.name]:
+    for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name]:
       #print("comparing {}".format(repr(x.replacement.sym.arguments)))
       if x.replacement.sym.arguments == match_args:
         #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
@@ -363,25 +368,29 @@ class GringoContext:
       self.holder = holder
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
-      out = self.eaeval.evaluate(self.holder, arguments, [])
+      outKnownTrue, outUnknown = self.eaeval.evaluate(self.holder, arguments, [])
+      assert(len(outUnknown) == 0) # no partial evaluation for eatoms in grounding
       outarity = self.holder.outnum
+      gringoOut = None
       # interpret special cases for gringo @eatom rewritings:
       if outarity == 0:
         # no output arguments: 1 or 0
-        if len(out) == 0:
-          out = 0
+        if len(outKnownTrue) == 0:
+          gringoOut = 0
         else:
-          out = 1
+          gringoOut = 1
       elif outarity == 1:
         # list of terms, not list of tuples (I could not convince Gringo to process single-element-tuples)
-        if any([ len(x) != outarity for x in out ]):
-          wrongarity = [ x for x in out if len(x) != outarity ]
-          out = [ x for x in out if len(x) == outarity ]
+        if any([ len(x) != outarity for x in outKnownTrue ]):
+          wrongarity = [ x for x in outKnownTrue if len(x) != outarity ]
+          outKnownTrue = [ x for x in outKnownTrue if len(x) == outarity ]
           logging.warning("ignored tuples {} with wrong arity from atom {}".format(repr(wrongarity), self.holder.name))
-        out = [ x[0] for x in out ]
+        gringoOut = [ x[0] for x in outKnownTrue ]
+      else:
+        gringoOut = outKnownTrue
       # in other cases we can directly use what externalAtomCallHelper returned
-      logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(out))
-      return out
+      logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(gringoOut))
+      return gringoOut
   def __init__(self, eaeval):
     assert(isinstance(eaeval, EAtomEvaluator))
     self.eaeval = eaeval
@@ -569,15 +578,15 @@ class ClingoPropagator:
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
     logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
-    out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug(name+" outputtuple {} output {}".format(pprint.pformat(outputtuple), pprint.pformat(out)))
+    outKnownTrue, outUnknown = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
+    logging.debug(name+" outputtuple {} outTrue {} outUnknown {}".format(pprint.pformat(outputtuple), pprint.pformat(outKnownTrue), pprint.pformat(outUnknown)))
 
-    if out is None:
-      # outputUnknown() -> cannot verify
-      logging.info("%s external atom provided output 'unknown' -> cannot verify", name)
+    if outputtuple in outUnknown:
+      # cannot verify
+      logging.info("%s external atom gave tuple %s as unknown -> cannot verify", name, outputtuple)
       return
 
-    realValue = outputtuple in out
+    realValue = outputtuple in outKnownTrue
     # TODO now handle all outputs in out!
     if realValue == targetValue:
       logging.info("%s atom %s positively verified!", name, eatomname)
