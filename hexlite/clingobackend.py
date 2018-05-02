@@ -589,13 +589,11 @@ class ClingoPropagator:
 
     # build nogood: solution is eliminated if ...
 
-    # ... eatom is relevant ...
     # XXX make this more elegant (not carry everything twice in nogood and in hr_nogood)
     nogood = self.Nogood()
-    nogood.add(veri.relevance.lit)
     hr_nogood = []
 
-    # ... and all inputs are as they were above ...
+    # ... all inputs are as they were above ...
     for atom in veri.allinputs:
       # TODO exclude inputs fixed on the top level?
       value = control.assignment.value(atom.symlit.lit)
