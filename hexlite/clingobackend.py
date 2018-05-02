@@ -333,7 +333,7 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     self.cache = collections.defaultdict(lambda: collections.defaultdict(dict))
 
   def evaluateNoncached(self, holder, inputtuple, predicateinputatoms):
-    EAtomEvaluator.evaluate(self, holder, inputtuple, predicateinputatoms)
+    return EAtomEvaluator.evaluate(self, holder, inputtuple, predicateinputatoms)
 
   def evaluateCached(self, holder, inputtuple, predicateinputatoms):
     # this is handled by defaultdict
