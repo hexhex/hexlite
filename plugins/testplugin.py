@@ -270,6 +270,29 @@ def partialTest(assignment):
 	elif true + unknown > 1:
 		dlvhex.outputUnknown(())
 
+def someSelected(selected):
+	for x in dlvhex.getInputAtoms():
+		if x.tuple()[0] == selected and x.isTrue():
+			dlvhex.output(())
+
+def someSelectedPartial(selected):
+	unknown = False
+	for x in dlvhex.getInputAtoms():
+		if x.tuple()[0] == selected and x.isTrue():
+			dlvhex.output( () )
+			return
+		elif not x.isFalse():
+			unknown = True
+	if unknown:
+		dlvhex.outputUnknown(())
+
+def someSelectedLearning(selected):
+	for x in dlvhex.getInputAtoms():
+		if x.tuple()[0] == selected and x.isTrue():
+			dlvhex.output(())
+			nogood = [x, dlvhex.storeOutputAtom(()).negate()]
+			dlvhex.learn(nogood)
+
 def testSetMinus(p, q):
 	# is true for all constants in extension of p but not in extension of q
 	pset, qset = set(), set()
@@ -411,6 +434,13 @@ def register():
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
 	dlvhex.addAtom("partialTest", (dlvhex.PREDICATE, ), 0, prop)
+
+	# someSelected and variations
+	dlvhex.addAtom("someSelected", (dlvhex.PREDICATE,), 0)
+	dlvhex.addAtom("someSelectedLearning", (dlvhex.PREDICATE,), 0)
+	prop = dlvhex.ExtSourceProperties()
+	prop.setProvidesPartialAnswer(True)
+	dlvhex.addAtom("someSelectedPartial", (dlvhex.PREDICATE,), 0, prop)
 
 	#XFAIL (TODO) sumD0
 	#XFAIL getreq
