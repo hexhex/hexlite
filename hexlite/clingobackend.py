@@ -347,7 +347,10 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     return storage[positiveinputatoms]
 
   def evaluate(self, holder, inputtuple, predicateinputatoms):
-    if self.ccontext.propcontrol.assignment.is_total:
+    if predicateinputatoms == [] or self.ccontext.propcontrol.assignment.is_total:
+      # either we have no predicate inputs (i.e., evaluation in grounding)
+      # or we are sure our assignment is total (during evaluation in solving)
+      # then we use the cache
       return self.evaluateCached(holder, inputtuple, predicateinputatoms)
     else:
       # XXX maybe at some point we want to cache for partial evaluations, but probably this will never be necessary
