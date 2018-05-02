@@ -334,7 +334,8 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     # value = defaultdict
     #   key = inputtuple
     #   value = dict:
-    #     key = predicateinputatoms
+    #     key = (predicateinputatoms-true, predicateinputatoms-false)
+    #           [because in partial interpretations there are also unknown atoms]
     #     value = output
     self.cache = collections.defaultdict(lambda: collections.defaultdict(dict))
 
@@ -345,21 +346,19 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     # this is handled by defaultdict
     storage = self.cache[holder.name][inputtuple]
     positiveinputatoms = frozenset(x for x in predicateinputatoms if x.isTrue())
-    assert(all(x.isTrue() or x.isFalse() for x in predicateinputatoms))
-    if positiveinputatoms not in storage:
-      storage[positiveinputatoms] = EAtomEvaluator.evaluate(
+    negativeinputatoms = frozenset(x for x in predicateinputatoms if x.isFalse())
+    key = (positiveinputatoms, negativeinputatoms)
+    if key not in storage:
+      storage[key] = EAtomEvaluator.evaluate(
         self, holder, inputtuple, predicateinputatoms)
-    return storage[positiveinputatoms]
+    return storage[key]
 
   def evaluate(self, holder, inputtuple, predicateinputatoms):
-    if predicateinputatoms == [] or self.ccontext.propcontrol.assignment.is_total:
-      # either we have no predicate inputs (i.e., evaluation in grounding)
-      # or we are sure our assignment is total (during evaluation in solving)
-      # then we use the cache
-      return self.evaluateCached(holder, inputtuple, predicateinputatoms)
-    else:
-      # XXX maybe at some point we want to cache for partial evaluations, but probably this will never be necessary
-      return self.evaluateNoncached(holder, inputtuple, predicateinputatoms)
+    # we cache for total and partial evaluations,
+    # because our architecture would evaluate multiple times for multiple output tuples
+    # of the same nonground external atom on the same (partial) interpretation
+    # -> the cache avoids recomputations in this case
+    return self.evaluateCached(holder, inputtuple, predicateinputatoms)
 
 class GringoContext:
   class ExternalAtomCall:
