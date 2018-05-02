@@ -28,7 +28,9 @@ TUPLE = 3
 
 class ExtSourceProperties:
   def __init__(self):
-    pass
+    self.provides_partial = False
+  def setProvidesPartialAnswer(self, provides_partial):
+    self.provides_partial = provides_partial
   def addFiniteOutputDomain(self, argidx):
     pass
   def __getattr__(self, name):
@@ -55,6 +57,8 @@ def addAtom(name, inargumentspec, outargumentnum, props=None):
 
 def output(tpl):
   global currentOutput
+  if currentOutput is None:
+    raise Exception("mistake in external atom implementation: dlvhex.outputUnknown() followed by dlvhex.output() in the same call") 
   currentOutput.append(tpl)
 
 def learn(nogood):
@@ -82,12 +86,11 @@ def getTrueInputAtoms():
   global currentInput
   return [ i for i in currentInput if i.isTrue() ]
 
-outputUnknownWarnOnce = False
 def outputUnknown(tuple_):
-  global outputUnknownWarnOnce
-  if not outputUnknownWarnOnce:
-    logging.warning("not implemented: dlvhex.outputUnkown (warning only once)")
-    outputUnknownWarnOnce = True
+  global currentOutput
+  if currentOutput != []:
+    raise Exception("mistake in external atom implementation: dlvhex.output() followed by dlvhex.outputUnknown() in the same call") 
+  currentOutput = None
 
 #
 # used by engine

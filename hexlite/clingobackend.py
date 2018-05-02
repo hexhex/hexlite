@@ -244,9 +244,13 @@ class EAtomEvaluator(dlvhex.Backend):
       logging.debug('calling plugin eatom with arguments '+repr(input_arguments))
       holder.func(*input_arguments)
       
-      # interpret output
-      # list of tuple of terms (maybe empty tuple)
-      out = [ tuple([ self.hex2clingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+      if dlvhex.currentOutput != None:
+        # interpret output
+        # list of tuple of terms (maybe empty tuple)
+        out = [ tuple([ self.hex2clingo(val) for val in _tuple ]) for _tuple in dlvhex.currentOutput ]
+      else:
+        # unknown output (during partial evaluation)
+        pass
     finally:
       dlvhex.cleanupExternalAtomCall()
     return out
@@ -328,7 +332,10 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     #     value = output
     self.cache = collections.defaultdict(lambda: collections.defaultdict(dict))
 
-  def evaluate(self, holder, inputtuple, predicateinputatoms):
+  def evaluateNoncached(self, holder, inputtuple, predicateinputatoms):
+    EAtomEvaluator.evaluate(self, holder, inputtuple, predicateinputatoms)
+
+  def evaluateCached(self, holder, inputtuple, predicateinputatoms):
     # this is handled by defaultdict
     storage = self.cache[holder.name][inputtuple]
     positiveinputatoms = frozenset(x for x in predicateinputatoms if x.isTrue())
@@ -337,6 +344,13 @@ class CachedEAtomEvaluator(EAtomEvaluator):
       storage[positiveinputatoms] = EAtomEvaluator.evaluate(
         self, holder, inputtuple, predicateinputatoms)
     return storage[positiveinputatoms]
+
+  def evaluate(self, holder, inputtuple, predicateinputatoms):
+    if self.ccontext.propcontrol.assignment.is_total:
+      return self.evaluateCached(holder, inputtuple, predicateinputatoms)
+    else:
+      # XXX maybe at some point we want to cache for partial evaluations, but probably this will never be necessary
+      return self.evaluateNoncached(holder, inputtuple, predicateinputatoms)
 
 class GringoContext:
   class ExternalAtomCall:
@@ -380,8 +394,9 @@ class ClingoPropagator:
     * relevance atom (do we need to evaluate it?)
     * replacement atom (was it guessed true or false? which arguments does it have?)
     * the full list of atoms relevant as predicate inputs (required to evaluate the external atom semantic function)
+    * whether we should verify this on partial assignments (or only on total ones)
     """
-    def __init__(self, relevance, replacement):
+    def __init__(self, relevance, replacement, verify_on_partial=False):
       # symlit for ground eatom relevance
       self.relevance = relevance
       # symlit for ground eatom replacement
@@ -390,6 +405,8 @@ class ClingoPropagator:
       self.predinputs = collections.defaultdict(list)
       # list of all elements in self.predinputs (cache)
       self.allinputs = []
+      # whether this should be verified on partial assignments
+      self.verify_on_partial = verify_on_partial
 
   class Nogood:
     def __init__(self):
@@ -404,7 +421,7 @@ class ClingoPropagator:
   class StopPropagation(Exception):
     pass
 
-  def __init__(self, name, pcontext, ccontext, eaeval):
+  def __init__(self, name, pcontext, ccontext, eaeval, partial_evaluation_eatoms):
     self.name = 'ClingoProp('+name+'):'
     # key = eatom
     # value = list of EAtomVerification
@@ -419,24 +436,30 @@ class ClingoPropagator:
     self.ccontext = ccontext
     # helper for external atom evaluation - to perform external atom evaluation
     self.eaeval = eaeval
+    # list of names of external atoms that should do checks on partial assignments
+    self.partial_evaluation_eatoms = partial_evaluation_eatoms
 
   def init(self, init):
     name = self.name+'init:'
     # register mapping for solver/grounder atoms!
     # no need for watches as long as we use only check()
+    require_partial_evaluation = False
     for eatomname, signatures in self.pcontext.eatoms.items():
       logging.info(name+' processing eatom '+eatomname)
+      found_this_eatomname = False
+      verify_on_partial = eatomname in self.partial_evaluation_eatoms
       for siginfo in signatures:
         logging.debug(name+' init processing eatom {} relpred {} reppred arity {}'.format(
           eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
         for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
+          found_this_eatomname = True
           logging.debug(name+'   replacement atom {}'.format(str(xrep.symbol)))
           replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
           xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
           logging.debug(name+'   relevance atom {}'.format(str(xrel.symbol)))
           relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
 
-          verification = self.EAtomVerification(relevance, replacement)
+          verification = self.EAtomVerification(relevance, replacement, verify_on_partial)
 
           # get symbols given to predicate inputs and register their literals
           for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
@@ -453,6 +476,17 @@ class ClingoPropagator:
 
           verification.allinputs = frozenset(hexlite.flatten([idlist for idlist in verification.predinputs.values()]))
           self.eatomVerifications[eatomname].append(verification)
+      if found_this_eatomname:
+        # this eatom is used at least once in the search
+        if eatomname in self.partial_evaluation_eatoms:
+          logging.info('%s will perform checks on partial assignments due to external atom %s', name, eatomname)
+          require_partial_evaluation = True
+
+    if require_partial_evaluation:
+      init.check_mode = clingo.PropagatorCheckMode.Fixpoint
+    else:
+      # this is the default anyways
+      init.check_mode = clingo.PropagatorCheckMode.Total
 
     # for debugging: get full symbol table
     if __debug__:
@@ -479,7 +513,7 @@ class ClingoPropagator:
     '''
     # called on total assignments (even without watches)
     name = self.name+'check:'
-    logging.info(self.name+' entering')
+    logging.info('%s entering with assignment.is_total=%d', self.name, control.assignment.is_total)
     #for t in traceback.format_stack():
     #  logging.info(self.name+'   '+t)
     if __debug__:
@@ -499,10 +533,14 @@ class ClingoPropagator:
       if len(false) > 0: logging.debug(name+" assignment has false slits "+' '.join(false))
       if len(unassigned) > 0: logging.debug(name+" assignment has unassigned slits "+' '.join(unassigned))
       logging.info(name+"assignment is "+' '.join([ str(x[0]) for x in self.dbgSym2Solv.items() if control.assignment.is_true(x[1]) ]))
+    partial_evaluation = not control.assignment.is_total
     with self.ccontext(control, self):
       try:
         for eatomname, veriList in self.eatomVerifications.items():
           for veri in veriList:
+            if partial_evaluation and not veri.verify_on_partial:
+              # just skip this verification here
+              continue
             if control.assignment.is_true(veri.relevance.lit):
               self.verifyTruthOfAtom(eatomname, control, veri)
             else:
@@ -518,8 +556,9 @@ class ClingoPropagator:
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
       idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
-      logging.debug(name+' checking if {} = {} with interpretation {}'.format(
-        str(targetValue), veri.replacement.sym, idebug))
+      logging.debug(name+' checking if {} = {} with interpretation {} ({})'.format(
+        str(targetValue), veri.replacement.sym, idebug,
+        {True:'total', False:'partial'}[control.assignment.is_total]))
     holder = dlvhex.eatoms[eatomname]
     # in replacement atom everything that is not output is relevant input
     replargs = veri.replacement.sym.arguments
@@ -528,6 +567,12 @@ class ClingoPropagator:
     logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     out = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
     logging.debug(name+" outputtuple {} output {}".format(pprint.pformat(outputtuple), pprint.pformat(out)))
+
+    if out is None:
+      # outputUnknown() -> cannot verify
+      logging.info("%s external atom provided output 'unknown' -> cannot verify", name)
+      return
+
     realValue = outputtuple in out
     # TODO now handle all outputs in out!
     if realValue == targetValue:
@@ -647,7 +692,12 @@ def execute(pcontext, rewritten, facts, plugins, args):
   #eaeval = EAtomEvaluator(ccontext)
   eaeval = CachedEAtomEvaluator(ccontext)
 
-  propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval)
+  # find names of external atoms that advertises to do checks on a partial assignment
+  partial_evaluation_eatoms = [ eatomname for eatomname, info in dlvhex.eatoms.items() if info.props.provides_partial ]
+  # XXX we could filter here to reduce this set or we could decide to do no partial evaluation at all or we could do this differently for FLP checker and Compatible Set finder
+  should_do_partial_evaluation_on = partial_evaluation_eatoms
+
+  propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
 
   if args.flpcheck == 'explicit':
     flp_checker_factory = flp.ExplicitFLPChecker
@@ -681,6 +731,7 @@ def execute(pcontext, rewritten, facts, plugins, args):
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
+
   # name of this propagator CSF = compatible set finder
   checkprop = propagatorFactory('CSF')
   cc.register_propagator(checkprop)
