@@ -577,31 +577,35 @@ class ClingoPropagator:
     realValue = outputtuple in out
     # TODO now handle all outputs in out!
     if realValue == targetValue:
-      logging.debug(name+" positively verified!")
+      logging.info("%s atom %s positively verified!", name, eatomname)
       # TODO somehow adding the (redundant) nogood aborts the propagation
       # this was the case with bb7ab74
       # benjamin said there is a bug, now i try the WIP branch 83038e
       return
     else:
-      logging.debug(name+" verification failed!")
+      logging.info("%s atom %s verification failed!", name, eatomname)
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
     # build nogood: solution is eliminated if ...
 
     # ... eatom is relevant ...
+    # XXX make this more elegant (not carry everything twice in nogood and in hr_nogood)
     nogood = self.Nogood()
     nogood.add(veri.relevance.lit)
+    hr_nogood = []
 
     # ... and all inputs are as they were above ...
     for atom in veri.allinputs:
       # TODO exclude inputs fixed on the top level?
       value = control.assignment.value(atom.symlit.lit)
       if value == True:
+        hr_nogood.append( (atom.symlit.sym,True) )
         if not nogood.add(atom.symlit.lit):
           logging.debug(name+" cannot build nogood (opposite literals)!")
           return
       elif value == False:
+        hr_nogood.append( (atom.symlit.sym,False) )
         if not nogood.add(-atom.symlit.lit):
           logging.debug(name+" cannot build nogood (opposite literals)!")
           return
@@ -611,15 +615,19 @@ class ClingoPropagator:
     if realValue == True:
       # ... and computation gave true but eatom replacement is false
       checklit = -veri.replacement.lit
+      hr_nogood.append( (veri.replacement.sym,False) )
     else:
       # ... and computation gave false but eatom replacement is true
       checklit = veri.replacement.lit
+      hr_nogood.append( (veri.replacement.sym,True) )
 
     if not nogood.add(checklit):
       logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
       return
 
-    logging.debug(self.name+"CPcheck adding nogood {}".format(repr(nogood)))
+    if logging.getLogger().isEnabledFor(logging.INFO):
+      hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
+      logging.info("%s CPcheck adding nogood %s", name, hr_nogood_str)
     self.addNogood(nogood)
 
   def addNogood(self, nogood):
