@@ -1,0 +1,13 @@
+% testing acthex with bubblesort in SortEnvironment
+
+% display
+@sortDisplay{1}.
+
+% swap lowest position that should be swapped
+swap(I,I+1) :- &sortVal(I,V), &sortVal(I+1,W), W < V, not swapBelow(I+1).
+swapBelow(I) :- swap(_,I).
+swapBelow(I-1) :- swapBelow(I), I > 0. 
+@sortSwap(I,J){2,b} :- swap(I,J), I+1=J.
+
+touchedAny :- swap(_,_).
+@acthexStop{3} :- not touchedAny.
