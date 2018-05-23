@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO make this a real script, move most content to hexlite package
-
 import sys
 import platform
 
@@ -25,20 +23,10 @@ if platform.python_version().startswith('2'):
   sys.stdout.write("Please use Python 3 instead of Python 2!\n")
   sys.exit(-1)
 
-import logging
-# initially log everything
-logging.basicConfig(
-  level=logging.NOTSET, stream=sys.stderr,
-  format="%(levelname)1s:%(filename)10s:%(lineno)3d:%(message)s")
-# make log level names shorter so that we can show them
-logging.addLevelName(50, 'C')
-logging.addLevelName(40, 'E')
-logging.addLevelName(30, 'W')
-logging.addLevelName(20, 'I')
-logging.addLevelName(10, 'D')
+import hexlite.app as app
+app.setupLoggingBase()
 
 # load rest after configuring logging
-import os, argparse, traceback, pprint
 import hexlite
 import hexlite.ast.shallowparser as shp
 import hexlite.rewriter as rewriter
@@ -46,37 +34,8 @@ import hexlite.rewriter as rewriter
 # this is our own package for communicating with plugins
 import dlvhex
 
-def importClingoAPI():
-  # clingo python API
-  try:
-    # try to import global clingo package
-    logging.debug("attempting global clingo import")
-    import clingo
-  except ImportError:
-    logging.debug("Global clingo import:"+traceback.format_exc())
-    # try in ~/.hexlite/
-    try:
-      sys.path.append(os.path.expanduser('~/.hexlite/'))
-      import clingo
-    except ImportError:
-      logging.debug("Local clingo import:"+traceback.format_exc())
-      logging.warning("Could not find clingo python module in global or local (~/.hexlite/) installation.")
-      import hexlite.buildclingo as bcm
-      if not bcm.build():
-        logging.critical("Could not install clingo python module. Please retry or install manually and retry running hexlite.")
-        sys.exit(-1)
-    # now it should work
-    try:
-      # add a NEW path (non-existence of clingo module seems to be cached)
-      sys.path.append(os.path.expanduser('~/.hexlite//'))
-      import clingo
-    except ImportError:
-      logging.debug("Clingo build:"+traceback.format_exc())
-      logging.critical("Installed clingo python module but cannot import it. Please report this to the developers.")
-      sys.exit(-1)
-
-  # import these after importing clingo, because it requires clingo too
-  import hexlite.clingobackend
+# other things we need here
+import os, argparse, traceback, pprint, logging
 
 def loadPlugin(mname):
   # returns plugin info
@@ -99,7 +58,7 @@ def loadProgram(hexfiles):
       ret += prog
   return ret
 
-def interpretArguments(argv):
+def interpretArguments(argv, config):
   parser = argparse.ArgumentParser(
     description='HEX-Lite - Answer Set Solver for fragment of the HEX formalism')
   parser.add_argument('hexfiles', nargs='+', metavar='HEXFILE', action='append', default=[],
@@ -108,65 +67,16 @@ def interpretArguments(argv):
     help='Paths to search for python modules.')
   parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
     help='Names of python modules to load as external atoms.')
-  parser.add_argument('--liberalsafety', action='store_true', default=False,
-    help='Whether liberal safety is requested (ignored).')
-  parser.add_argument('--strongnegation-enable', action='store_true', default=False,
-    help='Whether strong negation is enabled (ignored).')
-  parser.add_argument('--flpcheck', choices=['explicit', 'none'], action='store', default='explicit',
-    help='Which type of FLP check to use (explicit FLP check currently does not work for strong negation and optimization).')
-  parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
-    help='Number of models to enumerate.')
-  parser.add_argument('-N', '--maxint', metavar='N', action='store', default=None,
-    help='Maximum integer (#maxint in the program can override this).')
-  parser.add_argument('--nofacts', action='store_true', default=False,
-    help='Whether to output given facts in answer set.')
-  parser.add_argument('--auxfacts', action='store_true', default=False,
-    help='Whether to output auxiliary facts in answer set.')
-  #parser.add_argument('--solver', nargs='?', metavar='BACKEND', action='store', default=[],
-  #  help='Names of solver backend to use (supported: clingo).')
-  parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
-  parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
+  config.add_common_arguments(parser)
   args = parser.parse_args(argv)
-  setupLogging(args)
   logging.debug('args='+repr(args))
-  if args.liberalsafety:
-    logging.warning("ignored argument about liberal safety")
-  if args.strongnegation_enable:
-    logging.warning("ignored argument about strong negation")
+  config.process_arguments(args)
   return args
 
-def setupLogging(args):
-  level = logging.WARNING
-  if args.verbose:
-    level = logging.INFO
-  if args.debug:
-    level = logging.DEBUG
-  # call only once
-  logging.getLogger().setLevel(level)
-  
-def main():
-  code = 1
-  try:
-    args = interpretArguments(sys.argv[1:])
-    # import API here to fail early if clingo module does not exist
-    importClingoAPI()
-    # now set additional paths for plugin imports
-    setPaths(hexlite.flatten(args.pluginpath))
-    plugins = loadPlugins(hexlite.flatten(args.plugin))
-    program = loadProgram(hexlite.flatten(args.hexfiles))
-    pcontext = hexlite.ProgramContext()
-    rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-    # TODO we should not pass args but a more generic configuration object
-    pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
-    rewritten, facts = pr.rewrite()
-    # TODO we should not pass args but a more generic configuration object
-    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, args)
-  except SystemExit:
-    pass
-  except:
-    logging.error('Exception: '+traceback.format_exc())
-    logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
-  sys.exit(code)
+def setPaths(paths):
+  for p in paths:
+    sys.path.append(p)
+  logging.info('sys.path='+repr(sys.path))
 
 def loadPlugins(plugins):
   ret = []
@@ -176,10 +86,31 @@ def loadPlugins(plugins):
     ret.append(pi)
   return ret
 
-def setPaths(paths):
-  for p in paths:
-    sys.path.append(p)
-  logging.info('sys.path='+repr(sys.path))
+def main():
+  code = 1
+  try:
+    config = hexlite.Configuration()
+    args = interpretArguments(sys.argv[1:], config)
+    # import API here to fail early if clingo module does not exist
+    app.importClingoAPI()
+    # now set additional paths for plugin imports
+    setPaths(hexlite.flatten(args.pluginpath))
+    plugins = loadPlugins(hexlite.flatten(args.plugin))
+    program = loadProgram(hexlite.flatten(args.hexfiles))
+    pcontext = hexlite.ProgramContext()
+    rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+    # TODO we should not pass args but a more generic configuration object
+    # needs maxint
+    pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
+    rewritten, facts = pr.rewrite()
+    # TODO we should not pass args but a more generic configuration object
+    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
+  except SystemExit:
+    pass
+  except:
+    logging.error('Exception: '+traceback.format_exc())
+    logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
+  sys.exit(code)
 
 if __name__ == '__main__':
   main()

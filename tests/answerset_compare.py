@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # return
 # 0 = true = same answer set
 # != 0 = false = answer sets different or error
