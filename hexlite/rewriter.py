@@ -31,12 +31,12 @@ Aux = aux.Aux
 import dlvhex
 
 class ProgramRewriter:
-  def __init__(self, pcontext, shallowprogram, plugins, args):
+  def __init__(self, pcontext, shallowprogram, plugins, config):
     assert(isinstance(pcontext, hexlite.ProgramContext))
     self.pcontext = pcontext
     self.shallowprog = shallowprogram
     self.plugins = plugins
-    self.args = args
+    self.config = config
     self.srprog, self.facts = self.__annotateWithStatementRewriters()
     self.rewritten = []
 
@@ -47,8 +47,8 @@ class ProgramRewriter:
     # rewriters append to self.rewritten
     for stm in self.srprog:
       stm.rewrite()
-    if not self.pcontext.wroteMaxint and self.args.maxint is not None:
-      maxintConst = shp.alist(['#const', Aux.MAXINT, '=', self.args.maxint], right='.')
+    if not self.pcontext.wroteMaxint and self.config.maxint is not None:
+      maxintConst = shp.alist(['#const', Aux.MAXINT, '=', self.config.maxint], right='.')
       logging.info("adding maxint rule (from commandline) "+shp.shallowprint(maxintConst))
       self.addRewrittenRule(maxintConst)
     return self.rewritten, self.facts

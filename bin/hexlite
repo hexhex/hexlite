@@ -99,7 +99,7 @@ def loadProgram(hexfiles):
       ret += prog
   return ret
 
-def interpretArguments(argv):
+def interpretArguments(argv, config):
   parser = argparse.ArgumentParser(
     description='HEX-Lite - Answer Set Solver for fragment of the HEX formalism')
   parser.add_argument('hexfiles', nargs='+', metavar='HEXFILE', action='append', default=[],
@@ -108,31 +108,11 @@ def interpretArguments(argv):
     help='Paths to search for python modules.')
   parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
     help='Names of python modules to load as external atoms.')
-  parser.add_argument('--liberalsafety', action='store_true', default=False,
-    help='Whether liberal safety is requested (ignored).')
-  parser.add_argument('--strongnegation-enable', action='store_true', default=False,
-    help='Whether strong negation is enabled (ignored).')
-  parser.add_argument('--flpcheck', choices=['explicit', 'none'], action='store', default='explicit',
-    help='Which type of FLP check to use (explicit FLP check currently does not work for strong negation and optimization).')
-  parser.add_argument('-n', '--number', metavar='N', action='store', default=0,
-    help='Number of models to enumerate.')
-  parser.add_argument('-N', '--maxint', metavar='N', action='store', default=None,
-    help='Maximum integer (#maxint in the program can override this).')
-  parser.add_argument('--nofacts', action='store_true', default=False,
-    help='Whether to output given facts in answer set.')
-  parser.add_argument('--auxfacts', action='store_true', default=False,
-    help='Whether to output auxiliary facts in answer set.')
-  #parser.add_argument('--solver', nargs='?', metavar='BACKEND', action='store', default=[],
-  #  help='Names of solver backend to use (supported: clingo).')
-  parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
-  parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
+  config.add_common_arguments(parser)
   args = parser.parse_args(argv)
   setupLogging(args)
   logging.debug('args='+repr(args))
-  if args.liberalsafety:
-    logging.warning("ignored argument about liberal safety")
-  if args.strongnegation_enable:
-    logging.warning("ignored argument about strong negation")
+  config.process_arguments(args)
   return args
 
 def setupLogging(args):
@@ -147,7 +127,8 @@ def setupLogging(args):
 def main():
   code = 1
   try:
-    args = interpretArguments(sys.argv[1:])
+    config = hexlite.Configuration()
+    args = interpretArguments(sys.argv[1:], config)
     # import API here to fail early if clingo module does not exist
     importClingoAPI()
     # now set additional paths for plugin imports
@@ -157,10 +138,11 @@ def main():
     pcontext = hexlite.ProgramContext()
     rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
     # TODO we should not pass args but a more generic configuration object
-    pr = rewriter.ProgramRewriter(pcontext, program, plugins, args)
+    # needs maxint
+    pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
     rewritten, facts = pr.rewrite()
     # TODO we should not pass args but a more generic configuration object
-    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, args)
+    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
   except SystemExit:
     pass
   except:

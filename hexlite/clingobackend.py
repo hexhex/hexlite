@@ -653,9 +653,9 @@ class ClingoPropagator:
       raise ClingoPropagator.StopPropagation()
 
 class ModelReceiver:
-  def __init__(self, facts, args, flpchecker):
+  def __init__(self, facts, config, flpchecker):
     self.facts = set(self._normalizeFacts(facts))
-    self.args = args
+    self.config = config
     self.flpchecker = flpchecker
 
   def __call__(self, mdl):
@@ -668,9 +668,9 @@ class ModelReceiver:
       return
     syms = mdl.symbols(atoms=True,terms=True)
     strsyms = [ str(s) for s in syms ]
-    if self.args.nofacts:
+    if self.config.nofacts:
       strsyms = [ s for s in strsyms if s not in self.facts ]
-    if not self.args.auxfacts:
+    if not self.config.auxfacts:
       strsyms = [ s for s in strsyms if not s.startswith(aux.Aux.PREFIX) ]
     if len(costs) > 0:
       # first entry = highest priority level
@@ -698,7 +698,7 @@ class ModelReceiver:
       return ret
     return [normalize(f) for f in facts]
 
-def execute(pcontext, rewritten, facts, plugins, args):
+def execute(pcontext, rewritten, facts, plugins, config):
   # prepare contexts that are for this program but not yet specific for a clasp solver process
   # (multiple clasp solvers are used for finding compatible sets and for checking FLP property)
 
@@ -717,17 +717,17 @@ def execute(pcontext, rewritten, facts, plugins, args):
 
   propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
 
-  if args.flpcheck == 'explicit':
+  if config.flpcheck == 'explicit':
     flp_checker_factory = flp.ExplicitFLPChecker
   else:
-    assert(args.flpcheck == 'none')
+    assert(config.flpcheck == 'none')
     flp_checker_factory = flp.DummyFLPChecker
   flpchecker = flp_checker_factory(propagatorFactory)
 
   # TODO get settings from commandline
   cmdlineargs = []
-  if args.number != 1:
-    cmdlineargs.append(str(args.number))
+  if config.number != 1:
+    cmdlineargs.append(str(config.number))
   # just in case we need optimization
   cmdlineargs.append('--opt-mode=optN')
   cmdlineargs.append('--opt-strategy=usc,9')
@@ -753,7 +753,7 @@ def execute(pcontext, rewritten, facts, plugins, args):
   # name of this propagator CSF = compatible set finder
   checkprop = propagatorFactory('CSF')
   cc.register_propagator(checkprop)
-  mr = ModelReceiver(facts, args, flpchecker)
+  mr = ModelReceiver(facts, config, flpchecker)
 
   logging.info('starting search')
   cc.solve(on_model=mr)
