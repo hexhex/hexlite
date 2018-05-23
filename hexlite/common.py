@@ -23,6 +23,10 @@ import argparse
 
 class Configuration:
   def __init__(self):
+    # whether to produce verbose output
+    self.verbose = False
+    # whether to produce debug output
+    self.debug = False
     # maxint setting (for compatibility with dlvhex, actually not necessary here)
     self.maxint = 0
     # which type of FLP check to use, or 'none'
@@ -53,7 +57,19 @@ class Configuration:
     parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
     parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
 
+  def setupLogging(self):
+    level = logging.WARNING
+    if self.verbose:
+      level = logging.INFO
+    if self.debug:
+      level = logging.DEBUG
+    # call only once
+    logging.getLogger().setLevel(level)
+
   def process_arguments(self, args):
+    self.verbose = args.verbose
+    self.debug = args.debug
+    self.setupLogging()
     if args.liberalsafety:
       logging.warning("ignored argument about liberal safety")
     if args.strongnegation_enable:
