@@ -1,9 +1,10 @@
-WHAT="./tests/not_some_selected_partial.hex"
+WHAT="./tests/acthex_bubblesort_sortenv.hex"
+EXTRA="--plugin=stringplugin"
 EXTRA=""
 #EXTRA="$EXTRA --debug"
 #EXTRA="$EXTRA --verbose"
-hexlite $EXTRA \
+acthex $EXTRA \
   --pluginpath=./plugins/ \
-  --plugin=stringplugin --plugin=testplugin \
+  --plugin=acthex-testplugin \
   $WHAT 
   

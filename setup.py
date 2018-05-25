@@ -37,9 +37,9 @@ setuptools.setup(name='hexlite',
       author='Peter Schuller',
       author_email='schueller.p@gmail.com',
       license='GPL3',
-      packages=['hexlite', 'hexlite.ast', 'dlvhex'],
+      packages=['hexlite', 'hexlite.ast', 'dlvhex', 'acthex'],
       install_requires=[
         'ply',
       ],
-      scripts=['bin/hexlite'],
+      scripts=['bin/hexlite', 'bin/acthex'],
       zip_safe=False)
