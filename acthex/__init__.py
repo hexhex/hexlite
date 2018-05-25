@@ -51,13 +51,23 @@ getTrueInputAtoms=dlvhex.getTrueInputAtoms
 humanReadableSpec=dlvhex.humanReadableSpec
 
 def setEnvironment(env):
-  raise Exception("not implemented")
+  global environment
+  logging.info("setting new environment of type %s, replacing environment of type %s", env.__class__, environment.__class__)
+  environment = env
 
 def addAction(name, inargumentspec):
-  raise Exception("not implemented")
+    global actions
+    callingModule = dlvhex.callingModule
+    if name in actions:
+        raise Exception("action with name {} registered by module {} already defined by module {}!".format(
+            name, callingModule.__name__, actions[name].module.__name__))
+    try:
+        func = getattr(callingModule, name)
+    except:
+        raise Exception("could not get function for action {} in module {}".format(name, callingModule.__name__))
+    actions[name] = ActionHolder(name, inargumentspec, callingModule, func)
 
 def environment():
-  raise Exception("not implemented")
   global currentEnvironment
   return currentEnvironment
 
@@ -67,6 +77,7 @@ def environment():
 
 # key = action name, value = ActionHolder instance
 actions = {}
+environment = Environment()
 
 # we do not need our own CurrentExternalAtomEvaluation because only a single environment exists and it is stored in this module
 
@@ -84,10 +95,10 @@ def cleanupActionCall():
   pass
 
 class ActionHolder:
-  def __init__(self, name, inspec, module, func):
-    assert(isinstance(name, str))
-    self.name = name
-    assert(isinstance(inspec, tuple) and all([isinstance(x, int) for x in inspec]))
-    self.inspec = inspec
-    self.module = module
-    self.func = func
+    def __init__(self, name, inspec, module, func):
+        assert(isinstance(name, str))
+        self.name = name
+        assert(isinstance(inspec, tuple) and all([isinstance(x, int) for x in inspec]))
+        self.inspec = inspec
+        self.module = module
+        self.func = func

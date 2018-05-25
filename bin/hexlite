@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -O
+#!/usr/bin/env python3
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
@@ -28,8 +28,8 @@ app.setupLoggingBase()
 
 # load rest after configuring logging
 import hexlite
-import hexlite.ast.shallowparser as shp
 import hexlite.rewriter as rewriter
+import hexlite.ast.shallowparser as shp
 
 # this is our own package for communicating with plugins
 import dlvhex

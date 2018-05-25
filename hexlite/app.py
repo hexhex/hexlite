@@ -16,7 +16,7 @@ def importClingoAPI():
   # clingo python API
   try:
     # try to import global clingo package
-    logging.debug("attempting global clingo import")
+    logging.debug("attempting global clingo import with path %s", sys.path)
     import clingo
   except ImportError:
     logging.debug("Global clingo import:"+traceback.format_exc())

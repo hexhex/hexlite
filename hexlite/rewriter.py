@@ -37,15 +37,17 @@ class ProgramRewriter:
     self.shallowprog = shallowprogram
     self.plugins = plugins
     self.config = config
-    self.srprog, self.facts = self.__annotateWithStatementRewriters()
+    self.facts = []
     self.rewritten = []
 
   def rewrite(self):
     '''
     returns rewritten_program, facts
     '''
+    srprog, self.facts = self.__annotateWithStatementRewriters(self.shallowprog)
+    self.rewritten = []
     # rewriters append to self.rewritten
-    for stm in self.srprog:
+    for stm in srprog:
       stm.rewrite()
     if not self.pcontext.wroteMaxint and self.config.maxint is not None:
       maxintConst = shp.alist(['#const', Aux.MAXINT, '=', self.config.maxint], right='.')
@@ -59,7 +61,7 @@ class ProgramRewriter:
     logging.info("adding rewritten rule "+shp.shallowprint(stm))
     self.rewritten.append(stm)
 
-  def __annotateWithStatementRewriters(self):
+  def __annotateWithStatementRewriters(self, shallowprog):
     '''
     collect statements from shallowprog
     * mostly one item is one statement
@@ -68,7 +70,7 @@ class ProgramRewriter:
     '''
     ret = []
     facts = []
-    for stm in self.shallowprog:
+    for stm in shallowprog:
       dbgstm = pprint.pformat(stm, width=1000)
       logging.debug('ASR stm='+dbgstm)
       if isinstance(stm, shp.alist):

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -O
+#!/usr/bin/env python3
 
 # HEXLite-based solver for a fragment of the ActHEX language
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
@@ -29,11 +29,12 @@ app.setupLoggingBase()
 # load rest after configuring logging
 import hexlite
 import hexlite.ast.shallowparser as shp
-import hexlite.rewriter as rewriter
+import hexlite.rewriter
 
 # this is our own package for communicating with plugins
 import dlvhex
 import acthex
+import acthex.rewriter
 
 # other things we need here
 import os, argparse, traceback, pprint, logging
@@ -98,12 +99,12 @@ def main():
     # now set additional paths for plugin imports
     setPaths(hexlite.flatten(args.pluginpath))
     plugins = loadPlugins(hexlite.flatten(args.plugin))
-    program = loadProgram(hexlite.flatten(args.hexfiles))
+    program = loadProgram(hexlite.flatten(args.acthexfiles))
     pcontext = hexlite.ProgramContext()
-    rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+    hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
     # TODO we should not pass args but a more generic configuration object
     # needs maxint
-    pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
+    pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
     rewritten, facts = pr.rewrite()
     # TODO we should not pass args but a more generic configuration object
     code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
