@@ -96,10 +96,13 @@ def cleanupActionCall():
   pass
 
 class ActionHolder:
-    def __init__(self, name, inspec, module, func):
-        assert(isinstance(name, str))
-        self.name = name
-        assert(isinstance(inspec, tuple) and all([isinstance(x, int) for x in inspec]))
-        self.inspec = inspec
-        self.module = module
-        self.func = func
+  def __init__(self, name, inspec, module, func):
+    assert(isinstance(name, str))
+    self.name = name
+    assert(isinstance(inspec, tuple) and all([isinstance(x, int) for x in inspec]))
+    self.inspec = inspec
+    self.module = module
+    self.func = func
+
+class IterationExit(Exception):
+  pass

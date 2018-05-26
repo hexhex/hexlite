@@ -18,6 +18,7 @@
 
 import sys
 import platform
+import itertools
 
 if platform.python_version().startswith('2'):
   sys.stdout.write("Please use Python 3 instead of Python 2!\n")
@@ -29,12 +30,15 @@ app.setupLoggingBase()
 # load rest after configuring logging
 import hexlite
 import hexlite.ast.shallowparser as shp
+import hexlite.ast as ast
 import hexlite.rewriter
+import hexlite.modelcallback as modelcallback
 
 # this is our own package for communicating with plugins
 import dlvhex
 import acthex
 import acthex.rewriter
+import acthex.actionmanager
 
 # other things we need here
 import os, argparse, traceback, pprint, logging
@@ -89,6 +93,22 @@ def loadPlugins(plugins):
     ret.append(pi)
   return ret
 
+class ActhexModelCallback(modelcallback.StandardModelCallback):
+  def __init__(self, stringifiedFacts, config):
+    modelcallback.StandardModelCallback.__init__(self, stringifiedFacts, config)
+    self.optimal_model = None
+
+  def __call__(self, model):
+    assert(isinstance(model, dlvhex.Model))
+    if not model.is_optimal:
+      logging.info('not using suboptimal model (like dlvhex2)!')
+      return
+    # TODO call standard callback (=print model) depending on config
+    StandardModelCallback.__call__(model)
+    # remember optimal model and stop enumeration
+    self.optimal_model = model
+    raise modelcallback.StopModelEnumerationException()
+
 def main():
   code = 1
   try:
@@ -104,7 +124,14 @@ def main():
     hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
     pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
     rewritten, facts = pr.rewrite()
-    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
+    stringifiedFacts = frozenset(ast.normalizeFacts(facts))
+    for iteration in itertools.count():
+        logging.info("acthex iteration %d", iteration)
+        callback = ActhexModelCallback(stringifiedFacts, config)
+        code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callback)
+        acthex.actionmanager.executeActions(callback.optimal_model)
+  except acthex.IterationExit:
+    logging.info("got acthex iteration exist exception")
   except SystemExit:
     pass
   except:

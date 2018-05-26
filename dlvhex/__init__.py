@@ -195,3 +195,15 @@ class ID:
     raise NotImplementedError()
   def __repr__(self):
     raise NotImplementedError()
+
+class Model:
+  def __init__(self, atoms, cost, is_optimal):
+    assert(isinstance(atoms, frozenset))
+    assert(all([isinstance(x, ID) for x in atoms]))
+    self.atoms = atoms
+    assert(isinstance(cost, list))
+    assert(all([isinstance(x, int) for x in cost]))
+    self.cost = cost
+    assert(is_optimal in [True, False])
+    self.is_optimal = is_optimal
+
