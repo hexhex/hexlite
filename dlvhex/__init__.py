@@ -169,3 +169,29 @@ _specToString = {
 def humanReadableSpec(spec):
   return [ _specToString[s] for s in spec ]
 
+class ID:
+  '''
+  atoms and constants as communicated between hexlite and plugins
+
+  the name is historic from the 64 bit ID datatype in dlvhex
+  '''
+  def negate(self):
+    raise NotImplementedError()
+  def value(self):
+    raise NotImplementedError()
+  def intValue(self):
+    raise NotImplementedError()
+  def isTrue(self):
+    raise NotImplementedError()
+  def isFalse(self):
+    raise NotImplementedError()
+  def isAssigned(self):
+    raise NotImplementedError()
+  def tuple(self):
+    raise NotImplementedError()
+  def extension(self):
+    raise NotImplementedError()
+  def __str__(self):
+    raise NotImplementedError()
+  def __repr__(self):
+    raise NotImplementedError()
