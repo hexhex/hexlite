@@ -102,11 +102,8 @@ def main():
     program = loadProgram(hexlite.flatten(args.acthexfiles))
     pcontext = hexlite.ProgramContext()
     hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-    # TODO we should not pass args but a more generic configuration object
-    # needs maxint
     pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
     rewritten, facts = pr.rewrite()
-    # TODO we should not pass args but a more generic configuration object
     code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
   except SystemExit:
     pass
