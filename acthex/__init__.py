@@ -49,11 +49,12 @@ storeOutputAtom=dlvhex.storeOutputAtom
 getInputAtoms=dlvhex.getInputAtoms
 getTrueInputAtoms=dlvhex.getTrueInputAtoms
 humanReadableSpec=dlvhex.humanReadableSpec
+ID=dlvhex.ID
 
 def setEnvironment(env):
-  global environment
-  logging.info("setting new environment of type %s, replacing environment of type %s", env.__class__, environment.__class__)
-  environment = env
+  global currentEnvironment
+  logging.info("setting new environment of type %s, replacing environment of type %s", env.__class__, currentEnvironment.__class__)
+  currentEnvironment = env
 
 def addAction(name, inargumentspec):
     global actions
@@ -77,7 +78,7 @@ def environment():
 
 # key = action name, value = ActionHolder instance
 actions = {}
-environment = Environment()
+currentEnvironment = Environment()
 
 # we do not need our own CurrentExternalAtomEvaluation because only a single environment exists and it is stored in this module
 
