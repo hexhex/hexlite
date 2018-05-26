@@ -44,8 +44,14 @@ class Aux:
   # auxiliary for smaller atom
   SMALLER = PREFIX+'smaller'
 
+  # for acthex rewriting
+  ACTREPL = PREFIX+'act'
+
 def predEAtomRelevance(arity, eatomname):
   return Aux.EARELV+'_'+str(arity)+'_'+eatomname
 
 def predEAtomTruth(arity, eatomname):
   return Aux.EAREPL+'_'+str(arity)+'_'+eatomname
+
+def predActhexAction(actionname):
+  return Aux.ACTREPL+'_'+actionname
