@@ -12,9 +12,9 @@ class PersistenceEnvironment(acthex.Environment):
     self.atoms = set()
 
   def persistence_set_unset(self, atom, set_unset):
-    if isinstance(atom, str):
-      atom = (atom,)
-    assert(isinstance(atom, tuple))
+    assert(isinstance(atom, acthex.ID))
+    assert(isinstance(set_unset, acthex.ID))
+    # below: TODO
     assert(all([isinstance(e, str) for e in atom]))
     assert(set_unset in (True, False))
     if set_unset:
@@ -33,7 +33,7 @@ def persistenceUnset(atom):
   acthex.environment().persistence_set_unset(atom, False)
 
 def persistenceByPred(pred):
-  assert(isinstance(pred, (tuple, str)))
+  assert(isinstance(pred, acthex.ID))
   assert(isinstance(acthex.environment(), PersistenceEnvironment))
   for a in acthex.environment().atoms:
     if a[0] == pred:
