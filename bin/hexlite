@@ -111,11 +111,8 @@ def main():
       # (per default, a dummy that does nothing is used)
     with pcontext.stats.context('rewriting'):
       rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-      # TODO we should not pass args but a more generic configuration object
-      # needs maxint
       pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
       rewritten, facts = pr.rewrite()
-    # TODO we should not pass args but a more generic configuration object
     code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
     pcontext.stats.display('final')
   except SystemExit:
