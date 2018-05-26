@@ -30,6 +30,8 @@ app.setupLoggingBase()
 import hexlite
 import hexlite.rewriter as rewriter
 import hexlite.ast.shallowparser as shp
+import hexlite.ast as ast
+from hexlite.modelcallback import StandardModelCallback
 
 # this is our own package for communicating with plugins
 import dlvhex
@@ -77,7 +79,6 @@ def interpretArguments(argv, config):
     help='Python module to load as plugin, plus optional arguments for plugin. Can be given multiple times to load multiple plugins.')
   config.add_common_arguments(parser)
   args = parser.parse_args(argv)
-  logging.debug('args='+repr(args))
   config.process_arguments(args)
   return args
 
@@ -113,7 +114,9 @@ def main():
       rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
       pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
       rewritten, facts = pr.rewrite()
-    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config)
+    stringifiedFacts = frozenset(ast.normalizeFacts(facts))
+    modelcb = StandardModelCallback(stringifiedFacts, config)
+    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
     pcontext.stats.display('final')
   except SystemExit:
     pass

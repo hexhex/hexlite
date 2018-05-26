@@ -125,3 +125,19 @@ def deepCollectAtDepth(liststructure, depthfilter, condition):
         recursiveCollectAtDepth(elem, depth+1)
   recursiveCollectAtDepth(liststructure, 0)
   return out
+
+def normalizeFacts(facts):
+  def normalize(x):
+    if isinstance(x, alist):
+      if x.right == '.':
+        assert(x.left == None and x.sep == None and len(x) == 1)
+        ret = normalize(x[0])
+      else:
+        ret = x.sleft()+x.ssep().join([normalize(y) for y in x])+x.sright()
+    elif isinstance(x, list):
+      ret = ''.join([normalize(y) for y in x])
+    else:
+      ret = str(x)
+    #logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
+    return ret
+  return [normalize(f) for f in facts]

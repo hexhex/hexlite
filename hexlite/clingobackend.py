@@ -31,6 +31,7 @@ from . import common as hexlite
 from . import aux
 from .ast import shallowparser as shp
 from . import explicitflpcheck as flp
+from . import modelcallback
 
 # assume that the main program has handled possible import problems
 import clingo
@@ -701,57 +702,35 @@ class ClingoPropagator:
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
 
+class ClingoModel(dlvhex.Model):
+  def __init__(self, ccontext, mdl):
+    dlvhex.Model.__init__(self,
+      atoms=frozenset([
+        ClingoID(ccontext, SymLit(x, mdl.context.symbolic_atoms[x].literal))
+        for x in mdl.symbols(atoms=True) ]),
+      cost=mdl.cost,
+      is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
+
 class ModelReceiver:
-  def __init__(self, facts, config, flpchecker, stats):
-    self.facts = set(self._normalizeFacts(facts))
-    self.config = config
+  def __init__(self, ccontext, flpchecker, stats, modelcallback):
+    self.ccontext = ccontext
     self.flpchecker = flpchecker
     self.stats = stats
+    self.modelcallback = modelcallback
 
   def __call__(self, mdl):
     with self.stats.context("flpcheck"):
       if not self.flpchecker.checkModel(mdl):
         logging.debug('leaving on_model because flpchecker returned False')
         return
-    costs = mdl.cost
-    if len(costs) > 0 and not mdl.optimality_proven:
-      logging.info('not showing suboptimal model (like dlvhex2)!')
-      return
-    syms = mdl.symbols(atoms=True,terms=True)
-    strsyms = [ str(s) for s in syms ]
-    if self.config.nofacts:
-      strsyms = [ s for s in strsyms if s not in self.facts ]
-    if not self.config.auxfacts:
-      strsyms = [ s for s in strsyms if not s.startswith(aux.Aux.PREFIX) ]
-    if len(costs) > 0:
-      # first entry = highest priority level
-      # last entry = lowest priority level (1)
-      logging.debug('on_model got cost'+repr(costs))
-      pairs = [ '[{}:{}]'.format(p[1], p[0]+1) for p in enumerate(reversed(costs)) if p[1] != 0 ]
-      costs=' <{}>'.format(','.join(pairs))
-    else:
-      costs = ''
-    sys.stdout.write('{'+','.join(strsyms)+'}'+costs+'\n')
-    # always display stats up to here
-    self.stats.display('answerset')
+    try:
+      self.modelcallback(ClingoModel(self.ccontext, mdl))
+      self.stats.display('answerset')
+    except modelcallback.StopModelEnumerationException:
+      logging.info("model callback signalled end of enumeration with StopModelEnumerationException")
+      raise
 
-  def _normalizeFacts(self, facts):
-    def normalize(x):
-      if isinstance(x, shp.alist):
-        if x.right == '.':
-          assert(x.left == None and x.sep == None and len(x) == 1)
-          ret = normalize(x[0])
-        else:
-          ret = x.sleft()+x.ssep().join([normalize(y) for y in x])+x.sright()
-      elif isinstance(x, list):
-        ret = ''.join([normalize(y) for y in x])
-      else:
-        ret = str(x)
-      #logging.debug('normalize({}) returns {}'.format(repr(x), repr(ret)))
-      return ret
-    return [normalize(f) for f in facts]
-
-def execute(pcontext, rewritten, facts, plugins, config):
+def execute(pcontext, rewritten, facts, plugins, config, model_callback):
   propagatorFactory = None
   flpchecker = None
   cmdlineargs = None
@@ -764,7 +743,7 @@ def execute(pcontext, rewritten, facts, plugins, config):
     ccontext = ClaspContext()
 
     # preparing evaluator for external atoms which needs to know the clasp context
-    #eaeval = EAtomEvaluator(ccontext, pcontext.stats)
+    #eaeval = EAtomEvaluator(ccontext)
     eaeval = CachedEAtomEvaluator(ccontext, pcontext.stats)
 
     # find names of external atoms that advertises to do checks on a partial assignment
@@ -781,15 +760,17 @@ def execute(pcontext, rewritten, facts, plugins, config):
       flp_checker_factory = flp.DummyFLPChecker
     flpchecker = flp_checker_factory(propagatorFactory)
 
-    # XXX maybe get additional settings from commandline
-    cmdlineargs = [str(config.number)]
+    # TODO get settings from commandline
+    cmdlineargs = []
+    if config.number != 1:
+      cmdlineargs.append(str(config.number))
     # just in case we need optimization
     cmdlineargs.append('--opt-mode=optN')
     cmdlineargs.append('--opt-strategy=usc')
 
   cc = None
   with pcontext.stats.context('grounding'):
-    logging.info('sending nonground program to clingo control with command line args {}'.format(repr(cmdlineargs)))
+    logging.info('sending nonground program to clingo control')
     cc = clingo.Control(cmdlineargs)
     sendprog = shp.shallowprint(rewritten)
     try:
@@ -811,10 +792,13 @@ def execute(pcontext, rewritten, facts, plugins, config):
     # name of this propagator CSF = compatible set finder
     checkprop = propagatorFactory('CSF')
     cc.register_propagator(checkprop)
-    mr = ModelReceiver(facts, config, flpchecker, pcontext.stats)
+    mr = ModelReceiver(ccontext, flpchecker, pcontext.stats, model_callback)
 
     logging.info('starting search')
-    cc.solve(on_model=mr)
+    try:
+      cc.solve(on_model=mr)
+    except modelcallback.StopModelEnumerationException:
+      logging.info('model enumeration stopped')
 
   if config.stats:
     sys.stderr.write(json.dumps({'event':'stats', 'name':'clingo', 'c': cc.statistics })+'\n')
