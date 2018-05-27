@@ -2,6 +2,9 @@
 
 import acthex
 
+import logging
+import sys
+
 # persistence test:
 # environment = set of tuples of strings (=atoms), initialized with single atom ('init',)
 # @persistenceSet(atom) -> remembers atom in environment
@@ -58,15 +61,15 @@ class SortEnvironment(acthex.Environment):
 
   def display(self):
     MAX = len(self.sequence)
-    sys.stdout.write('Index: '+['{:3}'.format(x) for x in range(0,MAX)])
-    sys.stdout.write('Value: '+['{:3}'.format(x) for x in self.sequence])
+    sys.stdout.write('Index: '+', '.join(['{:3}'.format(x) for x in range(0,MAX)])+'\n')
+    sys.stdout.write('Value: '+', '.join(['{:3}'.format(x) for x in self.sequence])+'\n')
     sys.stdout.flush()
 
 def sortSwap(i, j):
-  assert(isinstance(i, int))
-  assert(isinstance(j, int))
+  assert(isinstance(i, acthex.ID))
+  assert(isinstance(j, acthex.ID))
   assert(isinstance(acthex.environment(), SortEnvironment))
-  acthex.environment().swap(i, j)
+  acthex.environment().swap(i.intValue(), j.intValue())
 
 def sortDisplay():
   assert(isinstance(acthex.environment(), SortEnvironment))
