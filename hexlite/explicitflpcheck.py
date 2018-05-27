@@ -30,11 +30,6 @@ HBEG = { True: '{', False: '' }
 HSEP = { True: ' ; ', False: ' | ' }
 HEND = { True: '}', False: '' }
 
-# make it python2 and python3 compatible
-if sys.version_info > (3,):
-  # python3 has no long, everything is long
-  long = int
-
 def formatAssumptions(assumptions):
   return "{} not({})".format(
     repr([a for (a,t) in assumptions if t == True]),
@@ -141,7 +136,7 @@ class GroundProgramObserver:
     self.preliminaryweightrules.append( (choice, head, lower_bound, body) )
   def output_atom(self, symbol, atom):
     logging.debug("GPAtom symb=%s atm=%s", repr(symbol), repr(atom))
-    if atom == long(0):
+    if atom == 0:
       # this is not a literal but a signal that symbol is always true (i.e., a fact)
       self.facts.append(symbol)
     else:
@@ -201,8 +196,8 @@ class GroundProgramObserver:
       stratom = str(self.int2atom[absatom])
     else:
       stratom = Aux.CLATOM+str(absatom)
-    assert(iatom != long(0))
-    if iatom > long(0):
+    assert(iatom != 0)
+    if iatom > 0:
       # positive literal
       return stratom
     else:
@@ -349,7 +344,7 @@ class RuleActivityProgram:
         #logging.debug('activeRulesMdl = '+str(activeRulesMdl)) 
         shownTrueAtoms = activeRulesMdl.symbols(shown=True)
         self.activeRules = [ atm.arguments[0].number for atm in shownTrueAtoms ]
-        assert(all([isinstance(r, (int, long)) for r in self.activeRules]))
+        assert(all([isinstance(r, int) for r in self.activeRules]))
 
     assumptions = self._assumptionFromModel(mdl)
     if __debug__:
