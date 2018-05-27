@@ -664,23 +664,6 @@ class ClingoModel(dlvhex.Model):
       cost=mdl.cost,
       is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
 
-class ModelReceiver:
-  def __init__(self, ccontext, flpchecker, modelcallback):
-    self.ccontext = ccontext
-    self.flpchecker = flpchecker
-    self.modelcallback = modelcallback
-
-  def __call__(self, mdl):
-    if not self.flpchecker.checkModel(mdl):
-      logging.debug('leaving on_model because flpchecker returned False')
-      return
-    try:
-      self.modelcallback(ClingoModel(self.ccontext, mdl))
-    except modelcallback.StopModelEnumerationException:
-      logging.info("model callback signalled end of enumeration with StopModelEnumerationException")
-      raise
-
-
 def execute(pcontext, rewritten, facts, plugins, config, model_callback):
   # prepare contexts that are for this program but not yet specific for a clasp solver process
   # (multiple clasp solvers are used for finding compatible sets and for checking FLP property)
@@ -739,15 +722,29 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
   # name of this propagator CSF = compatible set finder
   checkprop = propagatorFactory('CSF')
   cc.register_propagator(checkprop)
-  mr = ModelReceiver(ccontext, flpchecker, model_callback)
 
   logging.info('starting search')
-  try:
-    res = cc.solve(on_model=mr)
-    logging.info('solving terminated with result '+repr(res))
-  except modelcallback.StopModelEnumerationException:
-    logging.info('model enumeration stopped')
+  ret = None
+  with cc.solve(yield_=True, async=False) as handle:
+    for model in handle:
+      logging.warning("got model with symbols "+repr(model.symbols())) #DEBUG
+      if not flpchecker.checkModel(model):
+        logging.debug('discarding model because flpchecker returned False')
+        # according to clingo documentation "discards current model"
+        handle.resume()
+      try:
+        model_callback(ClingoModel(ccontext, model))
+      except modelcallback.StopModelEnumerationException:
+        handle.cancel()
+        ret = 'SAT'
+        logging.info('model enumeration stopped')
+    if not ret:
+      res = handle.get()
+      if res.unsatisfiable:
+        ret = 'UNSAT'
+      if res.interrupted or res.unknown:
+        raise InterruptedError("clingo solve interrupted or unknown")
 
-  # TODO return code for unsat/sat/opt?
-  return 0
+  logging.info('execute() terminated with result '+repr(ret))
+  return ret
 
