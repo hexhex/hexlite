@@ -34,8 +34,8 @@ class Environment:
   def __init__(self):
     pass
 
-  def display(self):
-    raise Exception("not implemented")
+  def __str__(self):
+    return ''
 
 # TODO if we just do addAtom=dlvhex.addAtom will it work the same? (global = global to module where method is registered?)
 #def addAtom(name, inargumentspec, outargumentnum, props=None):
