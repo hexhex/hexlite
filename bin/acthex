@@ -103,8 +103,9 @@ class ActhexModelCallback(modelcallback.StandardModelCallback):
     if not model.is_optimal:
       logging.info('not using suboptimal model (like dlvhex2)!')
       return
+    logging.info('found optimal model!')
     # TODO call standard callback (=print model) depending on config
-    StandardModelCallback.__call__(self, model)
+    modelcallback.StandardModelCallback.__call__(self, model)
     # remember optimal model and stop enumeration
     self.optimal_model = model
     raise modelcallback.StopModelEnumerationException()
