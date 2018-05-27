@@ -32,6 +32,8 @@ from .ast import shallowparser as shp
 from . import explicitflpcheck as flp
 from . import modelcallback
 
+from .clingogroundprogramprinter import GroundProgramPrinter
+
 # assume that the main program has handled possible import problems
 import clingo
 
@@ -727,6 +729,9 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
   logging.info('grounding with gringo context')
   ccc = GringoContext(eaeval)
   flpchecker.attach(cc)
+
+  if config.verbose:
+    cc.register_observer(GroundProgramPrinter(), False)
   cc.ground([('base',())], ccc)
 
   logging.info('preparing for search')
