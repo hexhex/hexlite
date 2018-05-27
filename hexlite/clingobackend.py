@@ -802,7 +802,8 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
 
     logging.info('starting search')
     try:
-      cc.solve(on_model=mr)
+      res = cc.solve(on_model=mr)
+      logging.info('solving terminated with result '+repr(res))
     except modelcallback.StopModelEnumerationException:
       logging.info('model enumeration stopped')
 
