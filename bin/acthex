@@ -76,7 +76,8 @@ def interpretArguments(argv, config):
     help='Names of python modules to load as external atoms and actions (hexlite or acthex plugins).')
   config.add_common_arguments(parser)
   args = parser.parse_args(argv)
-  logging.debug('args='+repr(args))
+  if args.debug:
+    logging.debug('args='+repr(args))
   config.process_arguments(args)
   return args
 

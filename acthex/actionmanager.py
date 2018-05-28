@@ -35,8 +35,19 @@ def extractActions(model):
 def buildSchedule(actions):
   return sorted(actions, key=lambda action: action.prio)
 
+def executeInternalAction(action):
+  if action.name == 'acthexStop':
+    if len(action.arguments) != 0:
+      raise ValueError("acthexStop action does not take arguments: "+repr(action))
+    # effect of this action is to stop iteration upon execution, this is done via this exception
+    raise acthex.IterationExit()
+  # action is not handled here
+  return False
+
 def executeAction(action):
   aname = action.name
+  if executeInternalAction(action):
+    return
   if aname not in acthex.actions:
     raise KeyError("action name {} of action {} was not registered with acthex!".format(aname, repr(action)))
   aholder = acthex.actions[aname]
