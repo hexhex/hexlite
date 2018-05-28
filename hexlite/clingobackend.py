@@ -727,17 +727,18 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
   ret = None
   with cc.solve(yield_=True, async=False) as handle:
     for model in handle:
-      logging.warning("got model with symbols "+repr(model.symbols())) #DEBUG
       if not flpchecker.checkModel(model):
         logging.debug('discarding model because flpchecker returned False')
         # according to clingo documentation "discards current model"
         handle.resume()
-      try:
-        model_callback(ClingoModel(ccontext, model))
-      except modelcallback.StopModelEnumerationException:
-        handle.cancel()
-        ret = 'SAT'
-        logging.info('model enumeration stopped')
+      else:
+        try:
+          model_callback(ClingoModel(ccontext, model))
+        except modelcallback.StopModelEnumerationException:
+          # stop enumeration
+          handle.cancel()
+          ret = 'SAT'
+          logging.info('model enumeration stopped')
     if not ret:
       res = handle.get()
       if res.unsatisfiable:
