@@ -138,7 +138,7 @@ def main():
         # find and execute actions on environment
         acthex.actionmanager.executeActions(callback.optimal_model)
   except acthex.IterationExit:
-    logging.info("got acthex iteration exist exception")
+    logging.info("got acthex iteration exit exception")
   except SystemExit:
     pass
   except:

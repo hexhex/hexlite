@@ -25,8 +25,8 @@ def extractActions(model):
   def parseAction(a):
     assert(isinstance(a, dlvhex.ID))
     atuple = a.tuple()
-    aname, aprio = atuple[0].value(), atuple[2].intValue()
-    aargs = atuple[1].tuple()[1:]
+    logging.debug("parseAction on tuple "+repr(atuple))
+    aname, aargs, aprio = atuple[0].value(), atuple[1].tuple()[1:], atuple[2].intValue()
     aname = aname[len(aux.Aux.ACTREPL)+1:]
     logging.debug("from ID={} extracted name={} args={} prio={}".format(repr(a), repr(aname), repr(aargs), repr(aprio)))
     return ActionToBeExecuted(aname, aargs, aprio)

@@ -67,6 +67,9 @@ class ProgramRewriter(hexlite.rewriter.ProgramRewriter):
             if len(modifiers) > 1 and any([x for x in modifiers if hexlite.flatten(x)[0] in ['b','c','p']]):
                 raise Exception("action modifiers: only priority implemented: "+shp.shallowprint(candidate))
             actAuxArgs += modifiers
+        else:
+          # default priority modifier = {0}
+          actAuxArgs += [0]
         relAuxAtom = [ actAuxPred, actAuxArgs ]
         if __debug__:
             logging.debug('rH action replacement head='+pprint.pformat(relAuxAtom, width=1000))
