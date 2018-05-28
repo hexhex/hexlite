@@ -779,25 +779,26 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
     # name of this propagator CSF = compatible set finder
     checkprop = propagatorFactory('CSF')
     cc.register_propagator(checkprop)
-    mr = ModelReceiver(ccontext, flpchecker, pcontext.stats, model_callback)
 
     logging.info('starting search')
     ret = None
     with cc.solve(yield_=True, async=False) as handle:
       for model in handle:
-        logging.warning("got model with symbols "+repr(model.symbols())) #DEBUG
-        with self.stats.context("flpcheck"):
-          if not flpchecker.checkModel(model):
-            logging.debug('discarding model because flpchecker returned False')
-            # according to clingo documentation "discards current model"
-            handle.resume()
-        try:
-          model_callback(ClingoModel(ccontext, model))
-          self.stats.display('answerset')
-        except modelcallback.StopModelEnumerationException:
-          handle.cancel()
-          ret = 'SAT'
-          logging.info("end of enumeration with StopModelEnumerationException")
+        flpmodel = False
+        with pcontext.stats.context("flpcheck"):
+          flpmodel = flpchecker.checkModel(model)
+        if not flpmodel:
+          logging.debug('discarding model because flpchecker returned False')
+          # according to clingo documentation "discards current model"
+          handle.resume()
+        else:
+          try:
+            model_callback(ClingoModel(ccontext, model))
+            pcontext.stats.display('answerset')
+          except modelcallback.StopModelEnumerationException:
+            handle.cancel()
+            ret = 'SAT'
+            logging.info("end of enumeration with StopModelEnumerationException")
       if not ret:
         res = handle.get()
         if res.unsatisfiable:
