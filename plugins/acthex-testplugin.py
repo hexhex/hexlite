@@ -12,36 +12,40 @@ import sys
 # &persistenceByPred[pred](atom) -> true for all atoms with predicate pred that are remembered in environment
 class PersistenceEnvironment(acthex.Environment): 
   def __init__(self):
-    self.atoms = set()
+    self.atoms = set([ ('init',) ])
+
+  def strtuple_of_atom(self, atom):
+    return tuple([ x.value() for x in atom.tuple() ])
 
   def persistence_set_unset(self, atom, set_unset):
     assert(isinstance(atom, acthex.ID))
-    assert(isinstance(set_unset, acthex.ID))
-    # below: TODO
-    assert(all([isinstance(e, str) for e in atom]))
-    assert(set_unset in (True, False))
+    assert(set_unset in [True, False])
     if set_unset:
-      self.atoms.add(atom)
+      self.atoms.add(self.strtuple_of_atom(atom))
     else:
-      self.atoms.remove(atom)
+      self.atoms.remove(self.strtuple_of_atom(atom))
 
 def persistenceSet(atom):
-  assert(isinstance(atom, (tuple, str)))
+  assert(isinstance(atom, acthex.ID))
   assert(isinstance(acthex.environment(), PersistenceEnvironment))
   acthex.environment().persistence_set_unset(atom, True)
 
 def persistenceUnset(atom):
-  assert(isinstance(atom, (tuple, str)))
+  assert(isinstance(atom, acthex.ID))
   assert(isinstance(acthex.environment(), PersistenceEnvironment))
   acthex.environment().persistence_set_unset(atom, False)
 
 def persistenceByPred(pred):
+  #logging.debug('persistenceByPred:'+repr(pred))
   assert(isinstance(pred, acthex.ID))
   assert(isinstance(acthex.environment(), PersistenceEnvironment))
+  predstr = pred.value()
   for a in acthex.environment().atoms:
-    if a[0] == pred:
+    logging.debug("in environment: "+repr(a))
+    if a[0] == predstr:
       # output tuple with single term containing full atom
       term = '{}({})'.format(a[0], ','.join(a[1:]))
+      logging.debug('persistenceByPred output:'+repr(term))
       acthex.output( (term,) )
 
 # sort test:
@@ -88,9 +92,9 @@ class TestEnvironment(PersistenceEnvironment,SortEnvironment):
     SortEnvironment.__init__(self)
 
 # action without environment: print input tuple space-separated to stdout
-def printLine(inputs):
-  assert(all([isinstance(x, str) for x in inputs]))
-  sys.stdout.write('printLine: "'+' '.join(inputs)+'"\n')
+def printLine(*inputs):
+  assert(all([isinstance(x, acthex.ID) for x in inputs]))
+  sys.stdout.write(' '.join([x.value().strip('"') for x in inputs])+'\n')
   sys.stdout.flush()
 
 def register():

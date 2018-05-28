@@ -19,15 +19,16 @@ val(I,V) :- not init, &persistenceByPred[val](val(I,V)).
 @printLine("Sequence is",V0,V1,V2,V3,V4,V5,V6){0} :- val(0,V0), val(1,V1), val(2,V2), val(3,V3), val(4,V4), val(5,V5), val(6,V6).
 
 % swap adjacent pairs without swapping a pair twice
-swap(I,I+1) :- not init, val(I,V), val(I+1,W), W < V, not touched(I), not touched(I+1).
-touched(I) :- swap(I,_).
-touched(J) :- swap(_,J).
+swap(I,I+1) :- not init, val(I,V), val(I+1,W), W < V, not swapBelow(I), not swapAbove(I+1).
+swapBelow(J) :- swap(_,J).
+swapAbove(I) :- swap(I,_).
 
 % realize in persistence
-@persistenceUnset(val(I,V)){1} :- touched(I), val(I,V).
+@persistenceUnset(val(I,V)){1} :- swap(I,_), val(I,V).
+@persistenceUnset(val(J,W)){1} :- swap(_,J), val(J,W).
 @persistenceSet(val(I,V)){2} :- swap(I,J), val(J,V).
 @persistenceSet(val(J,V)){2} :- swap(I,J), val(I,V).
 
-touchedAny :- touched(_).
-@acthexStop{3} :- not touchedAny.
+touchedAny :- swap(_,_).
+@acthexStop{3} :- not init, not touchedAny.
 
