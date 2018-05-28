@@ -20,16 +20,16 @@ class BubbleSortTestcase(unittest.TestCase):
     proc = self.my_run(hexfile)
     for line in proc.stderr.split('\n'):
       logging.debug("E: %s", line.rstrip())
+    self.assertEqual(proc.stderr, '')
 
     lastValue = None
     for line in proc.stdout.split('\n'):
       logging.debug("O: %s", line.rstrip())
-      if line.startswith('Value: '):
+      if line.startswith('Sequence is '):
         lastValue = line
-    mo = re.match(r'\s([0-9]+)', lastValue)
-    logging.warning("mogruops"+repr(mo.groups()))
-
-    self.assertEqual(proc.stderr, '')
+    integers = lastValue.split(' ')[2:]
+    logging.debug('integers: '+repr(integers))
+    self.assertEqual([int(x) for x in integers], [1, 2, 2, 3, 3, 5, 6])
 
   def test_sortenv(self):
     hexfile = 'acthex_bubblesort_sortenv.hex'
