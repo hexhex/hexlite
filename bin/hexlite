@@ -104,14 +104,15 @@ def main():
     rewritten, facts = pr.rewrite()
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
     modelcb = StandardModelCallback(stringifiedFacts, config)
-    code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
+    solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
     # ignore code as dlvhex does
+    code = 0
   except SystemExit:
     pass
   except:
     logging.error('Exception: '+traceback.format_exc())
     logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
-  sys.exit(0)
+  sys.exit(code)
 
 if __name__ == '__main__':
   main()
