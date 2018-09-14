@@ -117,6 +117,9 @@ class ClingoID:
       raise Exception("cannot call isAssigned on term that is not an atom")
     return self.__assignment().value(self.symlit.lit) != None
 
+  def isInteger(self):
+    return self.symlit.sym.type == clingo.SymbolType.Number
+
   def tuple(self):
     tup = tuple([ ClingoID(self.ccontext, SymLit(sym, None)) for sym in
                   [clingo.Function(self.symlit.sym.name)]+self.symlit.sym.arguments])
