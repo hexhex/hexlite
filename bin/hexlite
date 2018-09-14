@@ -37,17 +37,25 @@ import dlvhex
 # other things we need here
 import os, argparse, traceback, pprint, logging
 
-def loadPlugin(mname):
+def loadPlugin(pluginarray):
   # returns plugin info
-  logging.info('loading plugin '+repr(mname))
+  logging.info('loading plugin '+repr(pluginarray))
+  mname = pluginarray[0]
+  arguments = None
+  if len(pluginarray) > 1:
+    arguments = pluginarray[1:]
+  logging.info('module {} with arguments {}'.format(mname, arguments))
   pmodule = __import__(mname, globals(), locals(), [], 0)
   logging.info('configuring dlvhex module for registering module '+repr(mname))
   # tell dlvhex module which other module is registering its atoms
   dlvhex.startRegistration(pmodule)
   logging.info('calling register() for '+repr(mname))
-  pmodule.register()
+  if arguments:
+    pmodule.register(arguments)
+  else:
+    pmodule.register()
   logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
-  return hexlite.Plugin(mname, pmodule)
+  return hexlite.Plugin(mname, pmodule, arguments)
 
 def loadProgram(hexfiles):
   ret = []
@@ -65,8 +73,8 @@ def interpretArguments(argv, config):
     help='Filename(s) of HEX source code.')
   parser.add_argument('--pluginpath', nargs='*', metavar='PATH', action='append', default=[],
     help='Paths to search for python modules.')
-  parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
-    help='Names of python modules to load as external atoms.')
+  parser.add_argument('--plugin', nargs='+', metavar=('MODULENAME', 'ARGUMENT'), action='append', default=[],
+    help='Python module to load as plugin, plus optional arguments for plugin. Can be given multiple times to load multiple plugins.')
   config.add_common_arguments(parser)
   args = parser.parse_args(argv)
   logging.debug('args='+repr(args))
@@ -82,7 +90,7 @@ def loadPlugins(plugins):
   ret = []
   for p in plugins:
     pi = loadPlugin(p)
-    logging.debug('for plugin '+p+' got plugin info '+repr(pi))
+    logging.debug('for plugin {} got plugin info {}'.format(pi.mname, repr(pi)))
     ret.append(pi)
   return ret
 
@@ -95,7 +103,7 @@ def main():
     app.importClingoAPI()
     # now set additional paths for plugin imports
     setPaths(hexlite.flatten(args.pluginpath))
-    plugins = loadPlugins(hexlite.flatten(args.plugin))
+    plugins = loadPlugins(args.plugin)
     program = loadProgram(hexlite.flatten(args.hexfiles))
     pcontext = hexlite.ProgramContext()
     rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
@@ -114,3 +122,5 @@ def main():
 
 if __name__ == '__main__':
   main()
+
+# vim:expandtab:
