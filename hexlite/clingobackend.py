@@ -727,10 +727,8 @@ def execute(pcontext, rewritten, facts, plugins, config):
     flp_checker_factory = flp.DummyFLPChecker
   flpchecker = flp_checker_factory(propagatorFactory)
 
-  # TODO get settings from commandline
-  cmdlineargs = []
-  if config.number != 1:
-    cmdlineargs.append(str(config.number))
+  # XXX maybe get additional settings from commandline
+  cmdlineargs = [str(config.number)]
   # just in case we need optimization
   cmdlineargs.append('--opt-mode=optN')
   #cmdlineargs.append('--opt-strategy=usc,9')
