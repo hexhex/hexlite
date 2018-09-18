@@ -731,7 +731,7 @@ def execute(pcontext, rewritten, facts, plugins, config):
   cmdlineargs = [str(config.number)]
   # just in case we need optimization
   cmdlineargs.append('--opt-mode=optN')
-  #cmdlineargs.append('--opt-strategy=usc,9')
+  cmdlineargs.append('--opt-strategy=usc')
 
   logging.info('sending nonground program to clingo control with command line args {}'.format(repr(cmdlineargs)))
   cc = clingo.Control(cmdlineargs)
