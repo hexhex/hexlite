@@ -3,7 +3,7 @@ import sys, os, logging, traceback
 def setupLoggingBase():
   # initially log everything
   logging.basicConfig(
-    level=logging.NOTSET, stream=sys.stderr,
+    level=15, stream=sys.stderr,
     format="%(levelname)1s:%(filename)10s:%(lineno)3d:%(message)s")
   # make log level names shorter so that we can show them
   logging.addLevelName(50, 'C')
