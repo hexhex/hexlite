@@ -23,6 +23,7 @@ import collections
 import itertools
 import pprint
 import traceback
+import json
 
 import dlvhex
 
@@ -814,6 +815,9 @@ def execute(pcontext, rewritten, facts, plugins, config):
 
     logging.info('starting search')
     cc.solve(on_model=mr)
+
+  if config.stats:
+    sys.stderr.write(json.dumps({'event':'stats', 'name':'clingo', 'c': cc.statistics })+'\n')
 
   # TODO return code for unsat/sat/opt?
   return 0
