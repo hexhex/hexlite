@@ -17,9 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import collections
-import logging
-import argparse
+import sys, time, collections, logging, argparse, json
 
 class Configuration:
   def __init__(self):
@@ -37,6 +35,8 @@ class Configuration:
     self.nofacts = False
     # whether to give auxiliary facts in output
     self.auxfacts = False
+    # whether to output stats as json lines on stderr
+    self.stats = False
 
   def add_common_arguments(self, parser):
     assert(isinstance(parser, argparse.ArgumentParser))
@@ -56,6 +56,7 @@ class Configuration:
       help='Whether to output auxiliary facts in answer set.')
     parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
     parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
+    parser.add_argument('--stats', action='store_true', default=False, help='Activate statistics output as JSON on stdout.')
 
   def setupLogging(self):
     level = logging.WARNING
@@ -69,6 +70,7 @@ class Configuration:
   def process_arguments(self, args):
     self.verbose = args.verbose
     self.debug = args.debug
+    self.stats = args.stats
     self.setupLogging()
     if args.liberalsafety:
       logging.warning("ignored argument about liberal safety")
@@ -96,16 +98,89 @@ class Plugin:
     self.pmodule = pmodule
     self.arguments = arguments
 
+class Statistics:
+  '''
+  collect statistics (real time, cpu time) in categories
+  '''
+  def __init__(self):
+    self.initial = time.perf_counter(), time.process_time()
+    # accumulation of times and counts used in certain categories (real time, cpu time, counter)
+    self.categories = collections.defaultdict(lambda: [0.0, 0.0, 0])
+    # sequence of categories currently being benchmarked
+    # each nesting creates another entry at the end
+    self.statstack = [ 'all' ]
+    # latest time taken
+    self.latest = self.initial
+
+  # not to be used from outside
+  def _timestamp(self, addtocategory, increment):
+    current = time.perf_counter(), time.process_time()
+    for i in [0, 1]:
+      self.categories[addtocategory][i] += current[i] - self.latest[i]
+    if increment:
+      self.categories[addtocategory][2] += 1
+    self.latest = current
+
+  # not to be used from outside
+  class _Closure:
+    def __init__(self, stats, category):
+      self.stats = stats
+      self.category = category
+
+    def __enter__(self):
+      # count time difference to last timestamp for statstack [-1]
+      self.stats._timestamp(self.stats.statstack[-1], increment=False)
+      # add element to statstack
+      self.stats.statstack.append(self.category)
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+      assert(self.stats.statstack[-1] == self.category)
+      # count time difference to last timestamp for statstack [-1] and increment counter (for leaving the closure)
+      self.stats._timestamp(self.stats.statstack[-1], increment=True)
+      # remove element from statstack
+      self.stats.statstack.pop()
+  
+  # do "with stats.closure('category'): ..." (nesting is OK)
+  def context(self, categoryname):
+    return Statistics._Closure(self, categoryname)
+
+  def display(self, name):
+    # count time difference to last timestamp for statstack[-1] and also count this once
+    self._timestamp(self.statstack[-1], increment=True)
+    # print stats
+    sys.stderr.write(json.dumps({ 'event':'stats', 'name':name, 'stack': self.statstack, 'categories': dict(self.categories) })+'\n')
+    # decrement again in case we display() multiple times
+    self.categories[self.statstack[-1]][2] -= 1
+
+# statistics class that does nothing
+class StatisticsDummy:
+  def __init__(self):
+    pass
+  class _Closure:
+    def __init__(self):
+      pass
+    def __enter__(self):
+      pass
+    def __exit__(self, exc_type, exc_value, exc_tb):
+      pass
+  
+  def context(self, categoryname):
+    return StatisticsDummy._Closure()
+  def display(self, name):
+    pass
+
 class ProgramContext:
   '''
   program-global context
-  collects external atom signatures
-  remembers if maxint is given by program or by commandline
+  * collects external atom signatures
+  * remembers if maxint is given by program or by commandline
+  * holds statistics
   '''
   def __init__(self):
     # key = eatomname, value = list of SignatureInfo
     self.eatoms = collections.defaultdict(list)
     self.wroteMaxint = False
+    self.stats = StatisticsDummy()
   def addSignature(self, eatomname, relevancePred, replacementPred, arity):
     self.eatoms[eatomname].append(
       self.SignatureInfo(relevancePred, replacementPred, arity))
