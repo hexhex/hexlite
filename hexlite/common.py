@@ -144,11 +144,25 @@ class Statistics:
   def context(self, categoryname):
     return Statistics._Closure(self, categoryname)
 
+  def accumulate(self):
+    # accumulate some categories
+    eatoms = [ v for k,v in self.categories.items() if k.startswith('eatom') ]
+    return {
+      'all.real': sum([ v[0] for v in self.categories.values() ]),
+      'all.cpu': sum([ v[1] for v in self.categories.values() ]),
+
+      'eatoms.real': sum([ v[0] for v in eatoms ]),
+      'eatoms.cpu': sum([ v[1] for v in eatoms ]),
+      'eatoms.count': sum([ v[2] for v in eatoms ]),
+    }
+
   def display(self, name):
     # count time difference to last timestamp for statstack[-1] and also count this once
     self._timestamp(self.statstack[-1], increment=True)
+    # accumulate stats
+    accum = self.accumulate()
     # print stats
-    sys.stderr.write(json.dumps({ 'event':'stats', 'name':name, 'stack': self.statstack, 'categories': dict(self.categories) })+'\n')
+    sys.stderr.write(json.dumps({ 'event':'stats', 'name':name, 'stack': self.statstack, 'categories': dict(self.categories), 'accumulated': accum })+'\n')
     # decrement again in case we display() multiple times
     self.categories[self.statstack[-1]][2] -= 1
 
