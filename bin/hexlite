@@ -107,12 +107,17 @@ def main():
     plugins = loadPlugins(args.plugin)
     program = loadProgram(hexlite.flatten(args.hexfiles))
     pcontext = hexlite.ProgramContext()
-    rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-    pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
-    rewritten, facts = pr.rewrite()
+    if config.stats:
+      pcontext.stats = hexlite.Statistics()
+      # (per default, a dummy that does nothing is used)
+    with pcontext.stats.context('rewriting'):
+      rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+      pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
+      rewritten, facts = pr.rewrite()
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
     modelcb = StandardModelCallback(stringifiedFacts, config)
     solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
+    pcontext.stats.display('final')
     # ignore code as dlvhex does
     code = 0
   except SystemExit:

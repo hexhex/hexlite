@@ -23,6 +23,7 @@ import collections
 import itertools
 import pprint
 import traceback
+import json
 
 import dlvhex
 
@@ -183,9 +184,10 @@ class EAtomEvaluator(dlvhex.Backend):
 
   This is one object that evaluates all external atoms in the context of a clasp context.
   '''
-  def __init__(self, claspcontext):
+  def __init__(self, claspcontext, stats):
     assert(isinstance(claspcontext, ClaspContext))
     self.ccontext = claspcontext
+    self.stats = stats
     # keep list of learned nogoods so that we do not add the same one twice
     self.learnedNogoods = set()
     # list of nogoods that still need to be added
@@ -231,43 +233,44 @@ class EAtomEvaluator(dlvhex.Backend):
     * cleans up
     * return result (known true tuples, unknown tuples)
     '''
-    # prepare input tuple
-    input_arguments = []
-    for spec_idx, inp in enumerate(holder.inspec):
-      if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
-        arg = self.clingo2hex(inputtuple[spec_idx])
-        input_arguments.append(arg)
-      elif inp == dlvhex.TUPLE:
-        if (spec_idx + 1) != len(holder.inspec):
-          raise Exception("got TUPLE type which is not in final argument position")
-        # give all remaining arguments as one tuple
-        args = [ self.clingo2hex(x) for x in inputtuple[spec_idx:] ]
-        input_arguments.append(tuple(args))
-      else:
-        raise Exception("unknown input type "+repr(inp))
+    with self.stats.context('eatom'+holder.name):
+      # prepare input tuple
+      input_arguments = []
+      for spec_idx, inp in enumerate(holder.inspec):
+        if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
+          arg = self.clingo2hex(inputtuple[spec_idx])
+          input_arguments.append(arg)
+        elif inp == dlvhex.TUPLE:
+          if (spec_idx + 1) != len(holder.inspec):
+            raise Exception("got TUPLE type which is not in final argument position")
+          # give all remaining arguments as one tuple
+          args = [ self.clingo2hex(x) for x in inputtuple[spec_idx:] ]
+          input_arguments.append(tuple(args))
+        else:
+          raise Exception("unknown input type "+repr(inp))
 
-    # call external atom in plugin
-    dlvhex.startExternalAtomCall(input_arguments, predicateinputatoms, self, holder)
-    outKnownTrue, outUnknown = set(), set()
-    try:
-      logging.debug('calling plugin eatom with arguments '+repr(input_arguments))
-      holder.func(*input_arguments)
-      
-      # sanity check
-      inconsistent = set.intersection(dlvhex.currentEvaluation().outputKnownTrue, dlvhex.currentEvaluation().outputUnknown)
-      if len(inconsistent) > 0:
-        raise Exception('external atom {} with arguments {} provided the following tuples both as true and unknown: {} partial interpretation is {}'.format(holder.name, repr(input_arguments), repr(inconsistent), repr(predicateinputatoms)))
+      # call external atom in plugin
+      dlvhex.startExternalAtomCall(input_arguments, predicateinputatoms, self, holder)
+      outKnownTrue, outUnknown = set(), set()
+      try:
+        logging.debug('calling plugin eatom with arguments '+repr(input_arguments))
+        holder.func(*input_arguments)
+        
+        # sanity check
+        inconsistent = set.intersection(dlvhex.currentEvaluation().outputKnownTrue, dlvhex.currentEvaluation().outputUnknown)
+        if len(inconsistent) > 0:
+          raise Exception('external atom {} with arguments {} provided the following tuples both as true and unknown: {} partial interpretation is {}'.format(holder.name, repr(input_arguments), repr(inconsistent), repr(predicateinputatoms)))
 
-      # interpret output that is known to be true
-      outKnownTrue = [ tuple([ self.hex2clingo(val) for val in _tuple ])
-                       for _tuple in dlvhex.currentEvaluation().outputKnownTrue ]
+        # interpret output that is known to be true
+        outKnownTrue = [ tuple([ self.hex2clingo(val) for val in _tuple ])
+                         for _tuple in dlvhex.currentEvaluation().outputKnownTrue ]
 
-      # interpret output that is unknown whether it is false or true (in partial evaluation)
-      outUnknown = [ tuple([ self.hex2clingo(val) for val in _tuple ])
-                     for _tuple in dlvhex.currentEvaluation().outputUnknown ]
-    finally:
-      dlvhex.cleanupExternalAtomCall()
-    return outKnownTrue, outUnknown
+        # interpret output that is unknown whether it is false or true (in partial evaluation)
+        outUnknown = [ tuple([ self.hex2clingo(val) for val in _tuple ])
+                       for _tuple in dlvhex.currentEvaluation().outputUnknown ]
+      finally:
+        dlvhex.cleanupExternalAtomCall()
+      return outKnownTrue, outUnknown
   
   # implementation of Backend method
   def storeAtom(self, tpl):
@@ -346,8 +349,8 @@ class EAtomEvaluator(dlvhex.Backend):
       self.ccontext.propagator.recordNogood(nogood, defer=True)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
-  def __init__(self, claspcontext):
-    EAtomEvaluator.__init__(self, claspcontext)
+  def __init__(self, claspcontext, stats):
+    EAtomEvaluator.__init__(self, claspcontext, stats)
     # cache = defaultdict:
     # key = eatom name
     # value = defaultdict
@@ -711,84 +714,100 @@ class ClingoModel(dlvhex.Model):
       is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
 
 def execute(pcontext, rewritten, facts, plugins, config, model_callback):
-  # prepare contexts that are for this program but not yet specific for a clasp solver process
-  # (multiple clasp solvers are used for finding compatible sets and for checking FLP property)
+  propagatorFactory = None
+  flpchecker = None
+  cmdlineargs = None
+  with pcontext.stats.context('preparation'):
+    # prepare contexts that are for this program but not yet specific for a clasp solver process
+    # (multiple clasp solvers are used for finding compatible sets and for checking FLP property)
 
-  # preparing clasp context which does not hold concrete clasp information yet
-  # (such information is added during propagation)
-  ccontext = ClaspContext()
+    # preparing clasp context which does not hold concrete clasp information yet
+    # (such information is added during propagation)
+    ccontext = ClaspContext()
 
-  # preparing evaluator for external atoms which needs to know the clasp context
-  #eaeval = EAtomEvaluator(ccontext)
-  eaeval = CachedEAtomEvaluator(ccontext)
+    # preparing evaluator for external atoms which needs to know the clasp context
+    #eaeval = EAtomEvaluator(ccontext)
+    eaeval = CachedEAtomEvaluator(ccontext, pcontext.stats)
 
-  # find names of external atoms that advertises to do checks on a partial assignment
-  partial_evaluation_eatoms = [ eatomname for eatomname, info in dlvhex.eatoms.items() if info.props.provides_partial ]
-  # XXX we could filter here to reduce this set or we could decide to do no partial evaluation at all or we could do this differently for FLP checker and Compatible Set finder
-  should_do_partial_evaluation_on = partial_evaluation_eatoms
+    # find names of external atoms that advertises to do checks on a partial assignment
+    partial_evaluation_eatoms = [ eatomname for eatomname, info in dlvhex.eatoms.items() if info.props.provides_partial ]
+    # XXX we could filter here to reduce this set or we could decide to do no partial evaluation at all or we could do this differently for FLP checker and Compatible Set finder
+    should_do_partial_evaluation_on = partial_evaluation_eatoms
 
-  propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
+    propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
 
-  if config.flpcheck == 'explicit':
-    flp_checker_factory = flp.ExplicitFLPChecker
-  else:
-    assert(config.flpcheck == 'none')
-    flp_checker_factory = flp.DummyFLPChecker
-  flpchecker = flp_checker_factory(propagatorFactory)
+    if config.flpcheck == 'explicit':
+      flp_checker_factory = flp.ExplicitFLPChecker
+    else:
+      assert(config.flpcheck == 'none')
+      flp_checker_factory = flp.DummyFLPChecker
+    flpchecker = flp_checker_factory(propagatorFactory)
 
-  # XXX maybe get additional settings from commandline
-  cmdlineargs = [str(config.number)]
-  # just in case we need optimization
-  cmdlineargs.append('--opt-mode=optN')
-  cmdlineargs.append('--opt-strategy=usc')
+    # TODO get settings from commandline
+    cmdlineargs = []
+    if config.number != 1:
+      cmdlineargs.append(str(config.number))
+    # just in case we need optimization
+    cmdlineargs.append('--opt-mode=optN')
+    cmdlineargs.append('--opt-strategy=usc')
 
-  logging.info('sending nonground program to clingo control with command line args {}'.format(repr(cmdlineargs)))
-  cc = clingo.Control(cmdlineargs)
-  sendprog = shp.shallowprint(rewritten)
-  try:
-    logging.debug('sending program ===\n'+sendprog+'\n===')
-    cc.add('base', (), sendprog)
-  except:
-    raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
+  cc = None
+  with pcontext.stats.context('grounding'):
+    logging.info('sending nonground program to clingo control')
+    cc = clingo.Control(cmdlineargs)
+    sendprog = shp.shallowprint(rewritten)
+    try:
+      logging.debug('sending program ===\n'+sendprog+'\n===')
+      cc.add('base', (), sendprog)
+    except:
+      raise Exception("error sending program ===\n"+sendprog+"\n=== to clingo:\n"+traceback.format_exc())
 
-  # preparing context for instantiation
-  # (this class is specific to the gringo API)
-  logging.info('grounding with gringo context')
-  ccc = GringoContext(eaeval)
-  flpchecker.attach(cc)
+    # preparing context for instantiation
+    # (this class is specific to the gringo API)
+    logging.info('grounding with gringo context')
+    ccc = GringoContext(eaeval)
+    flpchecker.attach(cc)
 
-  if config.verbose:
-    cc.register_observer(GroundProgramPrinter(), False)
-  cc.ground([('base',())], ccc)
+    if config.verbose:
+      cc.register_observer(GroundProgramPrinter(), False)
 
-  logging.info('preparing for search')
+    cc.ground([('base',())], ccc)
 
-  # name of this propagator CSF = compatible set finder
-  checkprop = propagatorFactory('CSF')
-  cc.register_propagator(checkprop)
+  with pcontext.stats.context('search'):
+    logging.info('preparing for search')
 
-  logging.info('starting search')
-  ret = None
-  with cc.solve(yield_=True, async=False) as handle:
-    for model in handle:
-      if not flpchecker.checkModel(model):
-        logging.debug('discarding model because flpchecker returned False')
-        # according to clingo documentation "discards current model"
-        handle.resume()
-      else:
-        try:
-          model_callback(ClingoModel(ccontext, model))
-        except modelcallback.StopModelEnumerationException:
-          # stop enumeration
-          handle.cancel()
-          ret = 'SAT'
-          logging.info('model enumeration stopped')
-    if not ret:
-      res = handle.get()
-      if res.unsatisfiable:
-        ret = 'UNSAT'
-      if res.interrupted or res.unknown:
-        raise InterruptedError("clingo solve interrupted or unknown")
+    # name of this propagator CSF = compatible set finder
+    checkprop = propagatorFactory('CSF')
+    cc.register_propagator(checkprop)
+
+    logging.info('starting search')
+    ret = None
+    with cc.solve(yield_=True, async=False) as handle:
+      for model in handle:
+        flpmodel = False
+        with pcontext.stats.context("flpcheck"):
+          flpmodel = flpchecker.checkModel(model)
+        if not flpmodel:
+          logging.debug('discarding model because flpchecker returned False')
+          # according to clingo documentation "discards current model"
+          handle.resume()
+        else:
+          try:
+            model_callback(ClingoModel(ccontext, model))
+            pcontext.stats.display('answerset')
+          except modelcallback.StopModelEnumerationException:
+            handle.cancel()
+            ret = 'SAT'
+            logging.info("end of enumeration with StopModelEnumerationException")
+      if not ret:
+        res = handle.get()
+        if res.unsatisfiable:
+          ret = 'UNSAT'
+        if res.interrupted or res.unknown:
+          raise InterruptedError("clingo solve interrupted or unknown")
+
+  if config.stats:
+    sys.stderr.write(json.dumps({'event':'stats', 'name':'clingo', 'c': cc.statistics })+'\n')
 
   logging.info('execute() terminated with result '+repr(ret))
   return ret
