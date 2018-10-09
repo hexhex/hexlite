@@ -120,6 +120,9 @@ class ClingoID(dlvhex.ID):
       raise Exception("cannot call isAssigned on term that is not an atom")
     return self.__assignment().value(self.symlit.lit) != None
 
+  def isInteger(self):
+    return self.symlit.sym.type == clingo.SymbolType.Number
+
   def tuple(self):
     tup = tuple([ ClingoID(self.ccontext, SymLit(sym, None)) for sym in
                   [clingo.Function(self.symlit.sym.name)]+self.symlit.sym.arguments])
@@ -185,6 +188,9 @@ class EAtomEvaluator(dlvhex.Backend):
     self.ccontext = claspcontext
     # keep list of learned nogoods so that we do not add the same one twice
     self.learnedNogoods = set()
+    # list of nogoods that still need to be added
+    # (in an external atom call, dlvhex.learn() collects nogoods here and adds them later)
+    self.nogoodsToAdd = set()
 
   def clingo2hex(self, term):
     assert(isinstance(term, clingo.Symbol))
@@ -313,6 +319,11 @@ class EAtomEvaluator(dlvhex.Backend):
 
   # implementation of Backend method
   def learn(self, ng):
+    '''
+    learn a nogood from an external atom call
+    this method is directly called from the external atom code
+    it does not actually add nogoods to the solver but collects them
+    '''
     if __debug__:
       logging.debug("learning user-specified nogood "+repr(ng))
     assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
@@ -320,14 +331,19 @@ class EAtomEvaluator(dlvhex.Backend):
     if ng in self.learnedNogoods:
       logging.info("learn() skips adding known nogood")
     else:
+      # record as learned
       self.learnedNogoods.add(ng)
+
+      # convert and validate
       nogood = self.ccontext.propagator.Nogood()
       for clingoid in ng:
         if not nogood.add(clingoid.symlit.lit):
           logging.debug("cannot build nogood (opposite literals)!")
           return
       logging.info("learn() adds nogood %s", repr(nogood.literals))
-      self.ccontext.propagator.addNogood(nogood)
+
+      # record as nogood to be added
+      self.ccontext.propagator.recordNogood(nogood, defer=True)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
   def __init__(self, claspcontext):
@@ -453,6 +469,8 @@ class ClingoPropagator:
     self.eaeval = eaeval
     # list of names of external atoms that should do checks on partial assignments
     self.partial_evaluation_eatoms = partial_evaluation_eatoms
+    # list of nogoods to add
+    self.nogoodsToAdd = []
 
   def init(self, init):
     name = self.name+'init:'
@@ -551,6 +569,8 @@ class ClingoPropagator:
     partial_evaluation = not control.assignment.is_total
     with self.ccontext(control, self):
       try:
+        # do this within ccontext and within the try/catch that logs StopPropagation
+        self.addPendingNogoodsOrThrow()
         for eatomname, veriList in self.eatomVerifications.items():
           for veri in veriList:
             if partial_evaluation and not veri.verify_on_partial:
@@ -558,6 +578,8 @@ class ClingoPropagator:
               continue
             if control.assignment.is_true(veri.relevance.lit):
               self.verifyTruthOfAtom(eatomname, control, veri)
+              # add new pending nogoods (this is a potential output of above verification) if required
+              self.addPendingNogoodsOrThrow()
             else:
               logging.debug(name+' no need to verify atom {}'.format(veri.replacement.sym))
       except ClingoPropagator.StopPropagation:
@@ -640,18 +662,42 @@ class ClingoPropagator:
     if logging.getLogger().isEnabledFor(logging.INFO):
       hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
       logging.info("%s CPcheck adding nogood %s", name, hr_nogood_str)
-    self.addNogood(nogood)
+    self.recordNogood(nogood) # TODO use defer=True or defer=False here?
 
-  def addNogood(self, nogood):
-    name = self.name+'addNogood:'
+  def recordNogood(self, nogood, defer=False):
     nogood = list(nogood.literals)
     if __debug__:
+      name = self.name+'recordNogood:'
       logging.debug(name+" adding {}".format(repr(nogood)))
       for slit in nogood:
         a = abs(slit)
         logging.debug(name+"  {} ({}) is {}".format(a, self.ccontext.propcontrol.assignment.value(a), repr(self.dbgSolv2Syms[a])))
+    if defer:
+      # do not add nogood here, but record in list so that propagator can later add them
+      self.nogoodsToAdd.append(nogood)
+    else:
+      # add (potentially raises StopPropagation)
+      self.addNogood(nogood)
+
+  def addPendingNogoodsOrThrow(self):
+    '''
+    add nogoods to the solver that were recorded in an external atom call and propagate
+    if nogood requires end of propagation, throw StopPropagation
+    '''
+    logging.debug("addPendingNogoodsOrThrow has %d nogoods to add", len(self.nogoodsToAdd))
+    while len(self.nogoodsToAdd) > 0:
+      # get next nogood from queue
+      ng = self.nogoodsToAdd.pop(0)
+      self.addNogood(ng)
+
+  def addNogood(self, nogood):
+    # low-level add of nogood and abort of propagation if required
     may_continue = self.ccontext.propcontrol.add_nogood(nogood, tag=False, lock=True)
-    logging.debug(name+" may_continue={}".format(repr(may_continue)))
+    if may_continue:
+      may_continue = self.ccontext.propcontrol.propagate()
+    if __debug__:
+      name = self.name+'addNogood:'
+      logging.debug(name+" {}, may_continue={}".format(repr(nogood), repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
 
@@ -690,15 +736,13 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
     flp_checker_factory = flp.DummyFLPChecker
   flpchecker = flp_checker_factory(propagatorFactory)
 
-  # TODO get settings from commandline
-  cmdlineargs = []
-  if config.number != 1:
-    cmdlineargs.append(str(config.number))
+  # XXX maybe get additional settings from commandline
+  cmdlineargs = [str(config.number)]
   # just in case we need optimization
   cmdlineargs.append('--opt-mode=optN')
-  cmdlineargs.append('--opt-strategy=usc,9')
+  cmdlineargs.append('--opt-strategy=usc')
 
-  logging.info('sending nonground program to clingo control')
+  logging.info('sending nonground program to clingo control with command line args {}'.format(repr(cmdlineargs)))
   cc = clingo.Control(cmdlineargs)
   sendprog = shp.shallowprint(rewritten)
   try:

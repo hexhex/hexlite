@@ -16,7 +16,7 @@
 
 # this module supports building clingo module from the distribution
 
-import os, sys, subprocess, logging, tempfile, traceback
+import os, sys, subprocess, logging, tempfile, traceback, time
 
 def msg(m):
   sys.stderr.write(m+'\n')
@@ -41,7 +41,12 @@ class InstallerBase:
     answer = None
     while answer not in ['n', 'y', 's', 'a']:
       msg("Continue? (y/n/s/a) (yes, no, skip one, all yes)")
-      answer = sys.stdin.readline().strip()
+      l = sys.stdin.readline()
+      if l == '':
+        raise RuntimeError("got empty input from user, maybe running without STDIN, aborting")
+      if answer != None:
+        time.sleep(1) # do not flood
+      answer = l.strip()
     if answer == 'n':
       raise Exception("User aborted setup")
     if answer == 'a':
@@ -182,7 +187,7 @@ def build():
     logging.critical("We are sorry, could not determine your operating system." +
       " Please contact the developers.")
     return False
-  except:
-    logging.critical("Unexpected Exception:"+traceback.format_exc()+"\nPlease contact the developers.")
+  except Exception as e:
+    logging.critical("Unexpected Exception:"+str(e)+" "+traceback.format_exc()+"\nPlease contact the developers.")
     return False
   return True

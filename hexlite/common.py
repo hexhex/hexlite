@@ -91,10 +91,10 @@ class Configuration:
     self.auxfacts = args.auxfacts
 
 class Plugin:
-  def __init__(self, mname, pmodule):
+  def __init__(self, mname, pmodule, arguments=None):
     self.mname = mname
     self.pmodule = pmodule
-
+    self.arguments = arguments
 
 class ProgramContext:
   '''
