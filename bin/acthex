@@ -123,11 +123,16 @@ def main():
     plugins = loadPlugins(hexlite.flatten(args.plugin))
     program = loadProgram(hexlite.flatten(args.acthexfiles))
     pcontext = hexlite.ProgramContext()
-    hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-    pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
-    rewritten, facts = pr.rewrite()
+    if config.stats:
+      pcontext.stats = hexlite.Statistics()
+      # (per default, a dummy that does nothing is used)
+    with pcontext.stats.context('rewriting'):
+      hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+      pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
+      rewritten, facts = pr.rewrite()
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
-    for iteration in itertools.count():
+    try:
+      for iteration in itertools.count():
         logging.info("acthex iteration %d", iteration)
         envstr = str(acthex.environment())
         if len(envstr) > 0:
@@ -136,15 +141,16 @@ def main():
         callback = ActhexModelCallback(stringifiedFacts, config)
         code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callback)
         # find and execute actions on environment
-        acthex.actionmanager.executeActions(callback.optimal_model)
-  except acthex.IterationExit:
-    logging.info("got acthex iteration exit exception")
+        with pcontext.stats.context('executing actions'):
+          acthex.actionmanager.executeActions(callback.optimal_model)
+    except acthex.IterationExit:
+      logging.info("got acthex iteration exit exception")
+    pcontext.stats.display('final')
   except SystemExit:
     pass
   except:
     logging.error('Exception: '+traceback.format_exc())
     logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
-  pcontext.stats.display('final')
   sys.exit(0)
 
 if __name__ == '__main__':
