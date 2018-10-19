@@ -117,9 +117,9 @@ def main():
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
     modelcb = StandardModelCallback(stringifiedFacts, config)
     solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
-    pcontext.stats.display('final')
     # ignore code as dlvhex does
     code = 0
+    pcontext.stats.display('final')
   except SystemExit:
     pass
   except:
