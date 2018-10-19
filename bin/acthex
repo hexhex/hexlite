@@ -139,19 +139,21 @@ def main():
           sys.stdout.write("Environment: "+envstr+'\n')
         # evaluate program, collect answer set in callback
         callback = ActhexModelCallback(stringifiedFacts, config)
-        code = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callback)
+        solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callback)
         # find and execute actions on environment
         with pcontext.stats.context('executing actions'):
           acthex.actionmanager.executeActions(callback.optimal_model)
     except acthex.IterationExit:
       logging.info("got acthex iteration exit exception")
+    # ignore code as dlvhex does
+    code = 0
     pcontext.stats.display('final')
   except SystemExit:
     pass
   except:
     logging.error('Exception: '+traceback.format_exc())
     logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
-  sys.exit(0)
+  sys.exit(code)
 
 if __name__ == '__main__':
   main()
