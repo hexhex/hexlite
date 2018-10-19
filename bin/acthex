@@ -74,11 +74,15 @@ def interpretArguments(argv, config):
     help='Paths to search for python modules.')
   parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
     help='Names of python modules to load as external atoms and actions (hexlite or acthex plugins).')
+  parser.add_argument('--hidemodels', action='store_true', default=False,
+    help='Do not print models encountered in each evaluation step.')
   config.add_common_arguments(parser)
   args = parser.parse_args(argv)
   if args.debug:
     logging.debug('args='+repr(args))
   config.process_arguments(args)
+  # TODO derive acthex.Configuration from hexlite.Configuration?
+  config.hidemodels = args.hidemodels
   return args
 
 def setPaths(paths):
@@ -106,7 +110,8 @@ class ActhexModelCallback(modelcallback.StandardModelCallback):
       return
     logging.info('found optimal model!')
     # TODO call standard callback (=print model) depending on config
-    modelcallback.StandardModelCallback.__call__(self, model)
+    if not self.config.hidemodels:
+      modelcallback.StandardModelCallback.__call__(self, model)
     # remember optimal model and stop enumeration
     self.optimal_model = model
     raise modelcallback.StopModelEnumerationException()
