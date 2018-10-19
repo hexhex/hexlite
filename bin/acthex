@@ -144,6 +144,7 @@ def main():
   except:
     logging.error('Exception: '+traceback.format_exc())
     logging.error('For reporting bugs, unexpected behavior, or suggestions, please report an issue here: '+'https://github.com/hexhex/hexlite/issues')
+	pcontext.stats.display('final')
   sys.exit(0)
 
 if __name__ == '__main__':
