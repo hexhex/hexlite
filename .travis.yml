@@ -17,9 +17,9 @@ install:
   - conda create -q -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test
   - conda install -c potassco clingo
-  - python3 setup.py develop --user
+  - python setup.py develop --user
 
 script:
   - cd tests/
   - ./run-tests.sh
-  - python3 run-acthex-tests.py
+  - python run-acthex-tests.py
