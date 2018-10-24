@@ -1,5 +1,5 @@
 {% set name = "hexlite" %}
-{% set version = "0.3.20" %}
+{% set version = "1.0.0" %}
 {% set file_ext = "tar.gz" %}
 {% set hash_type = "sha256" %}
 {% set hash_value = "e7ae1f17ac0adc62c53cfaed86da84e56d08549b9bc181ed7c88abee9fd0a52b" %}
