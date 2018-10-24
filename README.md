@@ -111,19 +111,25 @@ $ rm ~/.local/bin/hexlite
 * Build and upload new version to pip and conda:
   
   * Update version in `setup.py`.
+
+  * Build pypi source package
+
+  `$ python setup.py sdist`
+
+	* Verify that dist/ contains the right archives with the right content (no wheels etc.)
+
+	* Upload to pypi
+
+	`$ twine upload dist/*`
+
   * Update version in `meta.yaml`.
 
+  * Build for anaconda cloud
 
-  * Build and upload to pypi
+  `$ conda build .`
 
-  ```
-	$ python setup.py bdist_wheel
-	$ twine upload dist/*
-	```
+	(get upload command from last lines of output)
 
-  * Build and upload to ananconda cloud
+  * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
-  ```
-	$ conda build .
-	$ anaconda upload
-	```
+	`$ anaconda upload <path-from-conda-build>`
