@@ -1,14 +1,13 @@
 
-# HEXLite Python-based solver for a fragment of HEX
+# Hexlite - Solver for a fragment of HEX
 
 This is a solver for a fragment of the HEX language and for Python-based plugins
-which is based on Python interfaces of Clingo and WASP and does not contain any
-C++ code itself.
+which is based on Python interfaces of Clingo and does not contain any C++ code itself.
 
 The intention is to provide a lightweight system for an easy start with HEX.
 
 The vision is that HEXLite can use existing Python plugins and runs based on
-the Clingo or WASP python interface, without realizing the full power of HEX.
+the Clingo python interface, without realizing the full power of HEX.
 
 The system is currently under development and only works for certain programs:
 * External atoms with only constant inputs are evaluated during grounding in Gringo
@@ -64,8 +63,10 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
     Add the following to your `.profile` or `.bashrc` file:
 
-    export PYTHONUSERBASE=~/.local/
-    export PATH=$PATH:~/.local/bin
+```
+export PYTHONUSERBASE=~/.local/
+export PATH=$PATH:~/.local/bin
+```
 
   * Run hexlite the first time. This will help to download and build pyclingo unless it is already usable via `import clingo`:
 
@@ -97,17 +98,35 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
   * If you want to remove this development installation:
 
-  ```$ python3 setup.py develop --uninstall --user```
-  ```$ rm ~/.local/bin/hexlite```
+```
+$ python3 setup.py develop --uninstall --user
+$ rm ~/.local/bin/hexlite
+```
 
   (Installed scripts are not automatically uninstalled.)
 
-* Build and upload new conda package.
+* Build and upload new version to pip and conda:
   
+  * Update version in `setup.py`.
+
+  * Build pypi source package
+
+  `$ python setup.py sdist`
+
+	* Verify that dist/ contains the right archives with the right content (no wheels etc.)
+
+	* Upload to pypi
+
+	`$ twine upload dist/*`
+
   * Update version in `meta.yaml`.
 
-  * Run
+  * Build for anaconda cloud
 
-  ```$ conda build .```
+  `$ conda build .`
 
-  * Run `anaconda upload` command at the end of the output.
+	(get upload command from last lines of output)
+
+  * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
+
+	`$ anaconda upload <path-from-conda-build>`
