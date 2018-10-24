@@ -214,7 +214,11 @@ class EAtomEvaluator(dlvhex.Backend):
       if term[0] == '"':
         ret = clingo.String(term[1:-1])
       else:
-        ret = clingo.parse_term(term)
+        try:
+          ret = clingo.parse_term(term)
+        except:
+          logging.warning("cannot parse external atom term {} with clingo! (creating a string out of it)".format(repr(term)))
+          ret = clingo.String(str(term))
     elif isinstance(term, int):
       ret = clingo.Number(term)
     else:

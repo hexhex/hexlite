@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# HEXLite Python-based solver for a fragment of HEX
+# HEXLite-based solver for a fragment of the ActHEX language
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 import sys
 import platform
+import itertools
 
 if platform.python_version().startswith('2'):
   sys.stdout.write("Please use Python 3 instead of Python 2!\n")
@@ -28,40 +29,36 @@ app.setupLoggingBase()
 
 # load rest after configuring logging
 import hexlite
-import hexlite.rewriter as rewriter
 import hexlite.ast.shallowparser as shp
 import hexlite.ast as ast
-from hexlite.modelcallback import StandardModelCallback
+import hexlite.rewriter
+import hexlite.modelcallback as modelcallback
 
 # this is our own package for communicating with plugins
 import dlvhex
+import acthex
+import acthex.rewriter
+import acthex.actionmanager
 
 # other things we need here
 import os, argparse, traceback, pprint, logging
 
-def loadPlugin(pluginarray):
+def loadPlugin(mname):
   # returns plugin info
-  logging.info('loading plugin '+repr(pluginarray))
-  mname = pluginarray[0]
-  arguments = None
-  if len(pluginarray) > 1:
-    arguments = pluginarray[1:]
-  logging.info('module {} with arguments {}'.format(mname, arguments))
+  logging.info('loading plugin '+repr(mname))
   pmodule = __import__(mname, globals(), locals(), [], 0)
-  logging.info('configuring dlvhex module for registering module '+repr(mname))
+  logging.info('configuring acthex/dlvhex module for registering module '+repr(mname))
   # tell dlvhex module which other module is registering its atoms
   dlvhex.startRegistration(pmodule)
   logging.info('calling register() for '+repr(mname))
-  if arguments:
-    pmodule.register(arguments)
-  else:
-    pmodule.register()
+  pmodule.register()
   logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
-  return hexlite.Plugin(mname, pmodule, arguments)
+  logging.info('list of known actions is now {}'.format(', '.join(acthex.actions.keys())))
+  return hexlite.Plugin(mname, pmodule)
 
-def loadProgram(hexfiles):
+def loadProgram(acthexfiles):
   ret = []
-  for f in hexfiles:
+  for f in acthexfiles:
     with open(f, 'r') as inf:
       prog = shp.parse(inf.read())
       logging.debug('from file '+repr(f)+' parsed program\n'+pprint.pformat(prog, indent=2, width=250))
@@ -70,16 +67,22 @@ def loadProgram(hexfiles):
 
 def interpretArguments(argv, config):
   parser = argparse.ArgumentParser(
-    description='HEX-Lite - Answer Set Solver for fragment of the HEX formalism')
-  parser.add_argument('hexfiles', nargs='+', metavar='HEXFILE', action='append', default=[],
-    help='Filename(s) of HEX source code.')
+    description='Acthex-Lite - Solver for a fragment of the ACTHEX formalism')
+  parser.add_argument('acthexfiles', nargs='+', metavar='ACTHEXFILE', action='append', default=[],
+    help='Filename(s) of ACTHEX source code.')
   parser.add_argument('--pluginpath', nargs='*', metavar='PATH', action='append', default=[],
     help='Paths to search for python modules.')
-  parser.add_argument('--plugin', nargs='+', metavar=('MODULENAME', 'ARGUMENT'), action='append', default=[],
-    help='Python module to load as plugin, plus optional arguments for plugin. Can be given multiple times to load multiple plugins.')
+  parser.add_argument('--plugin', nargs='*', metavar='MODULE', action='append', default=[],
+    help='Names of python modules to load as external atoms and actions (hexlite or acthex plugins).')
+  parser.add_argument('--hidemodels', action='store_true', default=False,
+    help='Do not print models encountered in each evaluation step.')
   config.add_common_arguments(parser)
   args = parser.parse_args(argv)
+  if args.debug:
+    logging.debug('args='+repr(args))
   config.process_arguments(args)
+  # TODO derive acthex.Configuration from hexlite.Configuration?
+  config.hidemodels = args.hidemodels
   return args
 
 def setPaths(paths):
@@ -91,9 +94,27 @@ def loadPlugins(plugins):
   ret = []
   for p in plugins:
     pi = loadPlugin(p)
-    logging.debug('for plugin {} got plugin info {}'.format(pi.mname, repr(pi)))
+    logging.debug('for plugin '+p+' got plugin info '+repr(pi))
     ret.append(pi)
   return ret
+
+class ActhexModelCallback(modelcallback.StandardModelCallback):
+  def __init__(self, stringifiedFacts, config):
+    modelcallback.StandardModelCallback.__init__(self, stringifiedFacts, config)
+    self.optimal_model = None
+
+  def __call__(self, model):
+    assert(isinstance(model, dlvhex.Model))
+    if not model.is_optimal:
+      logging.info('not using suboptimal model (like dlvhex2)!')
+      return
+    logging.info('found optimal model!')
+    # TODO call standard callback (=print model) depending on config
+    if not self.config.hidemodels:
+      modelcallback.StandardModelCallback.__call__(self, model)
+    # remember optimal model and stop enumeration
+    self.optimal_model = model
+    raise modelcallback.StopModelEnumerationException()
 
 def main():
   code = 1
@@ -104,19 +125,31 @@ def main():
     app.importClingoAPI()
     # now set additional paths for plugin imports
     setPaths(hexlite.flatten(args.pluginpath))
-    plugins = loadPlugins(args.plugin)
-    program = loadProgram(hexlite.flatten(args.hexfiles))
+    plugins = loadPlugins(hexlite.flatten(args.plugin))
+    program = loadProgram(hexlite.flatten(args.acthexfiles))
     pcontext = hexlite.ProgramContext()
     if config.stats:
       pcontext.stats = hexlite.Statistics()
       # (per default, a dummy that does nothing is used)
     with pcontext.stats.context('rewriting'):
-      rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
-      pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
+      hexlite.rewriter.classifyEAtomsInstallRewritingHandlers(pcontext)
+      pr = acthex.rewriter.ProgramRewriter(pcontext, program, plugins, config)
       rewritten, facts = pr.rewrite()
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
-    modelcb = StandardModelCallback(stringifiedFacts, config)
-    solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
+    try:
+      for iteration in itertools.count():
+        logging.info("acthex iteration %d", iteration)
+        envstr = str(acthex.environment())
+        if len(envstr) > 0:
+          sys.stdout.write("Environment: "+envstr+'\n')
+        # evaluate program, collect answer set in callback
+        callback = ActhexModelCallback(stringifiedFacts, config)
+        solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callback)
+        # find and execute actions on environment
+        with pcontext.stats.context('executing actions'):
+          acthex.actionmanager.executeActions(callback.optimal_model)
+    except acthex.IterationExit:
+      logging.info("got acthex iteration exit exception")
     # ignore code as dlvhex does
     code = 0
     pcontext.stats.display('final')
