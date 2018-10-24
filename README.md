@@ -67,8 +67,8 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
     Add the following to your `.profile` or `.bashrc` file:
 
-    export PYTHONUSERBASE=~/.local/
-    export PATH=$PATH:~/.local/bin
+    ```export PYTHONUSERBASE=\~/.local/
+    export PATH=$PATH:\~/.local/bin```
 
   * Run hexlite the first time. This will help to download and build pyclingo unless it is already usable via `import clingo`:
 
@@ -100,8 +100,8 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
   * If you want to remove this development installation:
 
-  ```$ python3 setup.py develop --uninstall --user```
-  ```$ rm ~/.local/bin/hexlite```
+  ```$ python3 setup.py develop --uninstall --user
+  $ rm ~/.local/bin/hexlite```
 
   (Installed scripts are not automatically uninstalled.)
 
