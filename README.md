@@ -2,16 +2,15 @@
 [![codebeat badge](https://codebeat.co/badges/5493bd59-f87f-470c-9069-86d4c14dd374)](https://codebeat.co/projects/github-com-hexhex-hexlite-master)
 [![Anaconda-Server Badge](https://anaconda.org/peterschueller/hexlite/badges/installer/conda.svg)](https://conda.anaconda.org/peterschueller)
 
-# HEXLite Python-based solver for a fragment of HEX
+# Hexlite - Solver for a fragment of HEX
 
 This is a solver for a fragment of the HEX language and for Python-based plugins
-which is based on Python interfaces of Clingo and WASP and does not contain any
-C++ code itself.
+which is based on Python interfaces of Clingo and does not contain any C++ code itself.
 
 The intention is to provide a lightweight system for an easy start with HEX.
 
 The vision is that HEXLite can use existing Python plugins and runs based on
-the Clingo or WASP python interface, without realizing the full power of HEX.
+the Clingo python interface, without realizing the full power of HEX.
 
 The system is currently under development and only works for certain programs:
 * External atoms with only constant inputs are evaluated during grounding in Gringo
