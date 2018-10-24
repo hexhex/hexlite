@@ -108,12 +108,22 @@ $ rm ~/.local/bin/hexlite
 
   (Installed scripts are not automatically uninstalled.)
 
-* Build and upload new conda package.
+* Build and upload new version to pip and conda:
   
+  * Update version in `setup.py`.
   * Update version in `meta.yaml`.
 
-  * Run
 
-  ```$ conda build .```
+  * Build and upload to pypi
 
-  * Run `anaconda upload` command at the end of the output.
+  ```
+	$ python setup.py bdist_wheel
+	$ twine upload dist/*
+	```
+
+  * Build and upload to ananconda cloud
+
+  ```
+	$ conda build .
+	$ anaconda upload
+	```
