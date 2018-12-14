@@ -83,6 +83,37 @@ export PATH=$PATH:~/.local/bin
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
 
+# Running Hexlite on Examples in the Repository
+
+* If ``hexlite`` by itself shows the help, you can run it on some examples in the repository.
+
+* Hexlite needs to know where to find plugins and what is the name of the Python modules of these plugins
+
+	* The path for plugins is given as argument ``--pluginpath <path>``.
+
+	  This argument can be given multiple times. You can use absolute or relative paths.
+
+	* The python modules to load are given as argument ``--plugin <module> [<argument1> <argument2>]``.
+	
+	  Multiple plugins can be loaded.
+          Each plugin can have arguments.
+
+	  !ATTENTION!:
+	  If you specify the HEX input file after ``--plugin <module>``, it becomes the argument of the plugin.
+	  In this case, you need to
+	
+	  * specify the HEX input files _before_ the other arguments
+	  or
+	  * indicate end of the argument list with the ``--`` option.
+
+* To run one of the examples in the ``tests/`` directory you can use one of the following methods to call hexlite:
+
+```
+$ hexlite --pluginpath ./plugins/ --plugin testplugin -- tests/extatom3.hex
+$ hexlite tests/extatom3.hex --pluginpath ./plugins/ --plugin testplugin
+$ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
+```
+
 # Developer Readme
 
 * For developing hexlite without uploading to anaconda repository:
