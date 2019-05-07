@@ -555,19 +555,19 @@ class CheckOptimizedProgram:
       def __call__(self, mdl):
         logging.debug('flpModel = '+str(mdl)) 
         if self.explain:
-          logging.info('FLP Check (#{}) yielded countermodel:'.format(self.explainID)) 
+          logging.debug('FLP Check (#{}) yielded countermodel:'.format(self.explainID)) 
           # this model is an answer set from the auxiliary FLP model checking program
           # (IDs are completely independent from those in self.__programObserver)
           # (symbols are partially the same with several auxiliaries with special meaning)
           po = self.po
-          logging.info("  Program Atoms that are not true in the counterexample but true in candidate:"+repr(sorted([
+          logging.debug("  Program Atoms that are not true in the counterexample but true in candidate:"+repr(sorted([
             str(sym) for lit, sym in po.int2atom.items()
             if lit not in po.replatoms and not mdl.contains(sym) and cmdl.contains(sym)])))
-          logging.info("  True Replacement Atoms (all):"+repr(sorted([
+          logging.debug("  True Replacement Atoms (all):"+repr(sorted([
             str(sym) for lit, sym in po.int2atom.items()
             if lit in po.replatoms and mdl.contains(sym)])))
           auxSyms = [clingo.Function(name=self.po.formatAtom(lit)) for lit in po.auxatoms]
-          logging.info("  True Auxiliary Atoms (those also in main program):"+repr(sorted([
+          logging.debug("  True Auxiliary Atoms (those also in main program):"+repr(sorted([
             str(aux) for aux in auxSyms if mdl.contains(aux)])))
 
     assumptions = self._assumptionFromActiveRules(activeRules) + self._assumptionFromModel(cmdl)
@@ -580,7 +580,7 @@ class CheckOptimizedProgram:
     return res.unsatisfiable
 
 class FLPCheckerBase:
-  def __init__(self, propagatorFactory):
+  def __init__(self, config, propagatorFactory):
     pass
   def attach(self, clingocontrol):
     pass
@@ -594,7 +594,7 @@ class DummyFLPChecker(FLPCheckerBase):
   pass
 
 class ExplicitFLPChecker(FLPCheckerBase):
-  def __init__(self, propagatorFactory):
+  def __init__(self, config, propagatorFactory):
     logging.debug("initializing explicit FLP checker")
     self.__propfactory = propagatorFactory
     # we cannot initialize this in an eager way,
@@ -604,8 +604,9 @@ class ExplicitFLPChecker(FLPCheckerBase):
     # because we cannot force clingo to finish instantiation without running solve()
     self.__checkProgram = None
     self.__programObserver = None
-    # whether to explain FLP checking in logging
-    self.explain = True
+    # logging granularity
+    self.verbose = config.verbose
+    self.debug = config.debug
     # running number for explanations
     self.explainID = 1
 
@@ -618,28 +619,30 @@ class ExplicitFLPChecker(FLPCheckerBase):
     is called from the on_model callback of clingo
     '''
     # returns True if mdl passes the FLP check (= is an answer set)
-    if self.explain:
-      logging.info("FLP Check (#{}) for the following Compatible Set (true atoms):".format(self.explainID))
+    if self.verbose:
+      logging.info("FLP Check (#{}) started".format(self.explainID))
+    if self.debug:
+      logging.debug("FLP Check (#{}) is for the following Compatible Set (true atoms):".format(self.explainID))
       # this is an answer set from the main search (IDs as in self.__programObserver)
       po = self.__programObserver
-      logging.info("  Program Atoms:"+repr(sorted([
+      logging.debug("  Program Atoms:"+repr(sorted([
         str(sym) for lit, sym in po.int2atom.items()
         if lit not in po.replatoms and mdl.is_true(lit)])))
-      logging.info("  Replacement Atoms:"+repr(sorted([
+      logging.debug("  Replacement Atoms:"+repr(sorted([
         str(sym) for lit, sym in po.int2atom.items()
         if lit in po.replatoms and mdl.is_true(lit)])))
-      logging.info("  Auxiliary Atoms:"+repr(sorted([
+      logging.debug("  Auxiliary Atoms:"+repr(sorted([
         str(lit) for lit in po.auxatoms if mdl.is_true(lit)])))
     ruleActivityProgram = self.ruleActivityProgram()
     activeRules = ruleActivityProgram.getActiveRulesForModel(mdl)
-    if self.explain:
-      logging.info("FLP Reduct (#{}):".format(self.explainID))
+    if self.debug:
+      logging.debug("FLP Reduct (#{}):".format(self.explainID))
       for ridx in activeRules:
         r = self.__programObserver.allrules[ridx]
-        logging.info("  "+repr(self.__programObserver.formatRule(r)))
+        logging.debug("  "+repr(self.__programObserver.formatRule(r)))
     checkProgram = self.checkProgram()
-    is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl, self.explain, self.explainID)
-    if self.explain:
+    is_answer_set = checkProgram.checkFLPViolation(activeRules, mdl, self.debug, self.explainID)
+    if self.verbose:
       expl = { True:'IS', False:'is NOT' }
       logging.info("FLP check (#{}) returned {} (compatible set {} an answer set)".format(
         self.explainID, repr(is_answer_set), expl[is_answer_set]))

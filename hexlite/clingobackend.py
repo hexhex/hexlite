@@ -745,7 +745,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
     else:
       assert(config.flpcheck == 'none')
       flp_checker_factory = flp.DummyFLPChecker
-    flpchecker = flp_checker_factory(propagatorFactory)
+    flpchecker = flp_checker_factory(config, propagatorFactory)
 
     # TODO get settings from commandline
     cmdlineargs = []
