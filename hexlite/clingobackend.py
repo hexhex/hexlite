@@ -753,7 +753,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
       cmdlineargs.append(str(config.number))
     # just in case we need optimization
     cmdlineargs.append('--opt-mode=optN')
-    cmdlineargs.append('--opt-strategy=usc')
+    cmdlineargs += config.backend_additional_args
 
   cc = None
   with pcontext.stats.context('grounding'):

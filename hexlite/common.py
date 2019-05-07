@@ -37,6 +37,8 @@ class Configuration:
     self.auxfacts = False
     # whether to output stats as json lines on stderr
     self.stats = False
+    # additional arguments for backend (currently directly given to clingo)
+    self.backend_additional_args = []
 
   def add_common_arguments(self, parser):
     assert(isinstance(parser, argparse.ArgumentParser))
@@ -54,6 +56,8 @@ class Configuration:
       help='Whether to output given facts in answer set.')
     parser.add_argument('--auxfacts', action='store_true', default=False,
       help='Whether to output auxiliary facts in answer set.')
+    parser.add_argument('--backend_arg', nargs=1, metavar='ARGUMENT', action='append', default=[],
+      help='Argument to pass to backend. Can be given multiple times to pass multiple arguments.')
     parser.add_argument('--verbose', action='store_true', default=False, help='Activate verbose mode.')
     parser.add_argument('--debug', action='store_true', default=False, help='Activate debugging mode.')
     parser.add_argument('--stats', action='store_true', default=False, help='Activate statistics output as JSON on stdout.')
@@ -72,6 +76,9 @@ class Configuration:
     self.debug = args.debug
     self.stats = args.stats
     self.setupLogging()
+    self.backend_additional_args = args.backend_arg
+    if len(self.backend_additional_args) > 0:
+      logging.info("passing additional arguments to backend: "+repr(self.backend_additional_args))
     if args.liberalsafety:
       logging.warning("ignored argument about liberal safety")
     if args.strongnegation_enable:
