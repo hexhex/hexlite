@@ -17,7 +17,7 @@ class StandardModelCallback:
   def __call__(self, model):
     assert(isinstance(model, dlvhex.Model))
     if not model.is_optimal:
-      logging.info('not showing suboptimal model (like dlvhex2)!')
+      logging.info('not showing suboptimal answer set')
       return
     strsyms = [ str(x) for x in model.atoms ]
     if self.config.nofacts:
@@ -32,5 +32,6 @@ class StandardModelCallback:
       costs=' <{}>'.format(','.join(pairs))
     else:
       costs = ''
+    logging.info('showing (optimal) answer set')
     sys.stdout.write('{'+','.join(strsyms)+'}'+costs+'\n')
 

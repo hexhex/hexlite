@@ -593,7 +593,7 @@ class ClingoPropagator:
         # this is part of the intended behavior
         logging.debug(name+' aborted propagation')
         #logging.debug('aborted from '+traceback.format_exc())
-    logging.info(self.name+' leaving')
+    logging.info(self.name+' leaving check() propagator')
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
     name = self.name+'vTOA:'
@@ -757,7 +757,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
 
   cc = None
   with pcontext.stats.context('grounding'):
-    logging.info('sending nonground program to clingo control')
+    logging.info('sending nonground program to clingo control '+repr(cmdlineargs))
     cc = clingo.Control(cmdlineargs)
     sendprog = shp.shallowprint(rewritten)
     try:
@@ -772,7 +772,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
     ccc = GringoContext(eaeval)
     flpchecker.attach(cc)
 
-    if config.verbose:
+    if config.debug:
       cc.register_observer(GroundProgramPrinter(), False)
 
     cc.ground([('base',())], ccc)
