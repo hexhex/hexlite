@@ -1,7 +1,7 @@
 # This package is imported by plugins and used to communicate with the main program!
 
 # HEXLite-based solver for a fragment of the ActHEX language
-# Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
+# Copyright (C) 2017-2019  Peter Schueller <schueller.p@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
