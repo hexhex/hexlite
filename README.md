@@ -139,7 +139,7 @@ $ rm ~/.local/bin/hexlite
 
   (Installed scripts are not automatically uninstalled.)
 
-* Build and upload new version to pip and conda:
+* For building and uploading a new version to pip and conda (Note: conda requires to upload to pip first)
   
   * Update version in `setup.py`.
 
@@ -156,10 +156,18 @@ $ rm ~/.local/bin/hexlite
   * Update version in `meta.yaml`.
 
   * Build for anaconda cloud
+  
+  First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
 
   `$ conda build .`
 
 	(get upload command from last lines of output)
+
+  If conda is installed on an encrypted /home/ or similar, this will abort with a permission error.
+  You can make it work by creating a new directory on an unencrypted `/tmp/`, for example `/tmp/conda-build`,
+  and run conda build as follows:
+
+  `$ conda build --croot /tmp/conda-build/ .`
 
   * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
