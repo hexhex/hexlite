@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
 WHAT="./tests/extatom2.hex"
-EXTRA=""
-hexlite $EXTRA \
-  --pluginpath=./plugins/ \
-  --plugin=stringplugin --plugin=testplugin \
-  $WHAT
+for WHAT in ./tests/simple{1,2}.hex ./tests/percentparser.hex; do
+  echo "=== $WHAT"
+  EXTRA=""
+  hexlite $EXTRA \
+    --pluginpath=./plugins/ \
+    --plugin=stringplugin --plugin=testplugin \
+    $WHAT
+done
 
 # for acthex development
 if /bin/false; then
