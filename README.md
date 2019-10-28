@@ -172,3 +172,8 @@ $ rm ~/.local/bin/hexlite
   * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
 	`$ anaconda upload <path-from-conda-build>`
+
+* Current Tasks
+
+  - using clingo ast for parsing and getting rid of shallowparser
+    https://release--potassco.netlify.com/clingo/python-api/current/ast/
