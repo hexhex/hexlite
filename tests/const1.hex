@@ -1,0 +1,5 @@
+#const foo=1.
+#const bar=4.
+
+a(foo..bar,foo).
+b(bar,bar..foo).

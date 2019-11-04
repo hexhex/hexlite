@@ -10,6 +10,7 @@ agg6.hex agg6.out --nofacts
 agg7.hex agg7.out --nofacts
 #XFAIL (eatom in aggregate) agg8.hex agg8.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
+const1.hex const1.out
 #XFAIL FLP+weak weak1.hex weak1.out
 weak1.hex weak1.out --flpcheck=none
 #XFAIL FLP+weak weak2.hex weak2.out

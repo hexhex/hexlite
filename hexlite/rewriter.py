@@ -346,7 +346,7 @@ class StatementRewriterHash(StatementRewriterBase):
       self.statement[0][0:1] = ['#const', Aux.MAXINT]
       self.pr.addRewrittenRule(self.statement)
       self.pr.pcontext.wroteMaxint = True
-    elif base[0] == '#show':
+    elif base[0] in ['#show','#const']:
       # just passthrough the instruction and assume the author was clever enough not to use external atoms TODO verify this
       self.pr.addRewrittenRule(self.statement)
     elif base[0] == '#hide':
