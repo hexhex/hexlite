@@ -786,7 +786,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
 
     logging.info('starting search')
     ret = None
-    with cc.solve(yield_=True, async=False) as handle:
+    with cc.solve(yield_=True, async_=False) as handle:
       for model in handle:
         flpmodel = False
         with pcontext.stats.context("flpcheck"):
