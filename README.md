@@ -173,7 +173,3 @@ $ rm ~/.local/bin/hexlite
 
 	`$ anaconda upload <path-from-conda-build>`
 
-* Current Tasks
-
-  - using clingo ast for parsing and getting rid of shallowparser
-    https://release--potassco.netlify.com/clingo/python-api/current/ast/
