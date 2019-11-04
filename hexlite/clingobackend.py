@@ -709,11 +709,15 @@ class ClingoPropagator:
       raise ClingoPropagator.StopPropagation()
 
 class ClingoModel(dlvhex.Model):
+  '''
+  This class wraps a clingo model and provides the shown atoms to dlvhex for display.
+  This is not used to perform external evaluations (those must be done also on non-shown atoms).
+  '''
   def __init__(self, ccontext, mdl):
     dlvhex.Model.__init__(self,
       atoms=frozenset([
         ClingoID(ccontext, SymLit(x, mdl.context.symbolic_atoms[x].literal))
-        for x in mdl.symbols(atoms=True) ]),
+        for x in mdl.symbols(shown=True) ]),
       cost=mdl.cost,
       is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
 

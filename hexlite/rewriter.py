@@ -346,6 +346,11 @@ class StatementRewriterHash(StatementRewriterBase):
       self.statement[0][0:1] = ['#const', Aux.MAXINT]
       self.pr.addRewrittenRule(self.statement)
       self.pr.pcontext.wroteMaxint = True
+    elif base[0] == '#show':
+      # just passthrough the instruction and assume the author was clever enough not to use external atoms TODO verify this
+      self.pr.addRewrittenRule(self.statement)
+    elif base[0] == '#hide':
+      logging.error("please do not use #hide (it is deprecated), use #show instead")
     else:
       logging.warning('SRH skipping rewriting of '+pprint.pformat(base))
 
