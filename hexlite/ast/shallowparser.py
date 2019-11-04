@@ -46,7 +46,7 @@ import logging
 from . import alist
 
 literals = ('(', ')', '[', ']', '{', '}', ',', ';')
-tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'STOP', 'OTHER', 'OPERATOR')
+tokens = ('STRING', 'INTEGER', 'SEPRULE', 'SEPCOL', 'DOUBLEDOT', 'STOP', 'OTHER', 'OPERATOR')
 
 def message(s):
   logging.info(s)
@@ -65,7 +65,8 @@ def t_COMMENT(t):
 
 t_ignore = ' \t'
 
-t_STOP = '[?.]'
+t_DOUBLEDOT = r'[.][.]'
+t_STOP = r'[?.]'
 t_SEPRULE = r':[~-]'
 t_SEPCOL = r':(?![~-])'
 t_STRING = r'"[^"]*"'
@@ -185,6 +186,12 @@ def p_eterm_2(p):
   p[0] = alist([], left=p[1], right=p[2])
 
 def p_eterm_3(p):
+  '''
+  eterm : eterm DOUBLEDOT eterm
+  '''
+  p[0] = alist([p[1], p[3]], sep='..')
+
+def p_eterm_4(p):
   '''
   eterm : STRING
         | INTEGER
