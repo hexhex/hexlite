@@ -105,6 +105,7 @@ percentparser.hex percentparser.out
 #XFAIL (eatom in aggregate) rec_agg_bug1.hex rec_agg_bug1.stderr
 safety1.hex safety1.stderr
 safety2.hex safety2.stderr
+showhidecolon1.hex showhidecolon1.out
 simple1.hex simple1.out
 simple2.hex simple2.out
 #XFAIL FLP+strongneg strongnegation_asp1.hex strongnegation_asp1.out --strongnegation-enable --nofacts
