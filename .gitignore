@@ -4,3 +4,7 @@
 build
 dist
 hexlite.egg-info
+target/*
+.classpath
+.project
+.settings
