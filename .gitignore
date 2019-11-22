@@ -1,10 +1,10 @@
 *.pyc
 *~
 *.swp
+java-api/target/*
 build
 dist
 hexlite.egg-info
-target/*
 .classpath
 .project
 .settings
