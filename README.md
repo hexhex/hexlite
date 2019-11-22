@@ -173,3 +173,12 @@ $ rm ~/.local/bin/hexlite
 
 	`$ anaconda upload <path-from-conda-build>`
 
+* Roadmap
+
+  - implement a python plugin
+    that has hardcoded the java plugin interface
+    that has hardcoded the loading of the string java plugin
+  - implement and test the plugin interface
+  - implement proper java plugin loading in the python plugin
+  - cleanly separate python hexlite core and python-java api as a plugin
+  - make it deployable via conda and pip
