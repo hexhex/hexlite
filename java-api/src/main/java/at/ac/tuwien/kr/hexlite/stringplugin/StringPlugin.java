@@ -42,6 +42,7 @@ public class StringPlugin implements IPlugin {
 
         @Override
         public IAnswer retrieve(final ISolverContext ctx, final IQuery query) {
+            System.out.println("in retrieve!");
             final StringBuffer b = new StringBuffer();
             b.append("\"");
             for (final ISymbol sym : query.getInput()) {
