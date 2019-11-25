@@ -1,3 +1,5 @@
+# this file contains plugin functionality from dlvhex that has not been implemented in hexlite
+
 import dlvhex
 
 def test(a, b, c):
