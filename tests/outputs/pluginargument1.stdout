@@ -1,0 +1,1 @@
+0 grep -q "testplugin loaded with arguments \\['foo', '3'\\].*"

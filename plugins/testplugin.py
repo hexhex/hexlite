@@ -2,7 +2,7 @@ import dlvhex
 
 import hexlite.ast.shallowparser as shp
 
-import logging
+import logging, sys
 
 def id(p):
 	for x in dlvhex.getTrueInputAtoms():
@@ -378,7 +378,10 @@ def issue_2_num(a):
 			n += 1
 	dlvhex.output((n, ))
 
-def register():
+def register(arguments=None):
+	if arguments is not None:
+		sys.stdout.write("testplugin loaded with arguments %s" % str(arguments))
+
 	#XFAIL = expected failure
 	dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)
 	dlvhex.addAtom("testB", (dlvhex.PREDICATE, dlvhex.PREDICATE), 1)
