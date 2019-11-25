@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DLVHEX="hexlite --pluginpath=../plugins/ --plugin=testplugin"
+BASEDLVHEX="hexlite --pluginpath=../plugins/"
 EXAMPLESDIR="./"
 OUTDIR="./outputs/"
 TESTS="suites/complete.test suites/flpcheck.test suites/partial.test"
@@ -60,7 +60,7 @@ TESTS="suites/complete.test suites/flpcheck.test suites/partial.test"
 # USA.
 #
 
-test "x${DLVHEX}" != "x" || { echo "need DLVHEX variable to be set!"; exit -1; }
+test "x${BASEDLVHEX}" != "x" || { echo "need BASEDLVHEX variable to be set!"; exit -1; }
 test "x${EXAMPLESDIR}" != "x" || { echo "need EXAMPLESDIR variable to be set!"; exit -1; }
 test "x${OUTDIR}" != "x" || { echo "need OUTDIR variable to be set!"; exit -1; }
 test "x${TESTS}" != "x" || { echo "need TESTS variable to be set!"; exit -1; }
@@ -77,7 +77,7 @@ ntests=0
 
 echo "============ dlvhex tests start ============"
 echo "(executing in directory " $(pwd) ")"
-echo "DLVHEX=${DLVHEX/!/\\!}"
+echo "DLVHEX=${BASEDLVHEX/!/\\!}"
 
 for t in ${TESTS};
 do
@@ -104,6 +104,14 @@ do
         continue
     fi
 
+    # check if ADDPARM is nonempty and contains the substring --plugin
+    if [[ ! -z $ADDPARM && -z "${ADDPARM##*--plugin*}" ]]; then
+      DLVHEX=$BASEDLVHEX;
+    else
+      # if not we add the plugin to the commandline
+      DLVHEX="$BASEDLVHEX --plugin=testplugin";
+    fi
+
     VERIFICATIONEXT=${VERIFICATIONFILE: -7}
     #echo "verificationext = ${VERIFICATIONEXT}"
     if test "x$VERIFICATIONEXT" == "x.stderr" -o "x$VERIFICATIONEXT" == "x.stdout"; then
@@ -121,7 +129,7 @@ do
       fi
 
       # run dlvhex with specified parameters and program
-      $DLVHEX $ADDPARM $HEXPROGRAM 2>$ETMPFILE >$TMPFILE
+      $DLVHEX $ADDPARM -- $HEXPROGRAM 2>$ETMPFILE >$TMPFILE
       RETVAL=$?
       #set -x
       #set -v
@@ -174,7 +182,7 @@ do
         fi
 
         # run dlvhex with specified parameters and program
-        $DLVHEX $ADDPARM $HEXPROGRAM >$TMPFILE
+        $DLVHEX $ADDPARM -- $HEXPROGRAM >$TMPFILE
         RETVAL=$?
         if [ $RETVAL -eq 0 ]; then
           if $ANSWERSETCOMPARE $TMPFILE $ANSWERSETSFILE; then
