@@ -22,7 +22,7 @@ public class StringPlugin implements IPlugin {
 
         @Override
         public String getPredicate() {
-            return "concat";
+            return "testConcat";
         }
 
         @Override
