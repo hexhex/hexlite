@@ -182,3 +182,7 @@ $ rm ~/.local/bin/hexlite
   - implement proper java plugin loading in the python plugin
   - cleanly separate python hexlite core and python-java api as a plugin
   - make it deployable via conda and pip
+
+* Jpype
+  
+  - setup: conda install -c conda-forge jpype1
