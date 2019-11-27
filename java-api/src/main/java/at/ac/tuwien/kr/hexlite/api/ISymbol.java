@@ -1,25 +1,32 @@
 package at.ac.tuwien.kr.hexlite.api;
 
 import java.util.AbstractList;
+import java.util.AbstractSet;
 
+// corresponds to dlvhex::ID class
 public interface ISymbol {
-    // Type of symbol
-    // Predicates and Function terms are FUNCTION
-    // strings are CONSTANT (and name starts/ends with quotes)
-    public enum Type { CONSTANT, INTEGER, FUNCTION, TUPLE }
-    public Type getType();
+    // get negated symbol (works for non-integers)
+    public ISymbol negate();
 
-    // Constant or Function name (CONSTANT, FUNCTION), null otherwise
-    public String getName();
-    // integer value (INTEGER), null otherwise
-    public Integer getInteger();
-    // Arguments (FUNCTION, TUPLE), null otherwise
-    public AbstractList<ISymbol> getArguments();
-    // Overall tuple containing getName() and getArguments()
-    // null values are omitted
-    public AbstractList<ISymbol> getTuple();
+    // complete value as a string
+    public String value();
+    public Integer intValue();
+
+    public boolean isTrue();
+    public boolean isFalse();
+    public boolean isAssigned();
+
+    // structured representation of the symbol
+    public AbstractList<ISymbol> tuple();
+
+    // all arguments X such that this sumbol(X) is true in the current interpretation
+    // symbol must be a constant term
+    // return value is a set of tuples of arguments
+    public AbstractSet<ISymbol> extension();
 
     // as part of an answer set, it must be hashable and equal-able
     public int hashCode();
     public boolean equals(Object o);
+    // in order to convert it to string within Java
+    public String toString();
 }

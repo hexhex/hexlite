@@ -46,20 +46,11 @@ public class StringPlugin implements IPlugin {
             final StringBuffer b = new StringBuffer();
             b.append("\"");
             for (final ISymbol sym : query.getInput()) {
-                final String name = sym.getName();
-                switch (sym.getType()) {
-                case CONSTANT:
-                    if (name.startsWith("\"")) {
-                        b.append(name.substring(1, name.length() - 1));
-                    } else {
-                        b.append(name);
-                    }
-                    break;
-                case FUNCTION:
-                case INTEGER:
-                case TUPLE:
-                    b.append(sym.toString());
-                    break;
+                final String value = sym.value();
+                if (value.startsWith("\"")) {
+                    b.append(value.substring(1, value.length() - 1));
+                } else {
+                    b.append(value);
                 }
             }
             b.append("\"");

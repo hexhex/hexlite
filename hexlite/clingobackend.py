@@ -324,6 +324,12 @@ class EAtomEvaluator(dlvhex.Backend):
     logging.warning("did not find literal to return in storeOutputAtom for {} will return None".format(repr(args)))
     return None
 
+  def storeConstant(self, s: str):
+    return ClingoID(self.ccontext, SymLit(clingo.String(s), None))
+
+  def storeInteger(self, i: int):
+    return ClingoID(self.ccontext, SymLit(clingo.Number(i), None))
+
   # implementation of Backend method
   def learn(self, ng):
     '''

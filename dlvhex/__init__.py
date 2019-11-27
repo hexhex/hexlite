@@ -79,6 +79,14 @@ def storeOutputAtom(args, sign=True):
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
   return currentEvaluation().backend.storeOutputAtom(args, sign)
 
+def storeConstant(s):
+  # gives back an ID that represents the string s
+  return currentEvaluation().backend.storeConstant(s)
+
+def storeInteger(i):
+  # gives back an ID that represents the integer i
+  return currentEvaluation().backend.storeInteger(i)
+
 def getInputAtoms():
   return currentEvaluation().input
 
@@ -99,6 +107,14 @@ class Backend:
 
   def storeOutputAtom(self, args, sign):
     logging.warning("not implemented: Backend::storeOutputAtom")
+    return None
+
+  def storeConstant(self, s: str):
+    logging.warning("not implemented: Backend::storeConstant")
+    return None
+
+  def storeInteger(self, i: int):
+    logging.warning("not implemented: Backend::storeInteger")
     return None
 
 # key = eatom name, value = ExternalAtomHolder instance

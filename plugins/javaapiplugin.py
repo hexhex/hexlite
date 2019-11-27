@@ -1,4 +1,6 @@
 import dlvhex
+from dlvhex import ID
+import hexlite
 
 import logging
 import atexit
@@ -45,102 +47,79 @@ def convertInputArguments(jinputarguments):
 
 @jpype.JImplements(ISymbol)
 class JavaSymbolImpl:
-	def __init__(self, type_, tuple_=None, integer=None):
-		# e.g. type_ = ISymbol.Type.CONSTANT
-		# e.g. content = "foo"
-		self.type_ = type_
-		self.tuple_ = tuple_
-		self.integer = integer
-		logging.info("JavaSymbolImpl with tuple %s", repr(tuple_))
-		if tuple_ is not None:
-			for t in tuple_:
-				logging.info("  layer 1 %s", repr(t))
-				for st in t.tuple():
-					logging.info("  layer 2 %s", repr(st))
-		assert(self.type_ == ISymbol.Type.INTEGER or self.integer is None) # if not integer then integer is none
-		assert(not self.type_ == ISymbol.Type.INTEGER or self.tuple_ is None) # if integer then tuple is none
-		assert(self.type_ == ISymbol.Type.INTEGER or self.tuple_ is not None) # if not an integer then there is a tuple
-		assert(not self.type_ == ISymbol.Type.CONSTANT or (self.tuple_ is not None and len(self.tuple_) == 1)) # if constant then tuple has length 1
-		assert(self.tuple_ is None or isinstance(self.tuple_[0], JavaSymbolImpl))
+	# a JavaSymbolImpl mainly holds a hid (hexlite.ID)
+	# (concretely at the moment it always holds a hexlite.clingobackend.ClingoID)
+	def __init__(self, hid=None):
+		assert(isinstance(hid,ID))
+		self.hid = hid
+		self.__valuecache = hid.value()
+		#logging.info("JavaSymbolImpl with hid %s", repr(self.hid))
 
 	@jpype.JOverride
-	def getType(self):
-		return self.type_
+	def negate(self):
+		return JavaSymbolImpl(self.hid.negate())
 
 	@jpype.JOverride
-	def getName(self):
-		assert(self.type_ == ISymbol.Type.CONSTANT or self.type_ == ISymbol.Type.FUNCTION)
-		logging.warning("getName of %s returns %s", str(self.tuple_), repr(self.tuple_[0]))
-		return jpype.JString(self.tuple_[0])
+	def value(self):
+		return jpype.JString(self.hid.value())
 
 	@jpype.JOverride
-	def getInteger(self):
-		assert(self.type_ == ISymbol.Type.INTEGER)
-		return self.integer
+	def intValue(self):
+		return jpype.JInt(self.hid.intValue())
 
 	@jpype.JOverride
-	def getArguments(self):
-		assert(self.type_ == ISymbol.Type.FUNCTION or self.type_ == ISymbol.Type.TUPLE)
-		if self.type_ == ISymbol.Type.FUNCTION:
-			return self.tuple_[1:]
-		else:
-			return self.tuple_
+	def isTrue(self):
+		return jpype.JBoolean(self.hid.isTrue())
 
 	@jpype.JOverride
-	def getTuple(self):
-		assert(self.type_ != ISymbol.Type.INTEGER)
-		return self.tuple_
+	def isFalse(self):
+		return jpype.JBoolean(self.hid.isFalse())
+
+	@jpype.JOverride
+	def isAssigned(self):
+		return jpype.JBoolean(self.hid.isAssigned())
+
+	@jpype.JOverride
+	def tuple(self):
+		ret = jpype.JClass("java.util.ArrayList")()
+		for e in self.hid.tuple():
+			ret.add(e)
+		return ret
+
+	@jpype.JOverride
+	def extension(self):
+		ret = jpype.JClass("java.util.ArrayList")()
+		for e in self.hid.extension():
+			ret.add(e)
+		return ret
 
 	@jpype.JOverride
 	def hashCode(self):
-		return jpype.JInt(hash( (self.type_,self.tuple_,self.integer) ) & 0x7FFFFFFF)
+		return jpype.JInt(hash(self.__valuecache) & 0x7FFFFFFF)
 
 	@jpype.JOverride
 	def equals(self, other):
-		if self == other:
-			return True
-		else:
-			return (self.type_, self.tuple_, self.integer) == (other.type_, other.tuple_, other.integer)
+		return jpype.JBoolean(self == other or self.hid == other.hid)
 
-class JavaConstantSymbolImpl(JavaSymbolImpl):
-	def __init__(self, s):
-		super().__init__(type_=ISymbol.Type.CONSTANT, tuple_=(s,))
-
-class JavaIntegerSymbolImpl(JavaSymbolImpl):
-	def __init__(self, i):
-		super().__init__(type_=ISymbol.Type.INTEGER, integer=i)
-
-def createTypedSymbol(something):
-	if isinstance(something, str):
-		return JavaConstantSymbolImpl(something)
-	elif isinstance(something, int):
-		return JavaIntegerSymbolImpl(something)
-	elif isinstance(something, (tuple,list)):
-		return JavaIntegerSymbolImpl(something)
-
-def hexlite2JavaSymbol(something):
-	if isinstance(arg, tuple):
-		# tuple argument -> add as tuple
-		jinputTuple.add(JavaTupleSymbolImpl(arg))
-	elif bla bla bla:
-		# non-tuple argument -> add as symbol
-		jinputTuple.add(JavaConstantSymbolImpl(arg))
-
-
+	@jpype.JOverride
+	def toString(self):
+		return str(self.hid)
 
 @jpype.JImplements(IPluginAtom.IQuery)
 class JavaQueryImpl:
-	def __init__(self, *arguments):
-		# arguments = the query to the external atom
-		self.arguments = arguments
-		jinputTuple = jpype.JClass("java.util.ArrayList")()
-		for arg in self.arguments:
-			jinputTuple.add(hexlite2JavaSymbol(arg))
-		self.jinputTuple = jinputTuple
+	def __init__(self, arguments):
+		self.jinputTuple = jpype.JClass("java.util.ArrayList")()
+		# each argument is converted from hexlite to a java ISymbol
+		# each argument is an ID or a tuple
+		# we follow the structure of the argument
+		for arg in arguments:
+			#logging.debug("argument is %s", repr(arg))
+			assert(isinstance(arg, (JavaSymbolImpl,ISymbol)))
+			self.jinputTuple.add(arg)
 
 	@jpype.JOverride
 	def getInterpretation(self):
-		logging.warning("TBD")
+		logging.error("TBD")
 		return None
 
 	@jpype.JOverride
@@ -155,23 +134,45 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def storeOutputAtom(self, atom):
-		logging.warning("TBD")
+		logging.error("TBD")
 		return jpype.JObject(None, IAtom)
 
 	@jpype.JOverride
 	def storeAtom(self, atom):
-		logging.warning("TBD")
+		logging.error("TBD")
 		return None
 
 	@jpype.JOverride
 	def storeConstant(self, s):
-		logging.warning("TBD store %s", s)
-		return JavaSymbolImpl('stored({})'.format(s))
+		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(s)), ISymbol)
+		#logging.info("storeConstant returns %s with type %s", repr(r), type(r))
+		return r
+
+	@jpype.JOverride
+	def storeInteger(self, i):
+		return JavaSymbolImpl(dlvhex.storeInteger(s))
 
 	@jpype.JOverride
 	def learn(self, nogood):
-		logging.warning("TBD")
+		logging.error("TBD")
 
+def convertArguments(pyArguments):
+	# all ID classes stay the same way
+	# all tuples become unfolded (only at the end of the list)
+	# this is necessary because we do not want Java to get either Tuple or ISymbol as arguments
+	if len(pyArguments) == 0:
+		return []
+
+	assert(all([ isinstance(a, ID) for a in pyArguments[:-1] ]))
+	assert(isinstance(pyArguments[-1], (ID, tuple)))
+	ret = [ JavaSymbolImpl(a) for a in pyArguments[:-1] ]
+	if isinstance(pyArguments[-1], ID):
+		# convert last element as one
+		ret.append( JavaSymbolImpl(pyArguments[-1]) )
+	else:
+		# extend list from converted list of parts of last element (variable length argument list)
+		ret.extend([ JavaSymbolImpl(a) for a in pyArguments[-1] ])
+	return ret
 
 class JavaPluginCallWrapper:
 	def __init__(self, eatomname, pluginholder, pluginatom):
@@ -182,15 +183,18 @@ class JavaPluginCallWrapper:
 	def __call__(self, *arguments):
 		try:
 			logging.debug("executing java __call__ for %s with %d arguments", self.eatomname, len(arguments))
-			jsc = JavaSolverContextImpl()
-			jq = JavaQueryImpl(*arguments)
-			logging.info("executing retrieve")
+			jsc = JavaSolverContextImpl()			
+			jq = JavaQueryImpl(convertArguments(arguments))
+			#logging.info("executing retrieve")
 			janswer = self.pluginatom.retrieve(jsc, jq)
-			logging.info("retrieved")
+			logging.debug("retrieved")
 			tt = janswer.getTrueTuples()
-			logging.info("true tuples")
-			logging.info("true tuples = %s", str(tt.toString()))
-			#logging.debug("retrieved %s", janswer.toString())
+			#logging.info("true tuples")
+			for t in tt:
+				#logging.info("true tuple = %s %s", repr(t), t.toString())
+				assert(all([ isinstance(e, JavaSymbolImpl) for e in t ]))
+				tupleOfID = tuple([ e.hid for e in t ])
+				dlvhex.output(tupleOfID)
 		except jpype.JClass("java.lang.Exception") as ex:
 			logging.error("Java exception: %s", ex.toString())
 			st = ex.getStackTrace()
