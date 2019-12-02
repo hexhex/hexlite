@@ -51,10 +51,17 @@ class JavaSymbolImpl:
 		self.type_ = type_
 		self.tuple_ = tuple_
 		self.integer = integer
+		logging.info("JavaSymbolImpl with tuple %s", repr(tuple_))
+		if tuple_ is not None:
+			for t in tuple_:
+				logging.info("  layer 1 %s", repr(t))
+				for st in t.tuple():
+					logging.info("  layer 2 %s", repr(st))
 		assert(self.type_ == ISymbol.Type.INTEGER or self.integer is None) # if not integer then integer is none
 		assert(not self.type_ == ISymbol.Type.INTEGER or self.tuple_ is None) # if integer then tuple is none
 		assert(self.type_ == ISymbol.Type.INTEGER or self.tuple_ is not None) # if not an integer then there is a tuple
 		assert(not self.type_ == ISymbol.Type.CONSTANT or (self.tuple_ is not None and len(self.tuple_) == 1)) # if constant then tuple has length 1
+		assert(self.tuple_ is None or isinstance(self.tuple_[0], JavaSymbolImpl))
 
 	@jpype.JOverride
 	def getType(self):
@@ -111,6 +118,14 @@ def createTypedSymbol(something):
 	elif isinstance(something, (tuple,list)):
 		return JavaIntegerSymbolImpl(something)
 
+def hexlite2JavaSymbol(something):
+	if isinstance(arg, tuple):
+		# tuple argument -> add as tuple
+		jinputTuple.add(JavaTupleSymbolImpl(arg))
+	elif bla bla bla:
+		# non-tuple argument -> add as symbol
+		jinputTuple.add(JavaConstantSymbolImpl(arg))
+
 
 
 @jpype.JImplements(IPluginAtom.IQuery)
@@ -118,10 +133,10 @@ class JavaQueryImpl:
 	def __init__(self, *arguments):
 		# arguments = the query to the external atom
 		self.arguments = arguments
-		jit = jpype.JClass("java.util.ArrayList")()
+		jinputTuple = jpype.JClass("java.util.ArrayList")()
 		for arg in self.arguments:
-			jit.add(JavaConstantSymbolImpl(arg))
-		self.jinputTuple = jit
+			jinputTuple.add(hexlite2JavaSymbol(arg))
+		self.jinputTuple = jinputTuple
 
 	@jpype.JOverride
 	def getInterpretation(self):
@@ -166,7 +181,7 @@ class JavaPluginCallWrapper:
 
 	def __call__(self, *arguments):
 		try:
-			logging.debug("executing java __call__ for %s", self.eatomname)
+			logging.debug("executing java __call__ for %s with %d arguments", self.eatomname, len(arguments))
 			jsc = JavaSolverContextImpl()
 			jq = JavaQueryImpl(*arguments)
 			logging.info("executing retrieve")
