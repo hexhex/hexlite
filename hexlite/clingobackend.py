@@ -714,10 +714,16 @@ class ClingoModel(dlvhex.Model):
   This is not used to perform external evaluations (those must be done also on non-shown atoms).
   '''
   def __init__(self, ccontext, mdl):
+    def idmaker(x):
+      if x in mdl.context.symbolic_atoms:
+        # real variables in the solver
+        return ClingoID(ccontext, SymLit(x, mdl.context.symbolic_atoms[x].literal))
+      else:
+        # symbols from #show statements
+        return ClingoID(ccontext, SymLit(x, None))
+    idlist = [ idmaker(x) for x in mdl.symbols(shown=True) ]
     dlvhex.Model.__init__(self,
-      atoms=frozenset([
-        ClingoID(ccontext, SymLit(x, mdl.context.symbolic_atoms[x].literal))
-        for x in mdl.symbols(shown=True) ]),
+      atoms=frozenset(idlist),
       cost=mdl.cost,
       is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
 
