@@ -17,13 +17,12 @@ def shutdownJVM():
 logging.debug("registering JVM shutdown")
 atexit.register(shutdownJVM)
 
-def logJavaExceptionWithStacktrace(e):
+def logJavaExceptionWithStacktrace(ex):
 	logging.error("Java exception: %s", ex.toString())
 	st = ex.getStackTrace()
 	for ste in st:
 		logging.error("\t at %s", ste.toString())
 	#sb.append(ex.getClass().getName() + ": " + ex.getMessage() + "\n");
-	return e
 
 # this loads the hexlite-API-specific classes (probably from hexlite-java-api.jar)
 IPluginAtom = jpype.JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
