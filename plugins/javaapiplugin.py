@@ -17,11 +17,20 @@ def shutdownJVM():
 logging.debug("registering JVM shutdown")
 atexit.register(shutdownJVM)
 
+def logJavaExceptionWithStacktrace(e):
+	logging.error("Java exception: %s", ex.toString())
+	st = ex.getStackTrace()
+	for ste in st:
+		logging.error("\t at %s", ste.toString())
+	#sb.append(ex.getClass().getName() + ": " + ex.getMessage() + "\n");
+	return e
+
 # this loads the hexlite-API-specific classes (probably from hexlite-java-api.jar)
 IPluginAtom = jpype.JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
 ISolverContext = jpype.JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext")
 IAtom = jpype.JClass("at.ac.tuwien.kr.hexlite.api.IAtom")
 ISymbol = jpype.JClass("at.ac.tuwien.kr.hexlite.api.ISymbol")
+JException = jpype.JClass("java.lang.Exception")
 
 class JavaPluginHolder:
 	def __init__(self, classname, jplugin):
@@ -195,12 +204,8 @@ class JavaPluginCallWrapper:
 				assert(all([ isinstance(e, JavaSymbolImpl) for e in t ]))
 				tupleOfID = tuple([ e.hid for e in t ])
 				dlvhex.output(tupleOfID)
-		except jpype.JClass("java.lang.Exception") as ex:
-			logging.error("Java exception: %s", ex.toString())
-			st = ex.getStackTrace()
-			for ste in st:
-				logging.error("\t at %s", ste.toString())
-			#sb.append(ex.getClass().getName() + ": " + ex.getMessage() + "\n");
+		except JException as e:
+			logJavaExceptionWithStacktrace(e)
 			raise
 
 
@@ -210,22 +215,30 @@ def register(arguments):
 	global loadedPlugins
 	for classname in arguments:
 		logging.info("loading Java Plugin %s", classname)
-		jclass = jpype.JClass(classname)
-		logging.debug("instantiating Plugin")
-		jinst = jclass()
-		jholder = JavaPluginHolder(classname, jinst)
-		loadedPlugins.append(jholder)
-		logging.info("registering atoms of plugin %s with name %s", classname, jinst.getName())
-		for jpluginatom in jholder.jplugin.createAtoms():
-			pred = str(jpluginatom.getPredicate())
-			inputArguments = jpluginatom.getInputArguments()
-			outputArguments = jpluginatom.getOutputArguments()
-			jesp = jpluginatom.getExtSourceProperties()
-			prop = convertExtSourceProperties(jesp)
-			if pred in globals():
-				logging.error("trying to override '%s' in globals - duplicate external atom name or conflict with python internal names", pred)
-			else:
-				globals()[pred] = JavaPluginCallWrapper(pred, jholder, jpluginatom)
-				dlvhex.addAtom(pred, convertInputArguments(inputArguments), int(outputArguments), prop)
+		try:
+			jclass = jpype.JClass(classname)
+			assert(jclass is not None)
+			logging.debug("instantiating Plugin")
+			jinst = jclass()
+			assert(jinst is not None)
+			jholder = JavaPluginHolder(classname, jinst)
+			assert(jholder is not None)
+			loadedPlugins.append(jholder)
+			logging.info("registering atoms of plugin %s with name %s", classname, jinst.getName())
+			for jpluginatom in jholder.jplugin.createAtoms():
+				pred = str(jpluginatom.getPredicate())
+				inputArguments = jpluginatom.getInputArguments()
+				outputArguments = jpluginatom.getOutputArguments()
+				jesp = jpluginatom.getExtSourceProperties()
+				prop = convertExtSourceProperties(jesp)
+				if pred in globals():
+					logging.error("trying to override '%s' in globals - duplicate external atom name or conflict with python internal names", pred)
+				else:
+					globals()[pred] = JavaPluginCallWrapper(pred, jholder, jpluginatom)
+					dlvhex.addAtom(pred, convertInputArguments(inputArguments), int(outputArguments), prop)
+		except JException as e:
+			logJavaExceptionWithStacktrace(e)
+			raise
+
 			
 	logging.info("loaded %d Java plugins", len(loadedPlugins))
