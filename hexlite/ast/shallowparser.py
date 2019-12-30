@@ -201,7 +201,16 @@ def p_eterm_4(p):
   p[0] = p[1]
 
 def p_error(p):
+  global myparser, mytermparser
   msg = "unexpected '{}'\n".format(repr(p))
+  for parser in [myparser, mytermparser]:
+    try:
+      # get formatted representation of stack
+      stack_state_str = ' '.join([symbol.type for symbol in parser.symstack][1:])
+      logging.error('Syntax error in input! Parser State:{} {} . {}'
+        .format(parser.state, stack_state_str, p)) 
+    except:
+      pass
   raise Exception(msg)
 
 # TODO manage installation of yacc-generated scripts somehow and reactivate write_tables
