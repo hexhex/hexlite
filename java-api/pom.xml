@@ -11,5 +11,6 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>hexlite-java-plugin-api</artifactId>
   <name>Hexlite Java Plugin API</name>
+  <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 </project>
