@@ -90,6 +90,18 @@ class alist(list):
     return '{}{}{}'.format(left, list.__repr__(self), right)
   __str__ = __repr__
 
+  def match(self,lsr):
+    '''
+    check if a list matches, given a triple
+    e.g. (None,None,None)
+    None always matches
+    other values must coincide
+    '''
+    lmatch = self.left is None or lsr[0] is None or self.left == lsr[0]
+    smatch = self.sep is None or lsr[1] is None or self.sep == lsr[1]
+    rmatch = self.right is None or lsr[2] is None or self.right == lsr[2]
+    return lmatch and smatch and rmatch
+
 def findVariables(structure):
   # XXX maybe we want a "findFreeVariables" and not search for variables within aggregate bodies ...
   return deepCollect(structure,
