@@ -763,7 +763,8 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
       cmdlineargs.append(str(config.number))
     # just in case we need optimization
     cmdlineargs.append('--opt-mode=optN')
-    cmdlineargs += config.backend_additional_args
+    for a in hexlite.flatten(config.backend_additional_args):
+      cmdlineargs.append(a)
 
   cc = None
   with pcontext.stats.context('grounding'):
