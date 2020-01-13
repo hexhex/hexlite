@@ -50,8 +50,9 @@ MAPTYPE = {
 		IPluginAtom.InputType.TUPLE: dlvhex.TUPLE,
 	}
 def convertInputArguments(jinputarguments):
-	return tuple([ MAPTYPE[t] for t in jinputarguments ])
-
+	ret = tuple([ MAPTYPE[t] for t in jinputarguments ])
+	#logging.debug("XXX converted jinputarguments %s to %s", jinputarguments, ret)
+	return ret
 
 @jpype.JImplements(ISymbol)
 class JavaSymbolImpl:
