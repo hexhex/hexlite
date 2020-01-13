@@ -179,19 +179,25 @@ def p_eterm_1(p):
 
 def p_eterm_2(p):
   '''
+  eterm : '(' eterm ',' ')'
+  '''
+  p[0] = alist([p[2]], left=p[1], sep=p[3], right=p[4])
+
+def p_eterm_3(p):
+  '''
   eterm : '(' ')'
         | '[' ']'
         | '{' '}'
   '''
   p[0] = alist([], left=p[1], right=p[2])
 
-def p_eterm_3(p):
+def p_eterm_4(p):
   '''
   eterm : eterm DOUBLEDOT eterm
   '''
   p[0] = alist([p[1], p[3]], sep='..')
 
-def p_eterm_4(p):
+def p_eterm_5(p):
   '''
   eterm : STRING
         | INTEGER
