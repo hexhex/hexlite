@@ -1,0 +1,5 @@
+#const onto="meta.json".
+#const maxTime=10.
+time(0..maxTime).
+next(T,T+1) :- time(T), time(T+1).
+

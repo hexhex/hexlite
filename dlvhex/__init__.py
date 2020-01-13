@@ -87,6 +87,10 @@ def storeInteger(i):
   # gives back an ID that represents the integer i
   return currentEvaluation().backend.storeInteger(i)
 
+def storeParseable(p):
+  # gives back an ID that represents the parsable term p
+  return currentEvaluation().backend.storeParseable(p)
+
 def getInputAtoms():
   return currentEvaluation().input
 
