@@ -139,6 +139,8 @@ def p_expandlist(p):
   expandlist : collist
              | conjlist
   '''
+  # colllist = colon-separated list
+  # conjlist = conjunctions = comma-separated list
   p[0] = p[1]
 
 def p_collist_1(p):
@@ -161,6 +163,10 @@ def p_commalist_1(p):
 def p_commalist_2(p):
   "commalist : elist ',' elist"
   p[0] = alist([p[1], p[3]], sep=',')
+def p_commalist_3(p):
+  "commalist : elist ','"
+  # this permist trailing commas, e.g., in single-element tuples "(foo,)" but also "(foo(bar(baz,2)),)"
+  p[0] = alist([p[1]], sep=',')
 
 def p_elist_1(p):
   'elist : eterm elist'
@@ -179,25 +185,19 @@ def p_eterm_1(p):
 
 def p_eterm_2(p):
   '''
-  eterm : '(' eterm ',' ')'
-  '''
-  p[0] = alist([p[2]], left=p[1], sep=p[3], right=p[4])
-
-def p_eterm_3(p):
-  '''
   eterm : '(' ')'
         | '[' ']'
         | '{' '}'
   '''
   p[0] = alist([], left=p[1], right=p[2])
 
-def p_eterm_4(p):
+def p_eterm_3(p):
   '''
   eterm : eterm DOUBLEDOT eterm
   '''
   p[0] = alist([p[1], p[3]], sep='..')
 
-def p_eterm_5(p):
+def p_eterm_4(p):
   '''
   eterm : STRING
         | INTEGER
