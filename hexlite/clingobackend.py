@@ -240,6 +240,9 @@ class EAtomEvaluator(dlvhex.Backend):
     with self.stats.context('eatom'+holder.name):
       # prepare input tuple
       input_arguments = []
+      if len(inputtuple) < len(holder.inspec):
+        raise Exception("external atom {} got fewer inputs ({}) in input tuple ({}) than declared in interface ({})".format(
+          holder.name, len(inputtuple), inputtuple, dlvhex.humanReadableSpec(holder.inspec)))
       for spec_idx, inp in enumerate(holder.inspec):
         if inp in [dlvhex.PREDICATE, dlvhex.CONSTANT]:
           arg = self.clingo2hex(inputtuple[spec_idx])
