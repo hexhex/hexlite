@@ -67,9 +67,9 @@ class alist(list):
     self.sep = sep
 
   def dupModify(self, content=None, left=None, right=None, sep=None):
-    out = alist(self.content, self.left, right.left, sep=sep)
+    out = alist(self[:], self.left, self.right, self.sep)
     if content:
-      out.content = content
+      out[:] = content
     if left:
       out.left = left
     if right:
