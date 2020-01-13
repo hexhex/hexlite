@@ -56,7 +56,10 @@ def loadPlugin(pluginarray):
     pmodule.register(arguments)
   else:
     pmodule.register()
-  logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
+  def briefInfo(name, holder):
+    return "{}/{}/{}".format(name, dlvhex.humanReadableSpec(holder.inspec), holder.outnum)
+  logging.info('list of known atoms is now {}'.format(', '.join(
+    [ briefInfo(name, holder) for name, holder in dlvhex.eatoms.items() ])))
   return hexlite.Plugin(mname, pmodule, arguments)
 
 def loadProgram(hexfiles):
