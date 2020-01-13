@@ -276,13 +276,16 @@ def testparse():
         message('EXC: '+traceback.format_exc())
   message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
 
-def shallowprint(x,sepspace=' ', listspace=' '):
+def shallowprint(x,sepspace=' ', listspace=' ',unaryTupleFinalComma=False):
   if isinstance(x, alist):
+    innerparts = [ shallowprint(y, sepspace, listspace) for y in x ]
+    if len(x) == 1 and unaryTupleFinalComma:
+      innerparts.append('')
     ret = (
       x.sleft() +
-      (sepspace+x.ssep()+sepspace).join(
-        [ shallowprint(y, sepspace, listspace) for y in x]) + 
-      x.sright())
+      (sepspace+x.ssep()+sepspace).join(innerparts) +
+      x.sright()
+    )
     return ret
   if isinstance(x, list):
     return listspace.join([ shallowprint(y, sepspace, listspace) for y in x ])
