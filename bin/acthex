@@ -52,8 +52,14 @@ def loadPlugin(mname):
   dlvhex.startRegistration(pmodule)
   logging.info('calling register() for '+repr(mname))
   pmodule.register()
-  logging.info('list of known atoms is now {}'.format(', '.join(dlvhex.eatoms.keys())))
-  logging.info('list of known actions is now {}'.format(', '.join(acthex.actions.keys())))
+  def briefInfo(name, holder):
+    return "{}/{}/{}".format(name, dlvhex.humanReadableSpec(holder.inspec), holder.outnum)
+  logging.info('list of known atoms is now {}'.format(', '.join(
+    [ briefInfo(name, holder) for name, holder in dlvhex.eatoms.items() ])))
+  def briefActionInfo(name, holder):
+    return "{}/{}".format(name, dlvhex.humanReadableSpec(holder.inspec))
+  logging.info('list of known actions is now {}'.format(', '.join(
+    [ briefActionInfo(name, holder) for name, holder in acthex.actions.items() ])))
   return hexlite.Plugin(mname, pmodule)
 
 def loadProgram(acthexfiles):
