@@ -79,6 +79,18 @@ def storeOutputAtom(args, sign=True):
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
   return currentEvaluation().backend.storeOutputAtom(args, sign)
 
+def storeConstant(s):
+  # gives back an ID that represents the string s
+  return currentEvaluation().backend.storeConstant(s)
+
+def storeInteger(i):
+  # gives back an ID that represents the integer i
+  return currentEvaluation().backend.storeInteger(i)
+
+def storeParseable(p):
+  # gives back an ID that represents the parsable term p
+  return currentEvaluation().backend.storeParseable(p)
+
 def getInputAtoms():
   return currentEvaluation().input
 
