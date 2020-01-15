@@ -1,0 +1,1 @@
+0 ./verify_json.py "{'atoms': [{'args': ['a'], 'name': 'limit'}, {'args': ['aa'], 'name': 'limit'}, {'args': ['a'], 'name': 'p'}], 'cost': [], 'stratoms': ['limit(a)', 'limit(aa)', 'p(a)']}"

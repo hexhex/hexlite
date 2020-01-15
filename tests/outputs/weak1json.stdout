@@ -1,0 +1,1 @@
+0 ./verify_json.py "{ 'cost': [{'priority':1, 'cost':3}], 'atoms': ['a', 'c', 'd'], 'stratoms': ['a', 'c', 'd'] }"
