@@ -1,6 +1,7 @@
 import dlvhex
 
 import hexlite.ast.shallowparser as shp
+from hexlite.modelcallback import JSONModelCallback
 
 import logging, sys
 
@@ -379,8 +380,11 @@ def issue_2_num(a):
 	dlvhex.output((n, ))
 
 def register(arguments=None):
-	if arguments is not None:
+	if arguments == ['foo', '3']:
 		sys.stdout.write("testplugin loaded with arguments %s" % str(arguments))
+
+	if arguments == ['jsonout']:
+		dlvhex.registerModelCallbackClass(JSONModelCallback)
 
 	#XFAIL = expected failure
 	dlvhex.addAtom("testA", (dlvhex.PREDICATE,), 1)

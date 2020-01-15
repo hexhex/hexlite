@@ -12,6 +12,9 @@ agg7.hex agg7.out --nofacts
 aggextcycle1.hex aggextcycle1e.out --nofacts
 const1.hex const1.out
 pluginargument1.hex pluginargument1.stdout --plugin testplugin foo 3
+weak1.hex weak1json.stdout --plugin testplugin jsonout --flpcheck=none
+functionsymbols2.hex functionsymbols2json.stdout --plugin testplugin jsonout
+functionsymbols5.hex functionsymbols5json.stdout --plugin testplugin jsonout
 #XFAIL FLP+weak weak1.hex weak1.out
 weak1.hex weak1.out --flpcheck=none
 #XFAIL FLP+weak weak2.hex weak2.out

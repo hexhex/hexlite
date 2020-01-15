@@ -1,0 +1,1 @@
+0 ./verify_json.py "{'cost': [], 'atoms': [{'name': 'p', 'args': [{'name': 'f', 'args': [{'name': 'f', 'args': [{'name': 'f', 'args': ['a']}]}]}]}, {'name': 'p', 'args': [{'name': 'f', 'args': ['a']}]}, {'name': 'p', 'args': [{'name': 'f', 'args': [{'name': 'f', 'args': ['a']}]}]}, {'name': 'p', 'args': ['a']}], 'stratoms': ['p(f(f(f(a))))', 'p(f(a))', 'p(f(f(a)))', 'p(a)']}"
