@@ -149,14 +149,15 @@ def main():
         if len(envstr) > 0:
           sys.stdout.write("Environment: "+envstr+'\n')
         # evaluate program, collect answer set in callback
-        callbacks = [ActhexModelCallback(stringifiedFacts, config)]
+        acthexcallback = ActhexModelCallback(stringifiedFacts, config)
+        callbacks = [ acthexcallback ]
         if len(dlvhex.modelCallbacks) > 0:
           # additional model callbacks
           callbacks += [ cb(stringifiedFacts, config) for cb in dlvhex.modelCallbacks ]
         solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, callbacks)
         # find and execute actions on environment
         with pcontext.stats.context('executing actions'):
-          acthex.actionmanager.executeActions(callback.optimal_model)
+          acthex.actionmanager.executeActions(acthexcallback.optimal_model)
     except acthex.IterationExit:
       logging.info("got acthex iteration exit exception")
     # ignore code as dlvhex does
