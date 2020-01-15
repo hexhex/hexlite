@@ -118,8 +118,13 @@ def main():
       pr = rewriter.ProgramRewriter(pcontext, program, plugins, config)
       rewritten, facts = pr.rewrite()
     stringifiedFacts = frozenset(ast.normalizeFacts(facts))
-    modelcb = StandardModelCallback(stringifiedFacts, config)
-    solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcb)
+    modelcbs = None
+    if len(dlvhex.modelCallbacks) > 0:
+      # instantiate model callbacks
+      modelcbs = [ cb(stringifiedFacts, config) for cb in dlvhex.modelCallbacks ]
+    else:
+      modelcbs = [StandardModelCallback(stringifiedFacts, config)]
+    solvecode = hexlite.clingobackend.execute(pcontext, rewritten, facts, plugins, config, modelcbs)
     # ignore code as dlvhex does
     code = 0
     pcontext.stats.display('final')

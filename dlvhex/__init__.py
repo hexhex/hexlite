@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import logging
+import logging, inspect
 
 #
 # used by plugins
@@ -97,6 +97,18 @@ def getInputAtoms():
 def getTrueInputAtoms():
   return [ i for i in currentEvaluation().input if i.isTrue() ]
 
+def registerModelCallbackClass(handler):
+  '''
+  register a model callback class (see hexlite.modelcallbacks)
+  '''
+  global modelCallbacks
+  assert(inspect.isclass(handler))
+  modelCallbacks.append(handler)
+
+def removeModelCallbackClass(handler):
+  global modelCallbacks
+  modelCallbacks = [ x for x in modelCallbacks if x != handler ]
+
 #
 # used by engine
 #
@@ -125,6 +137,8 @@ class Backend:
 eatoms = {}
 # plugin module that is currently registering eatoms
 callingModule = None
+# list of handlers to be called, default handler is called if empty
+modelCallbacks = []
 
 class CurrentExternalAtomEvaluation:
   def __init__(self):

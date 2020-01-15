@@ -740,7 +740,7 @@ class ClingoModel(dlvhex.Model):
       cost=mdl.cost,
       is_optimal=True if mdl.optimality_proven or len(mdl.cost) == 0 else False)
 
-def execute(pcontext, rewritten, facts, plugins, config, model_callback):
+def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
   propagatorFactory = None
   flpchecker = None
   cmdlineargs = None
@@ -821,7 +821,8 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callback):
           handle.resume()
         else:
           try:
-            model_callback(ClingoModel(ccontext, model))
+            for cb in model_callbacks:
+              cb(ClingoModel(ccontext, model))
             pcontext.stats.display('answerset')
           except modelcallback.StopModelEnumerationException:
             handle.cancel()
