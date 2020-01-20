@@ -1,7 +1,7 @@
 package at.ac.tuwien.kr.hexlite.api;
 
-import java.util.AbstractList;
-import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 // corresponds to dlvhex::ID class
 public interface ISymbol {
@@ -17,12 +17,12 @@ public interface ISymbol {
     public boolean isAssigned();
 
     // structured representation of the symbol
-    public AbstractList<ISymbol> tuple();
+    public ArrayList<ISymbol> tuple();
 
     // all arguments X such that this sumbol(X) is true in the current interpretation
     // symbol must be a constant term
     // return value is a set of tuples of arguments
-    public AbstractSet<ISymbol> extension();
+    public HashSet<ArrayList<ISymbol> > extension();
 
     // as part of an answer set, it must be hashable and equal-able
     public int hashCode();

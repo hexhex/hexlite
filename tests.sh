@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
+# rebuild java plugin
+#pushd java-api ; mvn compile ; popd
+
 # generic
 
-if /bin/true; then
-  for WHAT in ./tests/extatom2.hex; do
-    echo "=== $WHAT"
+if /bin/false; then
+  for WHAT in ./tests/extatom2.hex ./tests/extatom10.hex; do
+    echo "=== $WHAT python"
     EXTRA="--verbose"
     EXTRA=""
     hexlite $EXTRA \
@@ -16,11 +19,11 @@ fi
 
 # for java plugin
 if /bin/true; then
-  for WHAT in ./tests/extatom2.hex; do
-    echo "=== $WHAT"
-    pushd java-api ; mvn compile ; popd
+  # ./tests/extatom2.hex 
+  for WHAT in ./tests/extatom10.hex; do
+    echo "=== $WHAT java"
     EXTRA="--verbose --debug"
-    EXTRA=""
+    EXTRA="--verbose"
     CLASSPATH=./java-api/target/classes \
     hexlite --pluginpath=./plugins/ \
       --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin \

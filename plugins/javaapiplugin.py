@@ -2,11 +2,14 @@ import dlvhex
 from dlvhex import ID
 import hexlite
 
+import traceback
 import logging
 import atexit
 
 # this requires jpype to be installed and it requires a working Java runtime environment
 import jpype
+from jpype import java
+from jpype.types import *
 logging.debug("starting JVM")
 jpype.startJVM(convertStrings=False)
 
@@ -24,12 +27,11 @@ def logJavaExceptionWithStacktrace(ex):
 		logging.error("\t at %s", ste.toString())
 	#sb.append(ex.getClass().getName() + ": " + ex.getMessage() + "\n");
 
-# this loads the hexlite-API-specific classes (probably from hexlite-java-api.jar)
-IPluginAtom = jpype.JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
-ISolverContext = jpype.JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext")
-IAtom = jpype.JClass("at.ac.tuwien.kr.hexlite.api.IAtom")
-ISymbol = jpype.JClass("at.ac.tuwien.kr.hexlite.api.ISymbol")
-JException = jpype.JClass("java.lang.Exception")
+# this loads the hexlite-API-specific classes (from hexlite-java-plugin-api-XYZ.jar)
+IPluginAtom = JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
+ISolverContext = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext")
+IInterpretation = JClass("at.ac.tuwien.kr.hexlite.api.IInterpretation")
+ISymbol = JClass("at.ac.tuwien.kr.hexlite.api.ISymbol")
 
 class JavaPluginHolder:
 	def __init__(self, classname, jplugin):
@@ -70,49 +72,99 @@ class JavaSymbolImpl:
 
 	@jpype.JOverride
 	def value(self):
-		return jpype.JString(self.hid.value())
+		return self.hid.value()
 
 	@jpype.JOverride
 	def intValue(self):
-		return jpype.JInt(self.hid.intValue())
+		return self.hid.intValue()
 
 	@jpype.JOverride
 	def isTrue(self):
-		return jpype.JBoolean(self.hid.isTrue())
+		return self.hid.isTrue()
 
 	@jpype.JOverride
 	def isFalse(self):
-		return jpype.JBoolean(self.hid.isFalse())
+		return self.hid.isFalse()
 
 	@jpype.JOverride
 	def isAssigned(self):
-		return jpype.JBoolean(self.hid.isAssigned())
+		return self.hid.isAssigned()
 
 	@jpype.JOverride
 	def tuple(self):
-		ret = jpype.JClass("java.util.ArrayList")()
+		ret = java.util.ArrayList()
 		for e in self.hid.tuple():
-			ret.add(e)
+			ret.add(JavaSymbolImpl(e))
 		return ret
 
 	@jpype.JOverride
 	def extension(self):
-		ret = jpype.JClass("java.util.ArrayList")()
+		logging.info("creating hashset")
+		ret = java.util.HashSet()
+		logging.info("filling hashset")
 		for e in self.hid.extension():
-			ret.add(e)
+			logging.info("adding tuple %s from extension", e)
+			#ret.add(e)
+			tup = java.util.ArrayList()
+			for t in e:
+				#jsym = jpype.JObject(JavaSymbolImpl(t))
+				jsym = JavaSymbolImpl(t)
+				logging.info("adding symbol %s %s as %s", t, t.__class__, repr(jsym))
+				tup.add(jsym)
+			logging.info("adding tuple %s to result as %s", tup, repr(tup))
+			ret.add(tup)
+		logging.info("returning %s %s", ret, ret.__class__)
 		return ret
 
 	@jpype.JOverride
 	def hashCode(self):
-		return jpype.JInt(hash(self.__valuecache) & 0x7FFFFFFF)
+		logging.info("returning hash code for %s", self)
+		return int(hash(self.__valuecache) & 0x7FFFFFFF)
+
+	def __eq__(self, other):
+		logging.info("__eq__ got called on %s vs %s", repr(self), repr(other))
+		logging.info("__eq__ ii1 %s ii2 %s ii3 %s", isinstance(self, JavaSymbolImpl), isinstance(other, JObject), isinstance(other, JClass))
+		logging.info("__eq__ str1 %s str2 %s", str(self), str(other))
+		logging.info("__eq__ get1 %s", other.invoke())
+		#return super().__eq__(other)
+		#return self.value() == other.value()		
+		return str(self) == str(other)
 
 	@jpype.JOverride
 	def equals(self, other):
-		return jpype.JBoolean(self == other or self.hid == other.hid)
+		logging.info("calling equals on %s with other %s", repr(self), repr(other))
+		# we could just write self == other, but let's make it explicit that we call above method
+		return self.__eq__(other)
 
 	@jpype.JOverride
 	def toString(self):
 		return str(self.hid)
+
+@jpype.JImplements(IInterpretation)
+class JavaInterpretationImpl:
+	def __init__(self):
+		pass
+
+	@jpype.JOverride
+	def getTrueInputAtoms(self):
+		return self._adapt(dlvhex.getTrueInputAtoms())
+
+	@jpype.JOverride
+	def getInputAtoms():
+		return self._adapt(dlvhex.getInputAtoms())
+
+	#@jpype.JOverride
+	#def getExtension():
+	#	pass
+
+	def _adapt(self, items):
+		ret = java.util.HashSet()
+		# each atom from dlvhex.getInputAtoms() is converted
+		# from hexlite to a java ISymbol
+		for x in items:
+			ret.add(JObject(JavaSymbolImpl(x)))
+		return ret
+
 
 @jpype.JImplements(IPluginAtom.IQuery)
 class JavaQueryImpl:
@@ -128,8 +180,7 @@ class JavaQueryImpl:
 
 	@jpype.JOverride
 	def getInterpretation(self):
-		logging.error("TBD")
-		return None
+		return JavaInterpretationImpl()
 
 	@jpype.JOverride
 	def getInput(self):
@@ -144,19 +195,19 @@ class JavaSolverContextImpl:
 	@jpype.JOverride
 	def storeOutputAtom(self, atom):
 		logging.error("TBD")
-		return jpype.JObject(None, IAtom)
+		return jpype.JObject(None, ISymbol)
 
 	@jpype.JOverride
 	def storeAtom(self, atom):
 		logging.error("TBD")
-		return None
+		return jpype.JObject(None, ISymbol)
 
 	@jpype.JOverride
 	def storeConstant(self, s):
 		# convert to python string, otherwise various string operations done within hexlite will fail on the java strings
 		pythonstr = str(s)
 		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
-		#logging.info("storeConstant returns %s with type %s", repr(r), type(r))
+		logging.info("storeConstant %s returns %s with type %s", s, repr(r), type(r))
 		return r
 
 	@jpype.JOverride
@@ -202,7 +253,9 @@ class JavaPluginCallWrapper:
 			tt = janswer.getTrueTuples()
 			#logging.info("true tuples")
 			for t in tt:
-				#logging.info("true tuple = %s %s", repr(t), t.toString())
+				logging.info("true tuple = %s %s", repr(t), t.toString())
+				for idx, elem in enumerate(t):				
+					logging.info(" idx %d = %s %s", idx, repr(elem), elem.toString())
 				assert(all([ isinstance(e, JavaSymbolImpl) for e in t ]))
 				tupleOfID = tuple([ e.hid for e in t ])
 				dlvhex.output(tupleOfID)
