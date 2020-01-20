@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 
-WHAT="./tests/extatom2.hex"
-for WHAT in ./tests/simple{1,2}.hex ./tests/percentparser.hex; do
-  echo "=== $WHAT"
-  EXTRA=""
-  hexlite $EXTRA \
-    --pluginpath=./plugins/ \
-    --plugin=stringplugin --plugin=testplugin \
-    $WHAT
-done
+# generic
+
+if /bin/true; then
+  for WHAT in ./tests/extatom2.hex; do
+    echo "=== $WHAT"
+    EXTRA="--verbose"
+    EXTRA=""
+    hexlite $EXTRA \
+      --pluginpath=./plugins/ \
+      --plugin=stringplugin --plugin=testplugin \
+      $WHAT
+  done
+fi
+
+# for java plugin
+if /bin/true; then
+  for WHAT in ./tests/extatom2.hex; do
+    echo "=== $WHAT"
+    pushd java-api ; mvn compile ; popd
+    EXTRA="--verbose --debug"
+    EXTRA=""
+    CLASSPATH=./java-api/target/classes \
+    hexlite --pluginpath=./plugins/ \
+      --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin \
+      $EXTRA \
+      -- $WHAT
+  done
+fi
 
 # for acthex development
 if /bin/false; then

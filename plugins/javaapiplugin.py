@@ -153,7 +153,9 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def storeConstant(self, s):
-		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(s)), ISymbol)
+		# convert to python string, otherwise various string operations done within hexlite will fail on the java strings
+		pythonstr = str(s)
+		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
 		#logging.info("storeConstant returns %s with type %s", repr(r), type(r))
 		return r
 

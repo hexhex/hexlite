@@ -328,7 +328,14 @@ class EAtomEvaluator(dlvhex.Backend):
     return None
 
   def storeConstant(self, s: str):
-    return ClingoID(self.ccontext, SymLit(clingo.String(s), None))
+    if len(s) > 1 and s[0] == '"' and s[-1] == '"':
+      # string
+      #logging.debug("storeConstant got string %s", repr(s))
+      return ClingoID(self.ccontext, SymLit(clingo.String(s[1:-1]), None))
+    else:
+      # constant
+      #logging.debug("storeConstant got constant %s", repr(s))
+      return ClingoID(self.ccontext, SymLit(clingo.Function(s), None))
 
   def storeInteger(self, i: int):
     return ClingoID(self.ccontext, SymLit(clingo.Number(i), None))

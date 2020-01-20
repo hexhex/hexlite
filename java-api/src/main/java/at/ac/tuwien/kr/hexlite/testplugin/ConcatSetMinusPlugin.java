@@ -1,4 +1,4 @@
-package at.ac.tuwien.kr.hexlite.stringplugin;
+package at.ac.tuwien.kr.hexlite.testplugin;
 
 import java.util.AbstractCollection;
 import java.util.ArrayList;
@@ -11,7 +11,7 @@ import at.ac.tuwien.kr.hexlite.api.IPluginAtom;
 import at.ac.tuwien.kr.hexlite.api.ISolverContext;
 import at.ac.tuwien.kr.hexlite.api.ISymbol;
 
-public class StringPlugin implements IPlugin {
+public class ConcatSetMinusPlugin implements IPlugin {
     public class ConcatAtom implements IPluginAtom {
         private final ArrayList<InputType> inputArguments;
 
@@ -42,11 +42,12 @@ public class StringPlugin implements IPlugin {
 
         @Override
         public IAnswer retrieve(final ISolverContext ctx, final IQuery query) {
-            System.out.println("in retrieve!");
+            //System.out.println("in retrieve!");
             final StringBuffer b = new StringBuffer();
             b.append("\"");
             for (final ISymbol sym : query.getInput()) {
                 final String value = sym.value();
+                //System.out.println("got value "+value.toString());
                 if (value.startsWith("\"")) {
                     b.append(value.substring(1, value.length() - 1));
                 } else {
@@ -54,6 +55,7 @@ public class StringPlugin implements IPlugin {
                 }
             }
             b.append("\"");
+            //System.out.println("returning constant "+b.toString());
 
             final Answer answer = new Answer();
             final ArrayList<ISymbol> t = new ArrayList<ISymbol>(1);
@@ -65,7 +67,7 @@ public class StringPlugin implements IPlugin {
 
     @Override
     public String getName() {
-        return "TestStringPlugin";
+        return "ConcatSetMinusTestPlugin";
     }
 
     @Override

@@ -78,7 +78,7 @@ def testConcat(strs):
 	if needquote:
 		result = '"'+result+'"'
 	#logging.debug('testConcat returns '+repr(result))
-	dlvhex.output((result,))
+	dlvhex.output( (dlvhex.storeConstant(result),) )
 
 def isFunctionTerm(term):
 	logging.debug('isFunctionTerm got '+repr(term))
