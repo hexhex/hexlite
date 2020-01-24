@@ -64,7 +64,7 @@ class JavaSymbolImpl:
 		assert(isinstance(hid,ID))
 		self.hid = hid
 		self.__valuecache = hid.value()
-		#logging.info("JavaSymbolImpl with hid %s", repr(self.hid))
+		#logging.info("JavaSymbolImpl with hid %s %s", str(hid), repr(hid))
 
 	@jpype.JOverride
 	def negate(self):
@@ -99,42 +99,45 @@ class JavaSymbolImpl:
 
 	@jpype.JOverride
 	def extension(self):
-		logging.info("creating hashset")
+		#logging.info("creating hashset")
 		ret = java.util.HashSet()
-		logging.info("filling hashset")
+		#logging.info("filling hashset")
 		for e in self.hid.extension():
-			logging.info("adding tuple %s from extension", e)
+			#logging.info("adding tuple %s from extension", e)
 			#ret.add(e)
 			tup = java.util.ArrayList()
 			for t in e:
 				#jsym = jpype.JObject(JavaSymbolImpl(t))
 				jsym = JavaSymbolImpl(t)
-				logging.info("adding symbol %s %s as %s", t, t.__class__, repr(jsym))
+				#logging.info("adding symbol %s %s as %s", t, t.__class__, repr(jsym))
 				tup.add(jsym)
-			logging.info("adding tuple %s to result as %s", tup, repr(tup))
+			#logging.info("adding tuple %s to result as %s", tup, repr(tup))
 			ret.add(tup)
-		logging.info("returning %s %s", ret, ret.__class__)
+		#logging.info("returning %s %s", ret, ret.__class__)
 		return ret
 
 	@jpype.JOverride
 	def hashCode(self):
-		logging.info("returning hash code for %s", self)
+		#logging.info("returning hash code for %s", self)
 		return int(hash(self.__valuecache) & 0x7FFFFFFF)
 
 	def __eq__(self, other):
-		logging.info("__eq__ got called on %s vs %s", repr(self), repr(other))
-		logging.info("__eq__ ii1 %s ii2 %s ii3 %s", isinstance(self, JavaSymbolImpl), isinstance(other, JObject), isinstance(other, JClass))
-		logging.info("__eq__ str1 %s str2 %s", str(self), str(other))
-		logging.info("__eq__ get1 %s", other.invoke())
+		#logging.info("__eq__ got called on %s vs %s", repr(self), repr(other))
+		#logging.info("__eq__ ii1 %s ii2 %s ii3 %s", isinstance(self, JavaSymbolImpl), isinstance(other, JObject), isinstance(other, JClass))
+		#logging.info("__eq__ str1 %s str2 %s", str(self), str(other))
+		#logging.info("__eq__ get1 %s", other.invoke())
 		#return super().__eq__(other)
 		#return self.value() == other.value()		
 		return str(self) == str(other)
 
 	@jpype.JOverride
 	def equals(self, other):
-		logging.info("calling equals on %s with other %s", repr(self), repr(other))
+		#logging.info("calling equals on %s with other %s", repr(self), repr(other))
 		# we could just write self == other, but let's make it explicit that we call above method
 		return self.__eq__(other)
+
+	def __str__(self):
+		return str(self.hid)
 
 	@jpype.JOverride
 	def toString(self):
@@ -207,7 +210,7 @@ class JavaSolverContextImpl:
 		# convert to python string, otherwise various string operations done within hexlite will fail on the java strings
 		pythonstr = str(s)
 		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
-		logging.info("storeConstant %s returns %s with type %s", s, repr(r), type(r))
+		#logging.info("storeConstant %s returns %s with type %s", s, repr(r), type(r))
 		return r
 
 	@jpype.JOverride

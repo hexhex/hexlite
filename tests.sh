@@ -20,7 +20,8 @@ fi
 # for java plugin
 if /bin/true; then
   # ./tests/extatom2.hex 
-  for WHAT in ./tests/extatom10.hex; do
+  # ./tests/extatom10.hex
+  for WHAT in ./tests/nonmon_guess.hex; do
     echo "=== $WHAT java"
     EXTRA="--verbose --debug"
     EXTRA="--verbose"

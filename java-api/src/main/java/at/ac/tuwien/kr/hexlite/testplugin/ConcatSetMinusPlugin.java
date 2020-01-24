@@ -111,25 +111,27 @@ public class ConcatSetMinusPlugin implements IPlugin {
 
         @Override
         public IAnswer retrieve(final ISolverContext ctx, final IQuery query) {
-            System.out.println("in retrieve! with input "+query.getInput());
+            //System.out.println("in retrieve! with input "+query.getInput());
             // implementation 1: via ISymbol::extension()
             final ISymbol predp = query.getInput().get(0);
             final ISymbol predq = query.getInput().get(1);
-            System.out.println("getting extension setp");
+            //System.out.println("getting extension setp");
             final HashSet<ArrayList<ISymbol> > setp = predp.extension();
-            System.out.println("getting extension setq");
+            //System.out.println("getting extension setq");
             final HashSet<ArrayList<ISymbol> > setq = predq.extension();
-            System.out.println("got setp "+setp.toString()+" setq "+setq.toString());
+            //System.out.println("got setp "+setp.toString()+" setq "+setq.toString());
             final HashSet<ArrayList<ISymbol> > result = new HashSet<ArrayList<ISymbol> >();
-            System.out.println("adding to result");
+            //System.out.println("adding to result");
             for(ArrayList<ISymbol> i: setp) {
-                System.out.println(" adding " + i.toString());
-                result.add(i); }
-            System.out.println("result " + result.toString() + " next removing");
+                //System.out.println(" adding " + i.toString());
+                result.add(i);
+            }
+            //System.out.println("result " + result.toString() + " next removing");
             for(ArrayList<ISymbol> j: setq) {
-                System.out.println(" removing " + j.toString());
-                 result.remove(j); }
-            System.out.println("result " + result.toString() + " next returning");
+                //System.out.println(" removing " + j.toString());
+                result.remove(j);
+            }
+            //System.out.println("result " + result.toString() + " next returning");
 
             // // implementation 2: via IInterpretation.getTrueInputAtoms()
             // final IInterpretation in = query.getInterpretation();
