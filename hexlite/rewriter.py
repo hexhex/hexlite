@@ -137,12 +137,26 @@ class EAtomHandlerBase:
     self.holder = holder
   def transformEAtomInStatement(self, eatom, statement, safevars, safeconditions):
     '''
+    checks if eatom and holder is compatible (number of arguments)
     transforms eatom in self.holder in statement
     * potentially modifies statement
     * returns set of rules necessary for rewriting
       (returns statement only if last eatom in statement was rewritten)
     '''
-    raise Exception("TODO: implement in child class")
+    # verify input argument count
+    speclen = len(self.holder.inspec)
+    minlen, maxlen = None, None
+    if speclen > 0 and self.holder.inspec[-1] == dlvhex.TUPLE:
+      minlen = speclen - 1 # tuple may be empty
+      maxlen = None # no limit
+    else:
+      minlen, maxlen = speclen, speclen # exact match required
+    inputlen = len(eatom['inputs'])
+    if inputlen < minlen or (maxlen != None and inputlen > maxlen):
+      raise Exception("got external atom {} with input arity {} opposed to minarity {} maxarity {} configured by external atom signature %s".format(shp.shallowprint(eatom['shallow']), inputlen, minlen, maxlen, dlvhex.humanReadableSpec(self.holder.inspec)))
+    # verify output argument count
+    if len(eatom['outputs']) != self.holder.outnum:
+      raise Exception("got external atom {} with output arity {} opposed to arity {} configured by external atom".format(shp.shallowprint(eatom['shallow']), len(eatom['outputs']), self.holder.outnum))
 
 
 class PureInstantiationEAtomHandler(EAtomHandlerBase):
@@ -159,6 +173,7 @@ class PureInstantiationEAtomHandler(EAtomHandlerBase):
     * modifies statement in place
     * does not use safeconditions, safevars
     '''
+    super().transformEAtomInStatement(eatom, statement, safevars, safeconditions)
     #assert(logging.debug('PIEAH '+pprint.pformat(eatom)) or True)
     replacement = eatom['prefix'] + [['@'+self.holder.name, shp.alist(eatom['inputs'], '(', ')', ',')]]
     if len(eatom['outputs']) == 0:
@@ -197,6 +212,7 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     * transforms eatom in statement into auxiliary atom with all inputs and outputs
     * creates a rule for guessing truth of the auxiliary eatom based on the auxiliary input tuple
     '''
+    super().transformEAtomInStatement(eatom, statement, safevars, safeconditions)
     if __debug__:
       logging.debug('NOEAH eatom {} with safevars {} and safeconditions {}'.format(
         pprint.pformat(eatom), repr(safevars), pprint.pformat(safeconditions)))
