@@ -18,13 +18,16 @@ install:
   - source activate test
   - conda install -c potassco clingo
   # for java-api
-  - conda install ant
+  - conda install maven
   - git clone https://github.com/jpype-project/jpype.git
   - cd jpype
   - python setup.py sdist
   - mv $CONDA_PREFIX/compiler_compat/ld $CONDA_PREFIX/compiler_compat/ld_temp
   - pip install dist/* --global-option=--disable-numpy
   - mv $CONDA_PREFIX/compiler_compat/ld_temp $CONDA_PREFIX/compiler_compat/ld
+  - cd ..
+  - cd java-api
+  - mvn compile
   - cd ..
   # setup
   - python setup.py develop --user
