@@ -147,6 +147,7 @@ public class ConcatSetMinusPlugin implements IPlugin {
             for(ArrayList<ISymbol> t: result) {
                 answer.output(t);
             }
+            //System.err.println("for input "+setp.toString()+" and "+setq.toString()+" producing result "+result.toString());
 
             return answer;
         }

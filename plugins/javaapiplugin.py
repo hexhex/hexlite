@@ -261,6 +261,7 @@ class JavaPluginCallWrapper:
 					logging.info(" idx %d = %s %s", idx, repr(elem), elem.toString())
 				assert(all([ isinstance(e, JavaSymbolImpl) for e in t ]))
 				tupleOfID = tuple([ e.hid for e in t ])
+				#logging.warning("retrieve created output %s for java output %s", tupleOfID, t.toString())
 				dlvhex.output(tupleOfID)
 		except JException as e:
 			logJavaExceptionWithStacktrace(e)

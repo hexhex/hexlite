@@ -57,6 +57,7 @@ def addAtom(name, inargumentspec, outargumentnum, props=None):
 
 def output(tuple_):
   assert(isinstance(tuple_, tuple)) # because we store it in a set
+  logging.debug("got output tuple %s", repr(tuple_))
   currentEvaluation().outputKnownTrue.add(tuple_)
 
 def outputUnknown(tuple_):
@@ -175,6 +176,7 @@ def startExternalAtomCall(input_tuple, inputs, backend, holder):
   inputs: frozenset of all ClingoIDs that are relevant to the current eatom evaluation as predicate inputs
   '''
   currentEvaluation().reset(input_tuple, inputs, backend, holder)
+  logging.debug("starting evaluation %s %s", tuple([ str(x) for x in input_tuple ]), sorted([ str(x) for x in inputs if x.isTrue() ]))
 
 # called by engine after calling external atom function
 def cleanupExternalAtomCall():

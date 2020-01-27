@@ -509,7 +509,7 @@ class ClingoPropagator:
       found_this_eatomname = False
       verify_on_partial = eatomname in self.partial_evaluation_eatoms
       for siginfo in signatures:
-        logging.debug(name+' init processing eatom {} relpred {} reppred arity {}'.format(
+        logging.debug(name+' init processing eatom {} relpred {} reppred {} arity {}'.format(
           eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
         for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
           found_this_eatomname = True
@@ -630,7 +630,7 @@ class ClingoPropagator:
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
     logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     outKnownTrue, outUnknown = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug(name+" outputtuple {} outTrue {} outUnknown {}".format(pprint.pformat(outputtuple), pprint.pformat(outKnownTrue), pprint.pformat(outUnknown)))
+    logging.debug(name+" outputtuple {} outTrue {} outUnknown {} targetValue of {} = {}".format(repr(outputtuple), repr(outKnownTrue), repr(outUnknown), str(veri.replacement.sym), targetValue))
 
     if outputtuple in outUnknown:
       # cannot verify
