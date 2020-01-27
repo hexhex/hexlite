@@ -101,7 +101,7 @@ public class ConcatSetMinusPlugin implements IPlugin {
 
         @Override
         public int getOutputArguments() {
-            return 0;
+            return 1;
         }
 
         @Override
