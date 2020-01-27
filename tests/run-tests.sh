@@ -3,7 +3,8 @@
 BASEDLVHEX="hexlite --pluginpath=../plugins/"
 EXAMPLESDIR="./"
 OUTDIR="./outputs/"
-TESTS="suites/complete.test suites/flpcheck.test suites/partial.test"
+TESTS="suites/complete.test suites/flpcheck.test suites/partial.test suites/javaapi.test"
+JAVAAPI_CLASSPATH="../java-api/target/classes"
 
 #
 # brief documentation of this script
@@ -129,6 +130,7 @@ do
       fi
 
       # run dlvhex with specified parameters and program
+      CLASSPATH="$JAVAAPI_CLASSPATH" \
       $DLVHEX $ADDPARM -- $HEXPROGRAM 2>$ETMPFILE >$TMPFILE
       RETVAL=$?
       #set -x
@@ -182,6 +184,7 @@ do
         fi
 
         # run dlvhex with specified parameters and program
+        CLASSPATH="$JAVAAPI_CLASSPATH" \
         $DLVHEX $ADDPARM -- $HEXPROGRAM >$TMPFILE
         RETVAL=$?
         if [ $RETVAL -eq 0 ]; then

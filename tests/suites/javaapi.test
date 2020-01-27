@@ -1,0 +1,8 @@
+# the following is from suite complete.test
+extatom2.hex extatom2.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+extatom10.hex extatom10.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+nonmon_guess.hex nonmon_guess.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+nonmon_inc.hex nonmon_inc.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+variable_predicate_inputs_worksnow.hex variable_predicate_inputs.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+# the following is from suite partial.test
+setminus.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
