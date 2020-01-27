@@ -18,7 +18,7 @@ install:
   - source activate test
   - conda install -c potassco clingo
   # for java-api
-  - conda install maven
+  - conda install ant
   - git clone https://github.com/jpype-project/jpype.git
   - cd jpype
   - python setup.py sdist
