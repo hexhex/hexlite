@@ -240,7 +240,8 @@ class EAtomEvaluator(dlvhex.Backend):
     with self.stats.context('eatom'+holder.name):
       # prepare input tuple
       input_arguments = []
-      if len(inputtuple) < len(holder.inspec):
+      if __debug__ and len(inputtuple) < len(holder.inspec):
+        # this should be detected already in rewriting in transformEAtomInStatement()
         raise Exception("external atom {} got fewer inputs ({}) in input tuple ({}) than declared in interface ({})".format(
           holder.name, len(inputtuple), inputtuple, dlvhex.humanReadableSpec(holder.inspec)))
       for spec_idx, inp in enumerate(holder.inspec):
