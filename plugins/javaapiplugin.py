@@ -123,17 +123,14 @@ class JavaSymbolImpl:
 
 	def __eq__(self, other):
 		#logging.info("__eq__ got called on %s vs %s", repr(self), repr(other))
-		#logging.info("__eq__ ii1 %s ii2 %s ii3 %s", isinstance(self, JavaSymbolImpl), isinstance(other, JObject), isinstance(other, JClass))
-		#logging.info("__eq__ str1 %s str2 %s", str(self), str(other))
-		#logging.info("__eq__ get1 %s", other.invoke())
-		#return super().__eq__(other)
-		#return self.value() == other.value()		
-		return str(self) == str(other)
+		return self.hid == other.hid
 
 	@jpype.JOverride
 	def equals(self, other):
-		#logging.info("calling equals on %s with other %s", repr(self), repr(other))
 		# we could just write self == other, but let's make it explicit that we call above method
+		# reminder:
+		#   in Java, == only compares memory locations, and content comparison is done with equals()
+		#   in Python, == is the same as __eq__ and it may do whatever it wants
 		return self.__eq__(other)
 
 	def __str__(self):
