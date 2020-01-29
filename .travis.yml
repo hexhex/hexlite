@@ -26,7 +26,7 @@ install:
   - pip install dist/* --global-option=--disable-numpy
   - mv $CONDA_PREFIX/compiler_compat/ld_temp $CONDA_PREFIX/compiler_compat/ld
   - cd ..
-  - mvn -f java-api/pom.xml compile
+  - mvn compile
   # setup
   - python setup.py develop --user
 
