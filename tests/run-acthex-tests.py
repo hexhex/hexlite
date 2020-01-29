@@ -5,13 +5,17 @@ import subprocess
 import re
 import sys
 import logging
+import os
 
 logging.basicConfig(
   level=logging.DEBUG, stream=sys.stderr,
   format="%(levelname)1s:%(filename)10s:%(lineno)3d:%(message)s")
 
+INPUTDIR='./inputs/'
+
 class BubbleSortTestcase(unittest.TestCase):
-  def my_run(self, params):
+  def my_run(self, hexfile):
+    params = os.path.join(INPUTDIR, hexfile)
     return subprocess.run('acthex --pluginpath=../plugins --plugin=acthex-testplugin '+params,
                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf8')
 
