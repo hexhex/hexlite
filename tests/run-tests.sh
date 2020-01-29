@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASEDLVHEX="hexlite --pluginpath=../plugins/"
-EXAMPLESDIR="./"
+EXAMPLESDIR="./inputs/"
 OUTDIR="./outputs/"
 TESTS="suites/complete.test suites/flpcheck.test suites/partial.test suites/javaapi.test"
 JAVAAPI_CLASSPATH="../java-api/target/classes"
