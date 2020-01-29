@@ -154,17 +154,16 @@ class JavaInterpretationImpl:
 
 	@jpype.JOverride
 	def getInputAtoms():
+		# TODO check how to use this function - last time it produced a segfault (SetMinusApi3Plugin)
+		#logging.warning("getInputAtoms")
 		return self._adapt(dlvhex.getInputAtoms())
-
-	#@jpype.JOverride
-	#def getExtension():
-	#	pass
 
 	def _adapt(self, items):
 		ret = java.util.HashSet()
 		# each atom from dlvhex.getInputAtoms() is converted
 		# from hexlite to a java ISymbol
 		for x in items:
+			#logging.warning("adapting %s", x)
 			ret.add(JObject(JavaSymbolImpl(x)))
 		return ret
 
@@ -248,7 +247,7 @@ class JavaPluginCallWrapper:
 	def __call__(self, *arguments):
 		try:
 			logging.debug("executing java __call__ for %s with %d arguments", self.eatomname, len(arguments))
-			jsc = JavaSolverContextImpl()			
+			jsc = JavaSolverContextImpl()
 			jq = JavaQueryImpl(convertArguments(arguments))
 			#logging.info("executing retrieve")
 			janswer = self.pluginatom.retrieve(jsc, jq)

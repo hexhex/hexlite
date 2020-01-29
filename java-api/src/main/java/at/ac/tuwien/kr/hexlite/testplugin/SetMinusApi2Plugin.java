@@ -102,7 +102,7 @@ public class SetMinusApi2Plugin implements IPlugin {
 
     @Override
     public String getName() {
-        return "ConcatSetMinusTestPlugin";
+        return "SetMinusApi2Plugin";
     }
 
     @Override
