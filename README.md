@@ -88,6 +88,27 @@ export PATH=$PATH:~/.local/bin
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
 
+* Using the Docker image
+
+  There is a Dockerfile that builds a docker image where hexlite and its source code is installed.
+
+  Build the image with
+
+  $ ./build-docker-image.sh
+
+  Run the image and start a shell in the image with
+
+  $ ./run-docker-image.sh
+  
+  In the image, run an example:
+
+  # cd /opt/hexlite
+  # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+
+  Should give the output:
+
+  {prefix("test:"),more("a","b","c"),complete("test: a b c")}
+
 # Running Hexlite on Examples in the Repository
 
 * If ``hexlite`` by itself shows the help, you can run it on some examples in the repository.
