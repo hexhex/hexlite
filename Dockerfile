@@ -28,3 +28,12 @@ RUN set -ex ; \
   cd /opt/clingo ; \
   cmake --build build --target install
 
+RUN set -ex ; \
+  cd /opt ; \
+  git clone https://github.com/hexhex/hexlite.git --branch v1.0.2
+
+RUN apt install -y python3-setuptools
+
+RUN set -ex ; \
+  cd /opt/hexlite ; \
+  python3 setup.py install
