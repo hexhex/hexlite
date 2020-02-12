@@ -107,13 +107,13 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
   ```
 
-  Should give the output:
+  Should give the following output (it is a set, the order of items does not matter):
 
-  ```{prefix("test:"),more("a","b","c"),complete("test: a b c")}```
+  `{prefix("test:"),more("a","b","c"),complete("test: a b c")}`
 
 # Running Hexlite on Examples in the Repository
 
-* If ``hexlite`` by itself shows the help, you can run it on some examples in the repository.
+* If `hexlite` by itself shows the help, you can run it on some examples in the repository.
 
 * Hexlite needs to know where to find plugins and what is the name of the Python modules of these plugins
 
@@ -136,11 +136,11 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
 * To run one of the examples in the ``tests/`` directory you can use one of the following methods to call hexlite:
 
-```
-$ hexlite --pluginpath ./plugins/ --plugin testplugin -- tests/extatom3.hex
-$ hexlite tests/extatom3.hex --pluginpath ./plugins/ --plugin testplugin
-$ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
-```
+  ```
+  $ hexlite --pluginpath ./plugins/ --plugin testplugin -- tests/extatom3.hex
+  $ hexlite tests/extatom3.hex --pluginpath ./plugins/ --plugin testplugin
+  $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
+  ```
 
 # Developer Readme
 
@@ -160,8 +160,10 @@ $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
 
   * If you want to remove this development installation:
 
-    ```$ python3 setup.py develop --uninstall --user
-    $ rm ~/.local/bin/hexlite```
+    ```
+    $ python3 setup.py develop --uninstall --user
+    $ rm ~/.local/bin/hexlite
+    ```
 
   (Installed scripts are not automatically uninstalled.)
 
@@ -171,31 +173,31 @@ $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
 
   * Build pypi source package
 
-  `$ python setup.py sdist`
+    `$ python setup.py sdist`
 
 	* Verify that dist/ contains the right archives with the right content (no wheels etc.)
 
 	* Upload to pypi
 
-	`$ twine upload dist/*`
+    `$ twine upload dist/*`
 
   * Update version in `meta.yaml`.
 
   * Build for anaconda cloud
   
-  First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
+    First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
 
-  `$ conda build .`
+    `$ conda build .`
 
-	(get upload command from last lines of output)
+    (get upload command from last lines of output)
 
-  If conda is installed on an encrypted /home/ or similar, this will abort with a permission error.
-  You can make it work by creating a new directory on an unencrypted `/tmp/`, for example `/tmp/conda-build`,
-  and run conda build as follows:
+    If conda is installed on an encrypted /home/ or similar, this will abort with a permission error.
+    You can make it work by creating a new directory on an unencrypted `/tmp/`, for example `/tmp/conda-build`,
+    and run conda build as follows:
 
-  `$ conda build --croot /tmp/conda-build/ .`
+    `$ conda build --croot /tmp/conda-build/ .`
 
   * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
-	`$ anaconda upload <path-from-conda-build>`
+    `$ anaconda upload <path-from-conda-build>`
 
