@@ -19,7 +19,12 @@ The system is currently under development and only works for certain programs:
 * FLP Check is implemented explicitly and does not work with strong negation and weak constraints
 * FLP Check can be deactivated
 
-A manuscript about the system is under preparation.
+The system is described in the following publication.
+
+  Peter Schüller (2019)
+  The Hexlite Solver.
+  In: Logics in Artificial Intelligence. JELIA 2019. Lecture Notes in Computer Science, vol 11468. Springer, Cham
+  https://doi.org/10.1007/978-3-030-19570-0_39
 
 In case of bugs please report an issue here: https://github.com/hexhex/hexlite/issues
 
@@ -79,6 +84,27 @@ export PATH=$PATH:~/.local/bin
   * Ubuntu 16.04 is tested
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
+
+* Using the Docker image
+
+  There is a Dockerfile that builds a docker image where hexlite and its source code is installed.
+
+  Build the image with
+
+  $ ./build-docker-image.sh
+
+  Run the image and start a shell in the image with
+
+  $ ./run-docker-image.sh
+  
+  In the image, run an example:
+
+  # cd /opt/hexlite
+  # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+
+  Should give the output:
+
+  {prefix("test:"),more("a","b","c"),complete("test: a b c")}
 
 # Running Hexlite on Examples in the Repository
 
@@ -169,3 +195,4 @@ $ rm ~/.local/bin/hexlite
   * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
 	`$ anaconda upload <path-from-conda-build>`
+
