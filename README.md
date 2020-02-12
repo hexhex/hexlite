@@ -71,10 +71,10 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
     Add the following to your `.profile` or `.bashrc` file:
 
-```
-export PYTHONUSERBASE=~/.local/
-export PATH=$PATH:~/.local/bin
-```
+    ```
+    export PYTHONUSERBASE=~/.local/
+    export PATH=$PATH:~/.local/bin
+    ```
 
   * Run hexlite the first time. This will help to download and build pyclingo unless it is already usable via `import clingo`:
 
@@ -102,10 +102,10 @@ export PATH=$PATH:~/.local/bin
   
   In the image, run an example:
 
-```
-# cd /opt/hexlite
-# hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
-```
+  ```
+  # cd /opt/hexlite
+  # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+  ```
 
   Should give the output:
 
@@ -148,22 +148,20 @@ $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
 
   * Install clingo with conda, but but do **not** install hexlite with conda.
 
-  ```$ conda install -c potassco clingo```
+    ```$ conda install -c potassco clingo```
 
   * checkout hexlite with git
 
-  ```$ git clone git@github.com:hexhex/hexlite.git```
+    ```$ git clone git@github.com:hexhex/hexlite.git```
 
   * install `hexlite` in develop mode into your user-defined Python space:
 
-  ```$ python3 setup.py develop --user```
+    ```$ python3 setup.py develop --user```
 
   * If you want to remove this development installation:
 
-```
-$ python3 setup.py develop --uninstall --user
-$ rm ~/.local/bin/hexlite
-```
+    ```$ python3 setup.py develop --uninstall --user
+    $ rm ~/.local/bin/hexlite```
 
   (Installed scripts are not automatically uninstalled.)
 
