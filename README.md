@@ -94,20 +94,22 @@ export PATH=$PATH:~/.local/bin
 
   Build the image with
 
-  $ ./build-docker-image.sh
+  ```$ ./build-docker-image.sh```
 
   Run the image and start a shell in the image with
 
-  $ ./run-docker-image.sh
+  ```$ ./run-docker-image.sh```
   
   In the image, run an example:
 
-  # cd /opt/hexlite
-  # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+```
+# cd /opt/hexlite
+# hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+```
 
   Should give the output:
 
-  {prefix("test:"),more("a","b","c"),complete("test: a b c")}
+  ```{prefix("test:"),more("a","b","c"),complete("test: a b c")}```
 
 # Running Hexlite on Examples in the Repository
 
