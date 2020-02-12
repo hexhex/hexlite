@@ -22,7 +22,12 @@ The system is currently under development and only works for certain programs:
 * FLP Check is implemented explicitly and does not work with strong negation and weak constraints
 * FLP Check can be deactivated
 
-A manuscript about the system is under preparation.
+The system is described in the following publication.
+
+  Peter Schüller (2019)
+  The Hexlite Solver.
+  In: Logics in Artificial Intelligence. JELIA 2019. Lecture Notes in Computer Science, vol 11468. Springer, Cham
+  https://doi.org/10.1007/978-3-030-19570-0_39
 
 In case of bugs please report an issue here: https://github.com/hexhex/hexlite/issues
 
