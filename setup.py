@@ -41,5 +41,10 @@ setuptools.setup(name='hexlite',
       install_requires=[
         'ply',
       ],
-      scripts=['bin/hexlite', 'bin/acthex'],
+      entry_points={
+        'console_scripts': [
+          'hexlite=hexlite.main:main',
+          'acthex=acthex.main:main',
+        ],
+      },
       zip_safe=False)
