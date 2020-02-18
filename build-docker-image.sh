@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker image build -t hexlite:dev .
+docker image build --squash --file Dockerfile -t hexlite:dev .
