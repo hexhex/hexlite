@@ -2,6 +2,7 @@ import dlvhex
 from dlvhex import ID
 import hexlite
 
+import re
 import traceback
 import logging
 import atexit
@@ -186,6 +187,7 @@ class JavaQueryImpl:
 		return self.jinputTuple
 
 
+rValidConstant = re.compile(r'^[a-z][a-z0-9A-Z_]+$')
 @jpype.JImplements(ISolverContext)
 class JavaSolverContextImpl:
 	def __init__(self):
@@ -205,8 +207,19 @@ class JavaSolverContextImpl:
 	def storeConstant(self, s):
 		# convert to python string, otherwise various string operations done within hexlite will fail on the java strings
 		pythonstr = str(s)
+		if len(pythonstr) == 0 or (pythonstr[0] != '"' and pythonstr[-1] != '"' and not rValidConstant.match(pythonstr)):
+			raise ValueError("cannot storeConstant for term '{}' with is probably a string (use storeString)".format(pythonstr))
 		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
 		#logging.info("storeConstant %s returns %s with type %s", s, repr(r), type(r))
+		return r
+
+	@jpype.JOverride
+	def storeString(self, s):
+		pythonstr = str(s)
+		if len(pythonstr) == 0 or (pythonstr[0] != '"' and pythonstr[-1] != '"'):
+			pythonstr = '"'+pythonstr+'"'
+		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
+		#logging.info("storeString %s returns %s with type %s", s, repr(r), type(r))
 		return r
 
 	@jpype.JOverride
