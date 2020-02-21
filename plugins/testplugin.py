@@ -39,6 +39,16 @@ def testC(pred):
 			# output arguments of input predicate
 			dlvhex.output((x.value(),))
 
+def testArity1OneTupleA():
+	dlvhex.output( ('one',) )
+
+def testArity1OneTupleB():
+	dlvhex.output( (dlvhex.storeConstant('one'),) )
+
+def testArity1TwoTuples():
+	dlvhex.output( ('one',) )
+	dlvhex.output( ('two',) )
+
 def testEven(pred1, pred2):
 	true = [x for x in dlvhex.getTrueInputAtoms()]
 	num = len(true)
@@ -471,4 +481,8 @@ def register(arguments=None):
 	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 
 	dlvhex.addAtom("issue_2_num", (dlvhex.PREDICATE, ), 1)
+
+	dlvhex.addAtom("testArity1OneTupleA", (), 1)
+	dlvhex.addAtom("testArity1OneTupleB", (), 1)
+	dlvhex.addAtom("testArity1TwoTuples", (), 1)
 # vim:list:noet:

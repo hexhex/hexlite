@@ -80,9 +80,13 @@ def storeOutputAtom(args, sign=True):
   # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
   return currentEvaluation().backend.storeOutputAtom(args, sign)
 
-def storeConstant(s):
+def storeConstant(c):
+  # gives back an ID that represents the constant c
+  return currentEvaluation().backend.storeConstant(c)
+
+def storeString(s):
   # gives back an ID that represents the string s
-  return currentEvaluation().backend.storeConstant(s)
+  return currentEvaluation().backend.storeString(s)
 
 def storeInteger(i):
   # gives back an ID that represents the integer i

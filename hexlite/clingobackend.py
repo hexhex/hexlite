@@ -329,14 +329,19 @@ class EAtomEvaluator(dlvhex.Backend):
     return None
 
   def storeConstant(self, s: str):
-    if len(s) > 1 and s[0] == '"' and s[-1] == '"':
-      # string
-      #logging.debug("storeConstant got string %s", repr(s))
-      return ClingoID(self.ccontext, SymLit(clingo.String(s[1:-1]), None))
-    else:
-      # constant
-      #logging.debug("storeConstant got constant %s", repr(s))
-      return ClingoID(self.ccontext, SymLit(clingo.Function(s), None))
+    if len(s) == 0 or (s[0] == '"' and s[1] == '"'):
+      # TODO this is only for backwards compatibility, should be removed in V2
+      logging.warning("storeConstant() was used on string '%s', use storeString in the future", s)
+      if len(s) == 0:
+        return ClingoID(self.ccontext, SymLit(clingo.String(''), None))
+      else:
+        return ClingoID(self.ccontext, SymLit(clingo.String(s), None))
+    return ClingoID(self.ccontext, SymLit(clingo.Function(s), None))
+
+  def storeString(self, s: str):
+    if len(s) > 0 and s[0] == '"' and s[1] == '"':
+      s = s[1:-1]
+    return ClingoID(self.ccontext, SymLit(clingo.String(s), None))
 
   def storeInteger(self, i: int):
     return ClingoID(self.ccontext, SymLit(clingo.Number(i), None))

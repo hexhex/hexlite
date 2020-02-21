@@ -103,8 +103,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   In the image, run an example:
 
   ```
-  # cd /opt/hexlite
-  # hexlite --pluginpath /opt/hexlite/plugins --plugin testplugin -- tests/inputs/extatom2.hex
+  # hexlite --pluginpath /opt/hexlite/plugins/ --plugin testplugin -- /opt/hexlite/tests/inputs/extatom2.hex
   ```
 
   Should give the following output (it is a set, the order of items does not matter):
@@ -137,9 +136,9 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 * To run one of the examples in the ``tests/`` directory you can use one of the following methods to call hexlite:
 
   ```
-  $ hexlite --pluginpath ./plugins/ --plugin testplugin -- tests/extatom3.hex
-  $ hexlite tests/extatom3.hex --pluginpath ./plugins/ --plugin testplugin
-  $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/extatom3.hex
+  $ hexlite --pluginpath ./plugins/ --plugin testplugin -- tests/inputs/extatom3.hex
+  $ hexlite tests/inputs/extatom3.hex --pluginpath ./plugins/ --plugin testplugin
+  $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/inputs/extatom3.hex
   ```
 
 # Developer Readme

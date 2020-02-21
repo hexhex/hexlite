@@ -1,16 +1,21 @@
-# build a docker image with hexlite and examples installed
-FROM gcc:9.2.0
+FROM debian:buster as builder
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
-  git \
-  re2c bison cmake python3-dev lua5.3
-
+RUN set -ex ; \
+  apt-get update ; \
+  apt-get install -y --no-install-recommends \
+    git ca-certificates \
+    g++ binutils re2c bison cmake make python3 python3-setuptools python3-dev lua5.3
+  
 RUN set -ex ; \
   cd /opt ; \
   git clone https://github.com/potassco/clingo.git --branch v5.4.0 ; \
   cd clingo ; \
   git submodule update --init --recursive
+
+ENV PATH /opt/bin:$PATH
+ENV PYTHONPATH /opt/lib/python3.7/site-packages/:$PYTHONPATH
+
+RUN mkdir -p /opt/lib/python3.7/site-packages/
 
 RUN set -ex ; \
   cd /opt/clingo ; \
@@ -19,9 +24,9 @@ RUN set -ex ; \
     -DCLINGO_REQUIRE_PYTHON=ON \
     -DPYCLINGO_USER_INSTALL=OFF \
     -DPYTHON_EXECUTABLE:FILEPATH=/usr/bin/python3 \
-    -DCLINGO_PYTHON_VERSION=3 \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr/local/; \
+    -DPYCLINGO_USE_INSTALL_PREFIX=/opt \
+    -DCMAKE_INSTALL_PREFIX:PATH=/opt; \
   cmake --build build
 
 RUN set -ex ; \
@@ -30,10 +35,27 @@ RUN set -ex ; \
 
 RUN set -ex ; \
   cd /opt ; \
-  git clone https://github.com/hexhex/hexlite.git --branch v1.0.2
-
-RUN apt install -y python3-setuptools
+  git clone https://github.com/hexhex/hexlite.git --branch master
 
 RUN set -ex ; \
   cd /opt/hexlite ; \
-  python3 setup.py install
+  python3 setup.py install --prefix=/opt
+
+FROM debian:buster-slim
+
+ENV PATH /opt/bin:$PATH
+ENV PYTHONPATH /opt/lib/python3.7/site-packages/:$PYTHONPATH
+
+RUN set -ex ; \
+  apt-get update ; \
+  apt-get install -y --no-install-recommends \
+    python3-dev python3-setuptools lua5.3
+
+WORKDIR /opt
+COPY --from=builder /opt .
+
+RUN set -ex ; \
+  apt autoremove --purge -y ; \
+  apt clean ; \
+  apt autoclean
+

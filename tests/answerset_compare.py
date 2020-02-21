@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # return
 # 0 = true = same answer set
 # != 0 = false = answer sets different or error
@@ -37,7 +37,7 @@ if ref_answersets == out_answersets:
 only_in_ref = set(ref_answersets - out_answersets)
 only_in_out = set(out_answersets - ref_answersets)
 if len(only_in_ref) > 0:
-  print >>sys.stderr, "answer sets differ: only in reference ", only_in_ref
+  sys.stderr.write("answer sets differ: only in reference {}\n".format(only_in_ref))
 if len(only_in_out) > 0:
-  print >>sys.stderr, "answer sets differ: only in output ", only_in_out
+  sys.stderr.write("answer sets differ: only in output {}\n".format(only_in_out))
 sys.exit(-1) #false
