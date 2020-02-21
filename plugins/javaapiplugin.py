@@ -216,9 +216,7 @@ class JavaSolverContextImpl:
 	@jpype.JOverride
 	def storeString(self, s):
 		pythonstr = str(s)
-		if len(pythonstr) == 0 or (pythonstr[0] != '"' and pythonstr[-1] != '"'):
-			pythonstr = '"'+pythonstr+'"'
-		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeConstant(pythonstr)), ISymbol)
+		r = jpype.JObject(JavaSymbolImpl(dlvhex.storeString(pythonstr)), ISymbol)
 		#logging.info("storeString %s returns %s with type %s", s, repr(r), type(r))
 		return r
 
