@@ -1,0 +1,27 @@
+%wanted(1..8).
+%wanted(7).
+notwanted(1..2).
+
+%want(1) :- not &testConcat[a,b](somethingelse).
+%want(2) :- &testConcat[a,b](ab).
+
+%want(3) :- &testArity1OneTupleA(one).
+%want(4) :- not &testArity1OneTupleA(two).
+
+%want(5) :- &testArity1TwoTuples(one).
+%want(6) :- &testArity1TwoTuples(two).
+
+%want(7) :- &testArity1OneTupleB(one).
+%want(8) :- not &testArity1OneTupleB(two).
+
+notwant(1) :- not &testArity1TwoTuples(one). % does not work
+notwant(2) :- not &testArity1TwoTuples(two). % does not work
+want(3) :- not &testArity1TwoTuples(three). % does not work
+
+% TODO: rewrite grounding-time external atoms like others with an aux and an extra rule?
+
+
+problem(X,wanted_but_missing) :- wanted(X), not want(X).
+problem(X,notwanted_but_there) :- notwanted(X), notwant(X).
+
+#show problem/2.

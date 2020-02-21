@@ -15,3 +15,6 @@ interesting3(X) :- X = @a().
 aux(X) :- X = @a().
 interesting4(a) :- not aux(a).
 interesting4(b) :- not aux(b).
+
+interesting5(a) :- a != @a().
+interesting5(b) :- b != @a().
