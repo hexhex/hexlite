@@ -646,13 +646,14 @@ class ClingoPropagator:
     realValue = outputtuple in outKnownTrue
     # TODO now handle all outputs in out!
     if realValue == targetValue:
-      logging.info("%s atom %s positively verified!", name, eatomname)
+      logging.info("%s verified %s = &%s[%s](%s)", name, targetValue, eatomname, inputtuple, outputtuple)
       # TODO somehow adding the (redundant) nogood aborts the propagation
       # this was the case with bb7ab74
       # benjamin said there is a bug, now i try the WIP branch 83038e
       return
     else:
-      logging.info("%s atom %s verification failed!", name, eatomname)
+      # this just means the guess was wrong, this "failure to verify" is not an error!
+      logging.info("%s failed %s = &%s[%s](%s)", name, targetValue, eatomname, inputtuple, outputtuple)
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
