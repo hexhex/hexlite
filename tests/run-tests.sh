@@ -188,7 +188,7 @@ do
         $DLVHEX $ADDPARM -- $HEXPROGRAM >$TMPFILE
         RETVAL=$?
         if [ $RETVAL -eq 0 ]; then
-          if $ANSWERSETCOMPARE $TMPFILE $ANSWERSETSFILE; then
+          if $ANSWERSETCOMPARE $ANSWERSETSFILE $TMPFILE; then
               echo "PASS: $HEXPROGRAM $ADDPARM"
               let passed++
           else
