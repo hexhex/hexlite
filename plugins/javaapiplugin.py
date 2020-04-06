@@ -198,14 +198,24 @@ class JavaSolverContextImpl:
 		pass
 
 	@jpype.JOverride
-	def storeOutputAtom(self, atom):
-		logging.error("TBD")
-		return jpype.JObject(None, ISymbol)
+	def storeOutputAtom(self, otuple):
+		# all the otuple elements are ISymbol s
+		#logging.info("jsci.storeOutputAtom %s", otuple)
+		s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
+		#logging.info(" got symbol %s", s)
+		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
+		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(r), type(r))
+		return r
 
 	@jpype.JOverride
-	def storeAtom(self, atom):
-		logging.error("TBD")
-		return jpype.JObject(None, ISymbol)
+	def storeAtom(self, tuple_):
+		# all the tuple_ elements are ISymbol s
+		#logging.info("jsci.storeAtom %s", tuple_)
+		s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
+		#logging.info(" got symbol %s", s)
+		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
+		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(r), type(r))
+		return r
 
 	@jpype.JOverride
 	def storeConstant(self, s):
@@ -230,7 +240,7 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def learn(self, nogood):
-		logging.error("TBD")
+		dlvhex.learn([ x.hid for x in nogood ])
 
 def convertArguments(pyArguments):
 	# all ID classes stay the same way

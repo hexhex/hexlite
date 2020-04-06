@@ -218,14 +218,14 @@ public class ConcatSetMinusPlugin implements IPlugin {
             final HashSet<ArrayList<ISymbol> > setq = predq.extension();
             //System.out.println("got setp "+setp.toString()+" setq "+setq.toString());
 
-            System.err.println("for input "+setp.toString()+" and "+setq.toString()+" running setminus with learning");
+            //System.err.println("for input "+setp.toString()+" and "+setq.toString()+" running setminus with learning");
 
             final HashSet<ArrayList<ISymbol> > result = new HashSet<ArrayList<ISymbol> >();
             for(ArrayList<ISymbol> x: setp) {
-                System.out.println(" considering "+x.toString());
+                //System.out.println(" considering "+x.toString());
                 if( x.size() != 1 )
                     System.err.println("obtained tuple of unexpected size "+x.size()+" (!=1) '"+x.toString()+"' in testSetMinusLearn");
-                if( !setq.contains(setq) ) {
+                if( !setq.contains(x) ) {
                     // learn that it is not allowed that p(x) and -q(x) and this atom is false for x
                     final HashSet<ISymbol> nogood = new HashSet<ISymbol>();
 
@@ -237,17 +237,17 @@ public class ConcatSetMinusPlugin implements IPlugin {
 
                     // q(x)
                     final ArrayList<ISymbol> setq_tuple = new ArrayList<ISymbol>();
-                    setp_tuple.add(predq);
-                    setp_tuple.add(x.get(0));
+                    setq_tuple.add(predq);
+                    setq_tuple.add(x.get(0));
                     nogood.add(ctx.storeAtom(setq_tuple).negate());
 
                     // testSetMinus[p,q](x)
                     nogood.add(ctx.storeOutputAtom(x).negate());
 
-                    System.out.println("  learning nogood "+nogood.toString());
+                    //System.out.println("  learning nogood "+nogood.toString());
                     ctx.learn(nogood);
 
-                    System.out.println("  giving output  "+nogood.toString());
+                    //System.out.println("  giving output  "+x.toString());
                     result.add(x);
                 }
             }
@@ -256,7 +256,7 @@ public class ConcatSetMinusPlugin implements IPlugin {
             for(ArrayList<ISymbol> t: result) {
                 answer.output(t);
             }
-            System.err.println("for input "+setp.toString()+" and "+setq.toString()+" producing result "+result.toString());
+            //System.err.println("for input "+setp.toString()+" and "+setq.toString()+" producing result "+result.toString());
 
             return answer;
         }
