@@ -21,7 +21,9 @@ fi
 if /bin/true; then
   # ./tests/inputs/extatom2.hex 
   # ./tests/inputs/extatom10.hex
-  for WHAT in ./tests/inputs/nonmon_guess.hex; do
+  # ./tests/inputs/nonmon_guess.hex
+  # ./tests/inputs/setminus_learn.hex
+  for WHAT in ./tests/inputs/setminus_learn.hex; do
     echo "=== $WHAT java"
     EXTRA="--verbose --debug"
     EXTRA="--verbose"
