@@ -155,9 +155,7 @@ class JavaInterpretationImpl:
 		return self._adapt(dlvhex.getTrueInputAtoms())
 
 	@jpype.JOverride
-	def getInputAtoms():
-		# TODO check how to use this function - last time it produced a segfault (SetMinusApi3Plugin)
-		#logging.warning("getInputAtoms")
+	def getInputAtoms(self):
 		return self._adapt(dlvhex.getInputAtoms())
 
 	def _adapt(self, items):
