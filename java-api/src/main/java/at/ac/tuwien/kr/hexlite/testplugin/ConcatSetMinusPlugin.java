@@ -46,13 +46,13 @@ public class ConcatSetMinusPlugin implements IPlugin {
         public IAnswer retrieve(final ISolverContext ctx, final IQuery query) {
             //System.out.println("in retrieve!");
             final StringBuffer b = new StringBuffer();
-            boolean needQuote = false;
+            boolean outputString = false;
             for (final ISymbol sym : query.getInput()) {
                 final String value = sym.value();
                 //System.out.println("got value "+value.toString());
                 if (value.startsWith("\"")) {
                     b.append(value.substring(1, value.length() - 1));
-                    needQuote = true;
+                    outputString = true;
                 } else {
                     b.append(value);
                 }
@@ -61,8 +61,8 @@ public class ConcatSetMinusPlugin implements IPlugin {
 
             final Answer answer = new Answer();
             final ArrayList<ISymbol> t = new ArrayList<ISymbol>(1);
-            if( needQuote ) {
-                t.add(ctx.storeConstant("\""+b.toString()+"\""));
+            if( outputString ) {
+                t.add(ctx.storeString(b.toString()));
             } else {
                 // TODO handle integers explicitly or use storeParseable
                 t.add(ctx.storeConstant(b.toString()));
