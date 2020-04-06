@@ -17,17 +17,10 @@ install:
   - conda create -q -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test
   - conda install -c potassco clingo
-  # for java-api
+  # conda packages for java plugin api
   - conda install ant
-  - git clone https://github.com/jpype-project/jpype.git
-  - cd jpype
-  - python setup.py sdist
-  - mv $CONDA_PREFIX/compiler_compat/ld $CONDA_PREFIX/compiler_compat/ld_temp
-  - pip install dist/* --global-option=--disable-numpy
-  - mv $CONDA_PREFIX/compiler_compat/ld_temp $CONDA_PREFIX/compiler_compat/ld
-  - cd ..
-  - mvn compile
-  # setup
+  - conda install -c conda-forge jpype1
+  # setup of hexlite
   - python setup.py develop --user
 
 script:
