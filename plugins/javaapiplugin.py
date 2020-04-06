@@ -47,13 +47,17 @@ def convertExtSourceProperties(jesp):
 	ret.setProvidesPartialAnswer(jesp.getProvidesPartialAnswer())
 	return ret
 
-MAPTYPE = {
-		IPluginAtom.InputType.PREDICATE: dlvhex.PREDICATE,
-		IPluginAtom.InputType.CONSTANT: dlvhex.CONSTANT,
-		IPluginAtom.InputType.TUPLE: dlvhex.TUPLE,
-	}
 def convertInputArguments(jinputarguments):
-	ret = tuple([ MAPTYPE[t] for t in jinputarguments ])
+	def convertOne(t):
+		if t == IPluginAtom.InputType.PREDICATE:
+			return dlvhex.PREDICATE
+		elif t == IPluginAtom.InputType.CONSTANT:
+			return dlvhex.CONSTANT
+		elif t == IPluginAtom.InputType.TUPLE:
+			return dlvhex.TUPLE
+		else:
+			raise ValueError("unknown input argument type "+repr(t))
+	ret = tuple([ convertOne(t) for t in jinputarguments ])
 	#logging.debug("XXX converted jinputarguments %s to %s", jinputarguments, ret)
 	return ret
 
