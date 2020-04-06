@@ -1,3 +1,4 @@
+// compared to ConcatSetMinusPlugin, this implementation uses getTrueInputAtoms()
 package at.ac.tuwien.kr.hexlite.testplugin;
 
 import java.util.AbstractCollection;
