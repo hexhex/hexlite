@@ -273,7 +273,7 @@ class JavaPluginCallWrapper:
 			jq = JavaQueryImpl(convertArguments(arguments))
 			#logging.info("executing retrieve")
 			janswer = self.pluginatom.retrieve(jsc, jq)
-			logging.debug("retrieved")
+			#logging.debug("retrieved")
 			tt = janswer.getTrueTuples()
 			#logging.info("true tuples")
 			for t in tt:

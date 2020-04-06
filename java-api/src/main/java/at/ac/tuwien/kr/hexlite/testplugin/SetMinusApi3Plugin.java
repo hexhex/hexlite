@@ -60,20 +60,20 @@ public class SetMinusApi3Plugin implements IPlugin {
 
         @Override
         public IAnswer retrieve(final ISolverContext ctx, final IQuery query) {
-            //System.out.println("in retrieve! with input "+query.getInput());
-            // implementation 2: via IInterpretation::getTrueInputAtoms()
+            //System.err.println("in retrieve! with input "+query.getInput());
+            // implementation 3: via IInterpretation::getInputAtoms() and then using isTrue()
             final ISymbol predp = query.getInput().get(0);
             final ISymbol predq = query.getInput().get(1);
 
             final IInterpretation in = query.getInterpretation();
             HashSet<ArrayList<ISymbol> > setp = new HashSet<ArrayList<ISymbol> >();
             HashSet<ArrayList<ISymbol> > setq = new HashSet<ArrayList<ISymbol> >();
-            //System.out.println("predp is "+predp.toString()+" predq is "+predq.toString());
+            //System.err.println("predp is "+predp.toString()+" predq is "+predq.toString());
             for(ISymbol atm : in.getInputAtoms()) {
-                System.err.println("input atom "+atm.toString()+" with tuple "+atm.tuple().toString());
+                //System.err.println("input atom "+atm.toString()+" with tuple "+atm.tuple().toString());
                 if( atm.isTrue() ) {
                     final ArrayList<ISymbol> args = new ArrayList<ISymbol>( atm.tuple().subList(1,atm.tuple().size()) );
-                    System.err.println("  isTrue() and args is "+args.toString()+" and atm.tuple().get(0) is "+atm.tuple().get(0).toString());
+                    //System.err.println("  isTrue() and args is "+args.toString()+" and atm.tuple().get(0) is "+atm.tuple().get(0).toString());
                     if(atm.tuple().get(0).equals(predp) )
                         setp.add(args);
                     if(atm.tuple().get(0).equals(predq) )
