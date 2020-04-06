@@ -23,13 +23,17 @@ if /bin/true; then
   # ./tests/inputs/extatom10.hex
   # ./tests/inputs/nonmon_guess.hex
   # ./tests/inputs/setminus_learn.hex
-  for WHAT in ./tests/inputs/setminus_learn.hex; do
+  PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi2Plugin
+  PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi3Plugin
+  PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+  for WHAT in ./tests/inputs/nonmon_guess.hex; do
     echo "=== $WHAT java"
     EXTRA="--verbose --debug"
     EXTRA="--verbose"
+    EXTRA=""
     CLASSPATH=./java-api/target/classes \
     hexlite --pluginpath=./plugins/ \
-      --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin \
+      --plugin javaapiplugin $PLUGIN \
       $EXTRA \
       -- $WHAT
   done
