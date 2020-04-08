@@ -1,5 +1,5 @@
 import dlvhex
-import hexlite.aux as aux
+import hexlite.auxiliary as aux
 import hexlite.clingobackend
 import clingo
 

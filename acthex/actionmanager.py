@@ -2,7 +2,7 @@
 import dlvhex
 import acthex
 
-import hexlite.aux as aux
+import hexlite.auxiliary as aux
 import hexlite.ast.shallowparser as shp
 
 import logging

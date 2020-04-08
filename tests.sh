@@ -5,7 +5,7 @@
 
 # generic
 
-if /bin/false; then
+if /bin/true; then
   for WHAT in ./tests/inputs/extatom2.hex ./tests/inputs/extatom10.hex; do
     echo "=== $WHAT python"
     EXTRA="--verbose"
@@ -40,7 +40,7 @@ if /bin/true; then
 fi
 
 # for acthex development
-if /bin/false; then
+if /bin/true; then
   echo "+++++"
 
   WHAT="./tests/inputs/acthex_bubblesort_sortenv.hex"

@@ -1,6 +1,6 @@
 import hexlite.rewriter
 from hexlite.ast import shallowparser as shp
-import hexlite.aux as aux
+import hexlite.auxiliary as aux
 
 import logging, pprint
 

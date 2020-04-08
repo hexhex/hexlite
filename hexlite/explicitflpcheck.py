@@ -23,7 +23,7 @@ import sys
 # assume that the main program has handled possible import problems
 import clingo
 
-from .aux import Aux
+from .auxiliary import Aux
 
 # head begin/separator/end sign for key=choice=True (choice rule) or False (disjunction)
 HBEG = { True: '{', False: '' }

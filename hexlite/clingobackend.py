@@ -28,7 +28,7 @@ import json
 import dlvhex
 
 from . import common as hexlite
-from . import aux
+from . import auxiliary as aux
 from .ast import shallowparser as shp
 from . import explicitflpcheck as flp
 from . import modelcallback
