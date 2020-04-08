@@ -25,8 +25,8 @@ import logging
 from . import common as hexlite
 from . import ast
 from .ast import shallowparser as shp
-from . import auxiliary
-Aux = auxiliary.Aux
+from . import auxiliary as aux
+Aux = aux.Aux
 
 import dlvhex
 
@@ -227,11 +227,11 @@ class PregroundableOutputEAtomHandler(EAtomHandlerBase):
     args = eatom['inputs']+eatom['outputs']
     arity = len(args)
     # one auxiliary per arity (to rule out problems with multi-arity-predicates)
-    relAuxPred = auxiliary.predEAtomRelevance(arity, eatom['name'])
+    relAuxPred = aux.predEAtomRelevance(arity, eatom['name'])
     relAuxAtom = [ relAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
 
     # auxiliary atoms for value of external atom
-    valueAuxPred = auxiliary.predEAtomTruth(arity, eatom['name'])
+    valueAuxPred = aux.predEAtomTruth(arity, eatom['name'])
     valueAuxAtom = [ valueAuxPred, shp.alist(args, left='(', right=')', sep=',') ]
     self.pcontext.addSignature(eatom['name'], relAuxPred, valueAuxPred, arity)
 
