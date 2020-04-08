@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-WHAT="./tests/extatom2.hex"
-for WHAT in ./tests/simple{1,2}.hex ./tests/percentparser.hex; do
+WHAT="./tests/inputs/extatom2.hex"
+for WHAT in ./tests/inputs/simple{1,2}.hex ./tests/inputs/percentparser.hex; do
   echo "=== $WHAT"
   EXTRA=""
   hexlite $EXTRA \
@@ -11,10 +11,10 @@ for WHAT in ./tests/simple{1,2}.hex ./tests/percentparser.hex; do
 done
 
 # for acthex development
-if /bin/false; then
+if /bin/true; then
   echo "+++++"
 
-  WHAT="./tests/acthex_bubblesort_sortenv.hex"
+  WHAT="./tests/inputs/acthex_bubblesort_sortenv.hex"
   EXTRA="--plugin=stringplugin"
   EXTRA=""
   EXTRA="$EXTRA --debug"
@@ -26,7 +26,7 @@ if /bin/false; then
 
   echo "====="
 
-  WHAT="./tests/acthex_bubblesort_persistenceenv.hex"
+  WHAT="./tests/inputs/acthex_bubblesort_persistenceenv.hex"
   EXTRA="--plugin=stringplugin"
   EXTRA=""
   EXTRA="$EXTRA --debug"
