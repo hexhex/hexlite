@@ -206,18 +206,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
 * Jpype
 
-  - the current release of jpype is 0.7 which does not contain a fix we need for this project
-  - therefore we need to build jpype manually (e.g., within conda)
-  - because of a bug in current conda we need to disable the conda-internal linker to build jpype
-
-    $ git clone https://github.com/jpype-project/jpype.git
-    $ cd jpype
-    $ python setup.py sdist
-    $ conda activate <your-environment>
-    $ mv <your-conda-environment>/compiler_compat/ld <your-conda-environment>/compiler_compat/ld_rename_to_ld
-    $ pip install dist/* --global-option=--disable-numpy
-    $ mv <your-conda-environment>/compiler_compat/ld_rename_to_ld <your-conda-environment>/compiler_compat/ld
-
-  - once jpype in conda contains the fix (in 0.7.1):
+  - we need version 0.7.2 the versions below have a bug that affects us
+  - conda-forge has 0.7.2
 
     $ conda install -c conda-forge jpype1  

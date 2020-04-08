@@ -47,13 +47,17 @@ def convertExtSourceProperties(jesp):
 	ret.setProvidesPartialAnswer(jesp.getProvidesPartialAnswer())
 	return ret
 
-MAPTYPE = {
-		IPluginAtom.InputType.PREDICATE: dlvhex.PREDICATE,
-		IPluginAtom.InputType.CONSTANT: dlvhex.CONSTANT,
-		IPluginAtom.InputType.TUPLE: dlvhex.TUPLE,
-	}
 def convertInputArguments(jinputarguments):
-	ret = tuple([ MAPTYPE[t] for t in jinputarguments ])
+	def convertOne(t):
+		if t == IPluginAtom.InputType.PREDICATE:
+			return dlvhex.PREDICATE
+		elif t == IPluginAtom.InputType.CONSTANT:
+			return dlvhex.CONSTANT
+		elif t == IPluginAtom.InputType.TUPLE:
+			return dlvhex.TUPLE
+		else:
+			raise ValueError("unknown input argument type "+repr(t))
+	ret = tuple([ convertOne(t) for t in jinputarguments ])
 	#logging.debug("XXX converted jinputarguments %s to %s", jinputarguments, ret)
 	return ret
 
@@ -151,9 +155,7 @@ class JavaInterpretationImpl:
 		return self._adapt(dlvhex.getTrueInputAtoms())
 
 	@jpype.JOverride
-	def getInputAtoms():
-		# TODO check how to use this function - last time it produced a segfault (SetMinusApi3Plugin)
-		#logging.warning("getInputAtoms")
+	def getInputAtoms(self):
 		return self._adapt(dlvhex.getInputAtoms())
 
 	def _adapt(self, items):
@@ -194,14 +196,24 @@ class JavaSolverContextImpl:
 		pass
 
 	@jpype.JOverride
-	def storeOutputAtom(self, atom):
-		logging.error("TBD")
-		return jpype.JObject(None, ISymbol)
+	def storeOutputAtom(self, otuple):
+		# all the otuple elements are ISymbol s
+		#logging.info("jsci.storeOutputAtom %s", otuple)
+		s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
+		#logging.info(" got symbol %s", s)
+		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
+		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(r), type(r))
+		return r
 
 	@jpype.JOverride
-	def storeAtom(self, atom):
-		logging.error("TBD")
-		return jpype.JObject(None, ISymbol)
+	def storeAtom(self, tuple_):
+		# all the tuple_ elements are ISymbol s
+		#logging.info("jsci.storeAtom %s", tuple_)
+		s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
+		#logging.info(" got symbol %s", s)
+		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
+		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(r), type(r))
+		return r
 
 	@jpype.JOverride
 	def storeConstant(self, s):
@@ -226,7 +238,7 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def learn(self, nogood):
-		logging.error("TBD")
+		dlvhex.learn([ x.hid for x in nogood ])
 
 def convertArguments(pyArguments):
 	# all ID classes stay the same way
@@ -259,7 +271,7 @@ class JavaPluginCallWrapper:
 			jq = JavaQueryImpl(convertArguments(arguments))
 			#logging.info("executing retrieve")
 			janswer = self.pluginatom.retrieve(jsc, jq)
-			logging.debug("retrieved")
+			#logging.debug("retrieved")
 			tt = janswer.getTrueTuples()
 			#logging.info("true tuples")
 			for t in tt:
