@@ -127,7 +127,7 @@ class JavaSymbolImpl:
 		return int(hash(self.__valuecache) & 0x7FFFFFFF)
 
 	def __eq__(self, other):
-		#logging.info("__eq__ got called on %s vs %s", repr(self), repr(other))
+		#logging.info("__eq__ got called on %s/%s vs %s/%s", repr(self), self.hid, repr(other), other.hid)
 		return self.hid == other.hid
 
 	@jpype.JOverride
@@ -238,6 +238,7 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def learn(self, nogood):
+		#logging.info("java learns nogood %s", [ str(x) for x in nogood ])
 		dlvhex.learn([ x.hid for x in nogood ])
 
 def convertArguments(pyArguments):
