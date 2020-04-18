@@ -276,9 +276,9 @@ class JavaPluginCallWrapper:
 			tt = janswer.getTrueTuples()
 			#logging.info("true tuples")
 			for t in tt:
-				logging.info("true tuple = %s %s", repr(t), t.toString())
+				logging.debug("true tuple = %s %s", repr(t), t.toString())
 				for idx, elem in enumerate(t):				
-					logging.info(" idx %d = %s %s", idx, repr(elem), elem.toString())
+					logging.debug(" idx %d = %s %s", idx, repr(elem), elem.toString())
 				assert(all([ isinstance(e, JavaSymbolImpl) for e in t ]))
 				tupleOfID = tuple([ e.hid for e in t ])
 				#logging.warning("retrieve created output %s for java output %s", tupleOfID, t.toString())
