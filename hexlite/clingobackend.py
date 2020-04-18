@@ -382,6 +382,8 @@ class EAtomEvaluator(dlvhex.Backend):
       self.ccontext.propagator.recordNogood(nogood, defer=True)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
+  counter = 0
+
   def __init__(self, claspcontext, stats):
     EAtomEvaluator.__init__(self, claspcontext, stats)
     # cache = defaultdict:
@@ -406,6 +408,10 @@ class CachedEAtomEvaluator(EAtomEvaluator):
     if key not in storage:
       storage[key] = EAtomEvaluator.evaluate(
         self, holder, inputtuple, predicateinputatoms)
+    if __debug__:
+      self.counter += 1
+      if self.counter % 1000 == 1000:
+        logging.info("cache was hit %d times", self.counter)
     return storage[key]
 
   def evaluate(self, holder, inputtuple, predicateinputatoms):
