@@ -491,6 +491,9 @@ class ClingoPropagator:
       self.literals.add(lit)
       return True
 
+    def __contains__(self, lit):
+      return lit in self.literals
+
   class StopPropagation(Exception):
     pass
 
