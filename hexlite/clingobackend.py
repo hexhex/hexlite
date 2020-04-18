@@ -654,16 +654,33 @@ class ClingoPropagator:
               # just skip this verification here
               continue
             if control.assignment.is_true(veri.relevance.lit):
-              self.verifyTruthOfAtom(eatomname, control, veri)
-              # add new pending nogoods (this is a potential output of above verification) if required
-              self.addPendingNogoodsOrThrow()
+              if not self.nogoodConfirmsTruthOfAtom(control, veri):
+                self.verifyTruthOfAtom(eatomname, control, veri)
+                # add new pending nogoods (this is a potential output of above verification) if required
+                self.addPendingNogoodsOrThrow()
+              else:
+                logging.info(name+' no need to verify atom {} (existing nogood)'.format(veri.replacement.sym))
             else:
-              logging.debug(name+' no need to verify atom {}'.format(veri.replacement.sym))
+              logging.debug(name+' no need to verify atom {} (relevance)'.format(veri.replacement.sym))
       except ClingoPropagator.StopPropagation:
         # this is part of the intended behavior
         logging.debug(name+' aborted propagation')
         #logging.debug('aborted from '+traceback.format_exc())
     logging.info(self.name+' leaving check() propagator')
+  
+  def nogoodConfirmsTruthOfAtom(self, control, veri):
+    logging.info("checking if %s is confirmed by previously learned nogoods", veri.replacement)
+    target = 1 if control.assignment.is_true(veri.replacement.lit) else 0
+    ngset = veri.nogoods[target]
+    logging.debug("  nogood set %s", ngset)
+    for nogood in ngset:
+      logging.info("  checking nogood %s", nogood)
+      if all([ control.assignment.is_true(l) for l in nogood if l > 0 ]) and \
+          all([ control.assignment.is_false(-l) for l in nogood if l < 0 ]):
+          # this nogood fires!
+          logging.info("previously learned nogood %s decides truth %d of atom!", nogood, bool(idx))
+          return True
+    return False
 
   def verifyTruthOfAtom(self, eatomname, control, veri):
     name = self.name+'vTOA:'
