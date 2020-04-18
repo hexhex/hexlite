@@ -86,6 +86,9 @@ class SymLit:
   def __hash__(self):
     return hash(self.sym)
 
+  def __str__(self):
+    return "{}/{}".format(self.sym, self.lit)
+
 class ClingoID(dlvhex.ID):
   # the ID class as passed to plugins, from view of Clingo backend
   def __init__(self, ccontext, symlit):
