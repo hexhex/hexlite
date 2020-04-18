@@ -38,6 +38,10 @@ from .clingogroundprogramprinter import GroundProgramPrinter
 # assume that the main program has handled possible import problems
 import clingo
 
+CONFIG_CONSIDER_SKIPPING_EVALUATION_IF_NOGOOD_DETERMINES_TRUTH=True
+CONFIG_ADD_INPUT_OUTPUT_NOGOODS=False
+CONFIG_ENABLE_EATOM_SPECIFIED_NOGOODS=True
+
 class ClaspContext:
   '''
   context within the propagator
@@ -365,6 +369,9 @@ class EAtomEvaluator(dlvhex.Backend):
     this method is directly called from the external atom code
     it does not actually add nogoods to the solver but collects them
     '''
+    if not CONFIG_ENABLE_EATOM_SPECIFIED_NOGOODS:
+      logging.info("ignored eatom-specified nogood %s due to configuration", ng)
+      return
 
     logging.info("learning eatom-specified nogood %s", ng)
     assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
@@ -655,12 +662,19 @@ class ClingoPropagator:
               # just skip this verification here
               continue
             if control.assignment.is_true(veri.relevance.lit):
-              if not self.nogoodConfirmsTruthOfAtom(control, veri):
+              if CONFIG_CONSIDER_SKIPPING_EVALUATION_IF_NOGOOD_DETERMINES_TRUTH:
+                if self.nogoodConfirmsTruthOfAtom(control, veri):
+                  logging.info(name+' no need to verify atom {} (existing nogood)'.format(veri.replacement.sym))
+                else:
+                  # verify truth because nogood did not determine it
+                  self.verifyTruthOfAtom(eatomname, control, veri)
+                  # add new pending nogoods (this is a potential output of above verification) if required
+                  self.addPendingNogoodsOrThrow()
+              else:
+                # always verify truth
                 self.verifyTruthOfAtom(eatomname, control, veri)
                 # add new pending nogoods (this is a potential output of above verification) if required
                 self.addPendingNogoodsOrThrow()
-              else:
-                logging.info(name+' no need to verify atom {} (existing nogood)'.format(veri.replacement.sym))
             else:
               logging.debug(name+' no need to verify atom {} (relevance)'.format(veri.replacement.sym))
       except ClingoPropagator.StopPropagation:
@@ -720,48 +734,49 @@ class ClingoPropagator:
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
-    # TODO: only add nogood if the external atom is not configured to create its own nogoods
-    # (if the external atom creates own nogoods that cut the search space much better than nogoods created here, creating them here would be a waste)
+    if CONFIG_ADD_INPUT_OUTPUT_NOGOODS:
+      # TODO: only add nogood if the external atom is not configured to create its own nogoods
+      # (if the external atom creates own nogoods that cut the search space much better than nogoods created here, creating them here would be a waste)
 
-    # build naive input/output nogoods
-    
-    nogood = self.Nogood()
-    hr_nogood = []
-    # solution is eliminated if all inputs are as they were above ...
-    for atom in veri.allinputs:
-      value = control.assignment.value(atom.symlit.lit)
-      if value == True:
-        hr_nogood.append( (atom.symlit.sym,True) )
-        if not nogood.add(atom.symlit.lit):
-          logging.debug(name+" cannot build nogood (opposite literals)!")
-          return
-      elif value == False:
-        hr_nogood.append( (atom.symlit.sym,False) )
-        if not nogood.add(-atom.symlit.lit):
-          logging.debug(name+" cannot build nogood (opposite literals)!")
-          return
-      # None case does not contribute to nogood
+      # build naive input/output nogoods
+      
+      nogood = self.Nogood()
+      hr_nogood = []
+      # solution is eliminated if all inputs are as they were above ...
+      for atom in veri.allinputs:
+        value = control.assignment.value(atom.symlit.lit)
+        if value == True:
+          hr_nogood.append( (atom.symlit.sym,True) )
+          if not nogood.add(atom.symlit.lit):
+            logging.debug(name+" cannot build nogood (opposite literals)!")
+            return
+        elif value == False:
+          hr_nogood.append( (atom.symlit.sym,False) )
+          if not nogood.add(-atom.symlit.lit):
+            logging.debug(name+" cannot build nogood (opposite literals)!")
+            return
+        # None case does not contribute to nogood
 
-    checklit = None
-    if realValue == True:
-      # ... and if computation gave true but eatom replacement is false
-      checklit = -veri.replacement.lit
-      hr_nogood.append( (veri.replacement.sym,False) )
-    else:
-      # ... and if computation gave false but eatom replacement is true
-      checklit = veri.replacement.lit
-      hr_nogood.append( (veri.replacement.sym,True) )
+      checklit = None
+      if realValue == True:
+        # ... and if computation gave true but eatom replacement is false
+        checklit = -veri.replacement.lit
+        hr_nogood.append( (veri.replacement.sym,False) )
+      else:
+        # ... and if computation gave false but eatom replacement is true
+        checklit = veri.replacement.lit
+        hr_nogood.append( (veri.replacement.sym,True) )
 
-    if not nogood.add(checklit):
-      logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
-      return
+      if not nogood.add(checklit):
+        logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
+        return
 
-    if logging.getLogger().isEnabledFor(logging.INFO):
-      hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
-      logging.info("%s CPcheck adding nogood %s", name, hr_nogood_str)
-    # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
-    # and do not waste computing external atoms on a candidate that is for sure not an answer set
-    self.recordNogood(nogood, defer=False)
+      if logging.getLogger().isEnabledFor(logging.INFO):
+        hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
+        logging.info("%s CPcheck adding input/output nogood %s", name, hr_nogood_str)
+      # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
+      # and do not waste computing external atoms on a candidate that is for sure not an answer set
+      self.recordNogood(nogood, defer=False)
      
   def recordNogood(self, nogood, defer=False):
     nogood = list(nogood.literals)
