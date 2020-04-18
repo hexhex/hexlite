@@ -38,9 +38,7 @@ from .clingogroundprogramprinter import GroundProgramPrinter
 # assume that the main program has handled possible import problems
 import clingo
 
-CONFIG_CONSIDER_SKIPPING_EVALUATION_IF_NOGOOD_DETERMINES_TRUTH=True
 CONFIG_ADD_INPUT_OUTPUT_NOGOODS=False
-CONFIG_ENABLE_EATOM_SPECIFIED_NOGOODS=True
 
 class ClaspContext:
   '''
@@ -191,8 +189,9 @@ class EAtomEvaluator(dlvhex.Backend):
 
   This is one object that evaluates all external atoms in the context of a clasp context.
   '''
-  def __init__(self, claspcontext, stats):
+  def __init__(self, config, claspcontext, stats):
     assert(isinstance(claspcontext, ClaspContext))
+    self.config = config
     self.ccontext = claspcontext
     self.stats = stats
     # set of all replacement atom symbols so that we can detect them in nogoods
@@ -369,7 +368,7 @@ class EAtomEvaluator(dlvhex.Backend):
     this method is directly called from the external atom code
     it does not actually add nogoods to the solver but collects them
     '''
-    if not CONFIG_ENABLE_EATOM_SPECIFIED_NOGOODS:
+    if not config.enable_eatom_specified_nogoods:
       logging.info("ignored eatom-specified nogood %s due to configuration", ng)
       return
 
@@ -414,8 +413,8 @@ class EAtomEvaluator(dlvhex.Backend):
 class CachedEAtomEvaluator(EAtomEvaluator):
   counter = 0
 
-  def __init__(self, claspcontext, stats):
-    EAtomEvaluator.__init__(self, claspcontext, stats)
+  def __init__(self, config, claspcontext, stats):
+    EAtomEvaluator.__init__(self, config, claspcontext, stats)
     # cache = defaultdict:
     # key = eatom name
     # value = defaultdict
@@ -532,8 +531,10 @@ class ClingoPropagator:
   class StopPropagation(Exception):
     pass
 
-  def __init__(self, name, pcontext, ccontext, eaeval, partial_evaluation_eatoms):
+  def __init__(self, config, name, pcontext, ccontext, eaeval, partial_evaluation_eatoms):
     self.name = 'ClingoProp('+name+'):'
+    # configuration object
+    self.config = config
     # key = eatom
     # value = list of EAtomVerification
     self.eatomVerifications = collections.defaultdict(list)
@@ -662,7 +663,7 @@ class ClingoPropagator:
               # just skip this verification here
               continue
             if control.assignment.is_true(veri.relevance.lit):
-              if CONFIG_CONSIDER_SKIPPING_EVALUATION_IF_NOGOOD_DETERMINES_TRUTH:
+              if self.config.consider_skipping_evaluation_if_nogood_determines_truth:
                 if self.nogoodConfirmsTruthOfAtom(control, veri):
                   logging.info(name+' no need to verify atom {} (existing nogood)'.format(veri.replacement.sym))
                 else:
@@ -847,15 +848,15 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
     ccontext = ClaspContext()
 
     # preparing evaluator for external atoms which needs to know the clasp context
-    #eaeval = EAtomEvaluator(ccontext)
-    eaeval = CachedEAtomEvaluator(ccontext, pcontext.stats)
+    #eaeval = EAtomEvaluator(config, ccontext)
+    eaeval = CachedEAtomEvaluator(config, ccontext, pcontext.stats)
 
     # find names of external atoms that advertises to do checks on a partial assignment
     partial_evaluation_eatoms = [ eatomname for eatomname, info in dlvhex.eatoms.items() if info.props.provides_partial ]
     # XXX we could filter here to reduce this set or we could decide to do no partial evaluation at all or we could do this differently for FLP checker and Compatible Set finder
     should_do_partial_evaluation_on = partial_evaluation_eatoms
 
-    propagatorFactory = lambda name: ClingoPropagator(name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
+    propagatorFactory = lambda name: ClingoPropagator(config, name, pcontext, ccontext, eaeval, should_do_partial_evaluation_on)
 
     if config.flpcheck == 'explicit':
       flp_checker_factory = flp.ExplicitFLPChecker
