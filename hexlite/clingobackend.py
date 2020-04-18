@@ -578,7 +578,7 @@ class ClingoPropagator:
         self.dbgSym2Solv[x.symbol] = slit
 
     # WONTFIX (near future) implement this current type of check in on_model where we can comfortably add all nogoods immediately
-    # TODO (near future) use partial checks and stay in check()
+    # DONE (near future) use partial checks and stay in check()
     # TODO (far future) create one propagator for each external atom (or even for each external atom literal)
     #                   which watches predicate inputs, relevance, and replacement, and incrementally finds when it should compute
     #                   [then we need to find out which grounded input tuple belongs to which atom, so we might need
@@ -655,13 +655,11 @@ class ClingoPropagator:
       logging.info("%s external atom gave tuple %s as unknown -> cannot verify", name, outputtuple)
       return
 
+    # TODO handle all outputs in outputtuple, not only the one that is relevant to the next line
     realValue = outputtuple in outKnownTrue
-    # TODO now handle all outputs in out!
+
     if realValue == targetValue:
       logging.info("%s verified %s = &%s[%s](%s)", name, targetValue, eatomname, inputtuple, outputtuple)
-      # TODO somehow adding the (redundant) nogood aborts the propagation
-      # this was the case with bb7ab74
-      # benjamin said there is a bug, now i try the WIP branch 83038e
       return
     else:
       # this just means the guess was wrong, this "failure to verify" is not an error!
@@ -671,13 +669,11 @@ class ClingoPropagator:
 
     # build nogood: solution is eliminated if ...
 
-    # XXX make this more elegant (not carry everything twice in nogood and in hr_nogood)
     nogood = self.Nogood()
     hr_nogood = []
 
     # ... all inputs are as they were above ...
     for atom in veri.allinputs:
-      # TODO exclude inputs fixed on the top level?
       value = control.assignment.value(atom.symlit.lit)
       if value == True:
         hr_nogood.append( (atom.symlit.sym,True) )

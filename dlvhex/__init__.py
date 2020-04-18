@@ -199,6 +199,7 @@ class ExternalAtomHolder:
     self.module = module
     self.func = func
     # this will be set by the engine
+    # this is for rewriting
     self.executionHandler = None
 
 _specToString = {
