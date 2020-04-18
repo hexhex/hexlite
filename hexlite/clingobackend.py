@@ -667,12 +667,14 @@ class ClingoPropagator:
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
-    # build nogood: solution is eliminated if ...
+    # TODO: only add nogood if the external atom is not configured to create its own nogoods
+    # (if the external atom creates own nogoods that cut the search space much better than nogoods created here, creating them here would be a waste)
 
+    # build naive input/output nogoods
+    
     nogood = self.Nogood()
     hr_nogood = []
-
-    # ... all inputs are as they were above ...
+    # solution is eliminated if all inputs are as they were above ...
     for atom in veri.allinputs:
       value = control.assignment.value(atom.symlit.lit)
       if value == True:
@@ -689,11 +691,11 @@ class ClingoPropagator:
 
     checklit = None
     if realValue == True:
-      # ... and computation gave true but eatom replacement is false
+      # ... and if computation gave true but eatom replacement is false
       checklit = -veri.replacement.lit
       hr_nogood.append( (veri.replacement.sym,False) )
     else:
-      # ... and computation gave false but eatom replacement is true
+      # ... and if computation gave false but eatom replacement is true
       checklit = veri.replacement.lit
       hr_nogood.append( (veri.replacement.sym,True) )
 
@@ -704,8 +706,10 @@ class ClingoPropagator:
     if logging.getLogger().isEnabledFor(logging.INFO):
       hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
       logging.info("%s CPcheck adding nogood %s", name, hr_nogood_str)
-    self.recordNogood(nogood) # TODO use defer=True or defer=False here?
-
+    # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
+    # and do not waste computing external atoms on a candidate that is for sure not an answer set
+    self.recordNogood(nogood, defer=False)
+     
   def recordNogood(self, nogood, defer=False):
     nogood = list(nogood.literals)
     if __debug__:
