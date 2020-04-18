@@ -193,6 +193,11 @@ class EAtomEvaluator(dlvhex.Backend):
     self.stats = stats
     # keep list of learned nogoods so that we do not add the same one twice
     self.learnedNogoods = set()
+    # set of all replacement atom symbols so that we can detect them in nogoods
+    self.replacementAtoms = set()
+    # key = replacement symbol
+    # value = single EAtomVerification in above lists
+    self.eatomVerificationsByReplacement = {}
     # list of nogoods that still need to be added
     # (in an external atom call, dlvhex.learn() collects nogoods here and adds them later)
     self.nogoodsToAdd = set()
@@ -480,6 +485,11 @@ class ClingoPropagator:
       self.allinputs = []
       # whether this should be verified on partial assignments
       self.verify_on_partial = verify_on_partial
+      # nogoods that are relevant for this verification:
+      # (nogoods for falsity, nogoods for truth)
+      # nogoods for falsity contain positive replacement literal
+      # nogoods for truth contain negative replacement literal
+      self.nogoods = (set(), set())
 
   class Nogood:
     def __init__(self):
@@ -516,6 +526,9 @@ class ClingoPropagator:
     self.partial_evaluation_eatoms = partial_evaluation_eatoms
     # list of nogoods to add
     self.nogoodsToAdd = []
+    # verification that is currently verified using an external atom call
+    # this is used to handle learned nogoods
+    self.currentVerification = None
 
   def init(self, init):
     name = self.name+'init:'
@@ -554,6 +567,8 @@ class ClingoPropagator:
 
           verification.allinputs = frozenset(hexlite.flatten([idlist for idlist in verification.predinputs.values()]))
           self.eatomVerifications[eatomname].append(verification)
+          self.eaeval.eatomVerificationsByReplacement[replacement.sym] = verification
+          self.eaeval.replacementAtoms.add(replacement.sym)
       if found_this_eatomname:
         # this eatom is used at least once in the search
         if eatomname in self.partial_evaluation_eatoms:
@@ -647,8 +662,12 @@ class ClingoPropagator:
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
     logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
-    outKnownTrue, outUnknown = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
-    logging.debug(name+" outputtuple {} outTrue {} outUnknown {}".format(pprint.pformat(outputtuple), pprint.pformat(outKnownTrue), pprint.pformat(outUnknown)))
+    self.currentVerification = veri
+    try:
+      outKnownTrue, outUnknown = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
+    finally:
+      self.currentVerification = None
+    logging.debug(name+" outputtuple {} outTrue {} outUnknown {} targetValue of {} = {}".format(repr(outputtuple), repr(outKnownTrue), repr(outUnknown), str(veri.replacement.sym), targetValue))
 
     if outputtuple in outUnknown:
       # cannot verify
