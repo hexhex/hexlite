@@ -325,6 +325,8 @@ class EAtomEvaluator(dlvhex.Backend):
     match_args = [t.symlit.sym for t in itertools.chain(dlvhex.currentEvaluation().inputTuple, args)]
     #print("looking up {}".format(repr(match_args)))
     # find those verification objects that contain the tuple to be stored
+    # XXX maybe first use self.ccontext.propagator.currentVerification as a possible shortcut
+    # (works if the external atom creates nogood for the output tuple of the verification where it was called)
     for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name]:
       #print("comparing {}".format(repr(x.replacement.sym.arguments)))
       if x.replacement.sym.arguments == match_args:
