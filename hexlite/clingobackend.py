@@ -365,7 +365,8 @@ class EAtomEvaluator(dlvhex.Backend):
     this method is directly called from the external atom code
     it does not actually add nogoods to the solver but collects them
     '''
-    logging.info("learning user-specified nogood %s", ng)
+
+    logging.info("learning eatom-specified nogood %s", ng)
     assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
 
     # convert and validate
@@ -383,7 +384,7 @@ class EAtomEvaluator(dlvhex.Backend):
       logging.warning("learn() obtained nogood %s which does not contain replacement atoms (storeOutputAtom) - this might be a mistake - ignoring", ng)
       return
     else:
-      logging.info("identified replacementAtomSymLit %s", replacementAtomSymLit)
+      logging.debug("identified replacementAtomSymLit %s", replacementAtomSymLit)
 
     # analyze the nogood and check if it exists in learned nogoods
     # if yes, just return and do not learn it
@@ -398,7 +399,7 @@ class EAtomEvaluator(dlvhex.Backend):
 
     # add to known nogoods
     veri.nogoods[idx].add(inogood)
-    logging.info("learn() adds [%d] nogood %s / %s", idx, inogood, ng)
+    logging.debug("learn() adds [%d] nogood %s / %s", idx, inogood, ng)
 
     # record as nogood to be added
     self.ccontext.propagator.recordNogood(nogood, defer=True)
@@ -669,16 +670,16 @@ class ClingoPropagator:
     logging.info(self.name+' leaving check() propagator')
   
   def nogoodConfirmsTruthOfAtom(self, control, veri):
-    logging.info("checking if %s is confirmed by previously learned nogoods", veri.replacement)
+    #logging.info("checking if %s is confirmed by previously learned nogoods", veri.replacement)
     target = 1 if control.assignment.is_true(veri.replacement.lit) else 0
     ngset = veri.nogoods[target]
     logging.debug("  nogood set %s", ngset)
     for nogood in ngset:
-      logging.info("  checking nogood %s", nogood)
+      #logging.info("  checking nogood %s", nogood)
       if all([ control.assignment.is_true(l) for l in nogood if l > 0 ]) and \
           all([ control.assignment.is_false(-l) for l in nogood if l < 0 ]):
           # this nogood fires!
-          logging.info("previously learned nogood %s decides truth %d of atom!", nogood, bool(idx))
+          logging.debug("previously learned nogood %s decides truth %d of atom!", nogood, bool(idx))
           return True
     return False
 
