@@ -191,8 +191,6 @@ class EAtomEvaluator(dlvhex.Backend):
     assert(isinstance(claspcontext, ClaspContext))
     self.ccontext = claspcontext
     self.stats = stats
-    # keep list of learned nogoods so that we do not add the same one twice
-    self.learnedNogoods = set()
     # set of all replacement atom symbols so that we can detect them in nogoods
     self.replacementAtoms = set()
     # key = replacement symbol
@@ -365,26 +363,43 @@ class EAtomEvaluator(dlvhex.Backend):
     this method is directly called from the external atom code
     it does not actually add nogoods to the solver but collects them
     '''
-    if __debug__:
-      logging.debug("learning user-specified nogood "+repr(ng))
+    logging.info("learning user-specified nogood %s", ng)
     assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
-    ng = tuple(ng) # make sure it is hashable
-    if ng in self.learnedNogoods:
-      logging.info("learn() skips adding known nogood")
+
+    # convert and validate
+    nogood = self.ccontext.propagator.Nogood()
+    replacementAtomSymLit = None
+    for clingoid in ng:
+      if clingoid.symlit.sym in self.replacementAtoms:
+        replacementAtomSymLit = clingoid.symlit
+      if not nogood.add(clingoid.symlit.lit):
+        logging.debug("cannot build nogood (opposite literals)!")
+        return
+
+    if replacementAtomSymLit is None:
+      # we intend nogoods to only specify truth of replacement atoms = truth of external atom evaluations
+      logging.warning("learn() obtained nogood %s which does not contain replacement atoms (storeOutputAtom) - this might be a mistake - ignoring", ng)
+      return
     else:
-      # record as learned
-      self.learnedNogoods.add(ng)
+      logging.info("identified replacementAtomSymLit %s", replacementAtomSymLit)
 
-      # convert and validate
-      nogood = self.ccontext.propagator.Nogood()
-      for clingoid in ng:
-        if not nogood.add(clingoid.symlit.lit):
-          logging.debug("cannot build nogood (opposite literals)!")
-          return
-      logging.info("learn() adds nogood %s", repr(nogood.literals))
+    # analyze the nogood and check if it exists in learned nogoods
+    # if yes, just return and do not learn it
+    # if no, add it and schedule to add it in the solver
+    veri = self.eatomVerificationsByReplacement[replacementAtomSymLit.sym]
+    idx = 1 if replacementAtomSymLit.lit < 0 else 0 # negative -> truth of external atom (see __init__ / self.nogoods)
 
-      # record as nogood to be added
-      self.ccontext.propagator.recordNogood(nogood, defer=True)
+    inogood = tuple(nogood.literals)
+    if inogood in veri.nogoods[idx]:
+      logging.info("learn() skips adding known nogood")
+      return
+
+    # add to known nogoods
+    veri.nogoods[idx].add(inogood)
+    logging.info("learn() adds [%d] nogood %s / %s", idx, inogood, ng)
+
+    # record as nogood to be added
+    self.ccontext.propagator.recordNogood(nogood, defer=True)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
   counter = 0
