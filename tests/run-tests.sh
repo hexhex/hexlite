@@ -82,6 +82,7 @@ echo "DLVHEX=${BASEDLVHEX/!/\\!}"
 
 for t in ${TESTS};
 do
+  echo "== suite $t =="
   # "read" assigns first word to first variable,
   # second word to second variable,
   # and all remaining words to the last variable
