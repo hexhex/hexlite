@@ -21,6 +21,7 @@ The system is currently under development and only works for certain programs:
 * If it has a finite grounding, it will terminate, otherwise, it will not - as usual with Gringo
 * FLP Check is implemented explicitly and does not work with strong negation and weak constraints
 * FLP Check can be deactivated
+* There is a Java Plugin API (see below)
 
 The system is described in the following publication.
 
@@ -87,6 +88,14 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   * Ubuntu 16.04 is tested
   * Debian 8.6 (jessie) is tested
   * Ubuntu 14.04 can not work without manual installation of cmake 3.1 or higher (for buildling clingo)
+
+* Using the Java API
+
+  Building the JAVA API is not automated, you need to install `Jpype >=0.7.2` and `ant` and `maven` and run
+
+  ```mvn clean compile package install```
+
+  See also `.travis.yml` how to build and install and test the Java plugin.
 
 * Using the Docker image
 

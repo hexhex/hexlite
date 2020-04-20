@@ -23,6 +23,7 @@ setuptools.setup(name='hexlite',
       classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Java',
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',
