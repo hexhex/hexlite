@@ -367,7 +367,7 @@ class EAtomEvaluator(dlvhex.Backend):
     this method is directly called from the external atom code
     it does not actually add nogoods to the solver but collects them
     '''
-    if not config.enable_eatom_specified_nogoods:
+    if not self.config.enable_eatom_specified_nogoods:
       logging.info("ignored eatom-specified nogood %s due to configuration", ng)
       return
 
