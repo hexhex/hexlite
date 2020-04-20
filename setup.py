@@ -20,6 +20,7 @@ setuptools.setup(name='hexlite',
       version='1.1.0',
       description='Hexlite - Solver for a fragment of HEX',
       long_description=readme_txt,
+      long_description_content_type='text/markdown',
       classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3',

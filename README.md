@@ -185,7 +185,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
 	* Verify that dist/ contains the right archives with the right content (no wheels etc.)
 
-	* Upload to pypi
+	* Upload to pypi (the twine in Ubuntu 18.04 does not work, you must install via `pip3 install twine`)
 
     `$ twine upload dist/*`
 
@@ -195,7 +195,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   
     First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
 
-    `$ conda build .`
+    `$ conda build . -c potassco`
 
     (get upload command from last lines of output)
 
@@ -203,7 +203,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
     You can make it work by creating a new directory on an unencrypted `/tmp/`, for example `/tmp/conda-build`,
     and run conda build as follows:
 
-    `$ conda build --croot /tmp/conda-build/ .`
+    `$ conda build --croot /tmp/conda-build/ .  -c potassco`
 
   * Verify that archive to upload contains the right content (and no backup files, experimental results, etc...)
 
