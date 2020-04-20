@@ -28,7 +28,7 @@ The system is described in the following publication.
 
 In case of bugs please report an issue here: https://github.com/hexhex/hexlite/issues
 
-* License: GPL (3.0)
+* License: MIT
 * Author: Peter Schüller <schueller.p@gmail.com>
 * Available at PyPi: https://pypi.python.org/pypi/hexlite
 * Installation with Conda:
