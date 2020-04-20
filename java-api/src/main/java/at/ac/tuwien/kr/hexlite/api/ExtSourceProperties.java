@@ -5,6 +5,15 @@ public class ExtSourceProperties {
 
     public ExtSourceProperties() {
         providesPartialAnswer = false;
+        doInputOutputLearning = true;
+    }
+
+    public void setDoInputOutputLearning(boolean b) {
+        doInputOutputLearning = b;
+    }
+
+    public boolean getDoInputOutputLearning() {
+        return doInputOutputLearning;
     }
 
     public void setProvidesPartialAnswer(boolean b) {

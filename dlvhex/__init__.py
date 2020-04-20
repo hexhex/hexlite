@@ -29,10 +29,16 @@ TUPLE = 3
 class ExtSourceProperties:
   def __init__(self):
     self.provides_partial = False
+    self.doInputOutputLearning = True
   def setProvidesPartialAnswer(self, provides_partial):
     self.provides_partial = provides_partial
   def addFiniteOutputDomain(self, argidx):
     pass
+
+  def setDoInputOutputLearning(self, doInputOutputLearning):
+    # True = add nogood for input/output behavior of external atom
+    # set this to False if the external atom creates own nogoods that cut the search space much better than naive nogoods created in hexlite
+    self.doInputOutputLearning = doInputOutputLearning
   def __getattr__(self, name):
     class Generic:
       def __init__(self, name):

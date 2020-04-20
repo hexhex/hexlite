@@ -39,7 +39,6 @@ from .clingogroundprogramprinter import GroundProgramPrinter
 import clingo
 
 CONFIG_CONSIDER_SKIPPING_EVALUATION_IF_NOGOOD_DETERMINES_TRUTH=True
-CONFIG_ADD_INPUT_OUTPUT_NOGOODS=False
 CONFIG_ENABLE_EATOM_SPECIFIED_NOGOODS=True
 
 class ClaspContext:
@@ -735,10 +734,7 @@ class ClingoPropagator:
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
-    if CONFIG_ADD_INPUT_OUTPUT_NOGOODS:
-      # TODO: only add nogood if the external atom is not configured to create its own nogoods
-      # (if the external atom creates own nogoods that cut the search space much better than nogoods created here, creating them here would be a waste)
-
+    if holder.props.doInputOutputLearning:
       # build naive input/output nogoods
       
       nogood = self.Nogood()

@@ -45,6 +45,7 @@ def convertExtSourceProperties(jesp):
 	# convert only those parts that are implemented in hexlite
 	ret = dlvhex.ExtSourceProperties()
 	ret.setProvidesPartialAnswer(jesp.getProvidesPartialAnswer())
+	ret.setDoInputOutputLearning(jesp.getDoInputOutputLearning())
 	return ret
 
 def convertInputArguments(jinputarguments):
