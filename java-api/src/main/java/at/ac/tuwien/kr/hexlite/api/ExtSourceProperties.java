@@ -2,6 +2,7 @@ package at.ac.tuwien.kr.hexlite.api;
 
 public class ExtSourceProperties {
     protected boolean providesPartialAnswer;
+    protected boolean doInputOutputLearning;
 
     public ExtSourceProperties() {
         providesPartialAnswer = false;
