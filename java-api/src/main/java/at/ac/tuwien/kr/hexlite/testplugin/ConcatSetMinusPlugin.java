@@ -11,6 +11,7 @@ import at.ac.tuwien.kr.hexlite.api.ExtSourceProperties;
 import at.ac.tuwien.kr.hexlite.api.IPlugin;
 import at.ac.tuwien.kr.hexlite.api.IPluginAtom;
 import at.ac.tuwien.kr.hexlite.api.ISolverContext;
+import at.ac.tuwien.kr.hexlite.api.ISolverContext.StoreAtomException;
 import at.ac.tuwien.kr.hexlite.api.ISymbol;
 
 public class ConcatSetMinusPlugin implements IPlugin {
@@ -226,26 +227,30 @@ public class ConcatSetMinusPlugin implements IPlugin {
                 if( x.size() != 1 )
                     System.err.println("obtained tuple of unexpected size "+x.size()+" (!=1) '"+x.toString()+"' in testSetMinusLearn");
                 if( !setq.contains(x) ) {
-                    // learn that it is not allowed that p(x) and -q(x) and this atom is false for x
-                    final HashSet<ISymbol> nogood = new HashSet<ISymbol>();
+                    try {
+                        // learn that it is not allowed that p(x) and -q(x) and this atom is false for x
+                        final HashSet<ISymbol> nogood = new HashSet<ISymbol>();
 
-                    // p(x)
-                    final ArrayList<ISymbol> setp_tuple = new ArrayList<ISymbol>();
-                    setp_tuple.add(predp);
-                    setp_tuple.add(x.get(0));
-                    nogood.add(ctx.storeAtom(setp_tuple));
+                        // p(x)
+                        final ArrayList<ISymbol> setp_tuple = new ArrayList<ISymbol>();
+                        setp_tuple.add(predp);
+                        setp_tuple.add(x.get(0));
+                        nogood.add(ctx.storeAtom(setp_tuple));
 
-                    // q(x)
-                    final ArrayList<ISymbol> setq_tuple = new ArrayList<ISymbol>();
-                    setq_tuple.add(predq);
-                    setq_tuple.add(x.get(0));
-                    nogood.add(ctx.storeAtom(setq_tuple).negate());
+                        // q(x)
+                        final ArrayList<ISymbol> setq_tuple = new ArrayList<ISymbol>();
+                        setq_tuple.add(predq);
+                        setq_tuple.add(x.get(0));
+                        nogood.add(ctx.storeAtom(setq_tuple).negate());
 
-                    // testSetMinus[p,q](x)
-                    nogood.add(ctx.storeOutputAtom(x).negate());
+                        // testSetMinus[p,q](x)
+                        nogood.add(ctx.storeOutputAtom(x).negate());
 
-                    //System.out.println("  learning nogood "+nogood.toString());
-                    ctx.learn(nogood);
+                        //System.out.println("  learning nogood "+nogood.toString());
+                        ctx.learn(nogood);
+                    } catch(StoreAtomException e) {
+                        // ignore
+                    }
 
                     //System.out.println("  giving output  "+x.toString());
                     result.add(x);

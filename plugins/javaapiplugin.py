@@ -31,6 +31,7 @@ def logJavaExceptionWithStacktrace(ex):
 # this loads the hexlite-API-specific classes (from hexlite-java-plugin-api-XYZ.jar)
 IPluginAtom = JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
 ISolverContext = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext")
+StoreAtomException = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext.StoreAtomException")
 IInterpretation = JClass("at.ac.tuwien.kr.hexlite.api.IInterpretation")
 ISymbol = JClass("at.ac.tuwien.kr.hexlite.api.ISymbol")
 
@@ -202,9 +203,12 @@ class JavaSolverContextImpl:
 		#logging.info("jsci.storeOutputAtom %s", otuple)
 		s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
 		#logging.info(" got symbol %s", s)
-		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
-		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(r), type(r))
-		return r
+		if s is None:
+			raise StoreAtomException("cannot store output atom (does not exist in solver)")
+		r = JavaSymbolImpl(s)
+		ret = jpype.JObject(r, ISymbol)
+		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(ret), type(ret))
+		return ret
 
 	@jpype.JOverride
 	def storeAtom(self, tuple_):
@@ -212,9 +216,12 @@ class JavaSolverContextImpl:
 		#logging.info("jsci.storeAtom %s", tuple_)
 		s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
 		#logging.info(" got symbol %s", s)
-		r = jpype.JObject(JavaSymbolImpl(s), ISymbol)
-		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(r), type(r))
-		return r
+		if s is None:
+			raise StoreAtomException("cannot store output atom (does not exist in solver)")
+		r = JavaSymbolImpl(s)
+		ret = jpype.JObject(r, ISymbol)
+		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(ret), type(ret))
+		return ret
 
 	@jpype.JOverride
 	def storeConstant(self, s):
