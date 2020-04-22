@@ -359,7 +359,7 @@ class EAtomEvaluator(dlvhex.Backend):
     return ClingoID(self.ccontext, SymLit(clingo.Number(i), None))
 
   def storeParseable(self, p: str):
-    logging.error("storeParseable: test me!")
+    logging.info("storeParseable: create testcase for me!")
     return ClingoID(self.ccontext, SymLit(clingo.parse_term(p), None))
 
   # implementation of Backend method
