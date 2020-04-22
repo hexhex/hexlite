@@ -324,18 +324,20 @@ class EAtomEvaluator(dlvhex.Backend):
     #logging.debug("got dlvhex.currentEvaluation().holder.name {}".format(dlvhex.currentEvaluation().holder.name))
     #logging.debug("got self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name] {}".format(repr([ x.replacement.sym for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name]])))
 
-    match_args = [t.symlit.sym for t in itertools.chain(dlvhex.currentEvaluation().inputTuple, args)]
+    eatomname = dlvhex.currentEvaluation().holder.name
+    inputtuple = dlvhex.currentEvaluation().inputTuple
+    match_args = [t.symlit.sym for t in itertools.chain(inputtuple, args)]
     #print("looking up {}".format(repr(match_args)))
     # find those verification objects that contain the tuple to be stored
     # XXX maybe first use self.ccontext.propagator.currentVerification as a possible shortcut
     # (works if the external atom creates nogood for the output tuple of the verification where it was called)
-    for x in self.ccontext.propagator.eatomVerifications[dlvhex.currentEvaluation().holder.name]:
+    for x in self.ccontext.propagator.eatomVerifications[eatomname]:
       #print("comparing {}".format(repr(x.replacement.sym.arguments)))
       if x.replacement.sym.arguments == match_args:
         #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
         return ClingoID(self.ccontext, x.replacement)
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
-    logging.warning("did not find literal to return in storeOutputAtom for {} will return None".format(repr(args)))
+    logging.warning("did not find literal to return in storeOutputAtom for &{}[{}]({}) will return None".format(eatomname, inputtuple, repr(args)))
     return None
 
   def storeConstant(self, s: str):
