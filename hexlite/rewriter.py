@@ -429,9 +429,9 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
     else:
       while len(pendingEatoms) > 0:
         #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
-        logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
+        #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
         safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
-        logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
+        #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
         pendingEatoms.remove(safeEatm)
         handler = self.getExecutionHandler(safeEatm)
         safeConditions = self.findSafeConditions(self.statement[1], safeVars)
@@ -588,14 +588,11 @@ class StatementRewriterWeakCstr(StatementRewriterRuleCstr):
         #logging.debug('SRRC pendingEatoms='+pprint.pformat(pendingEatoms))
         #logging.debug('SRRC safeVars='+pprint.pformat(safeVars))
         safeEatm, makesSafe = self.pickSafeExternalAtom(pendingEatoms, safeVars)
-        pendingEatoms.remove(safeEatm)
         #logging.debug('SRRC safeEatm='+pprint.pformat(safeEatm))
-        eatomname = safeEatm['eatom'][0][1:]
-        if eatomname not in dlvhex.eatoms:
-          raise Exception('could not find handler for external atom {}'.format(
-            shp.shallowprint(safeEatm['shallow'])))
-        handler = dlvhex.eatoms[eatomname].executionHandler
-        resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars)
+        pendingEatoms.remove(safeEatm)
+        handler = self.getExecutionHandler(safeEatm)
+        safeConditions = self.findSafeConditions(self.statement[1], safeVars)
+        resultRules = handler.transformEAtomInStatement(safeEatm, self.statement, safeVars, safeConditions)
         for r in resultRules:
           self.pr.addRewrittenRule(self.decorateWeak(r, safeVars))
         safeVars |= makesSafe
