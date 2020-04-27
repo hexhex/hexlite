@@ -734,50 +734,54 @@ class ClingoPropagator:
     else:
       # this just means the guess was wrong, this "failure to verify" is not an error!
       logging.info("%s failed %s = &%s[%s](%s)", name, targetValue, eatomname, inputtuple, outputtuple)
+
     # add clause that ensures this value is always chosen correctly in the future
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
-    if holder.props.doInputOutputLearning:
-      # build naive input/output nogoods
-      
-      nogood = self.Nogood()
-      hr_nogood = []
-      # solution is eliminated if all inputs are as they were above ...
-      for atom in veri.allinputs:
-        value = control.assignment.value(atom.symlit.lit)
-        if value == True:
-          hr_nogood.append( (atom.symlit.sym,True) )
-          if not nogood.add(atom.symlit.lit):
-            logging.debug(name+" cannot build nogood (opposite literals)!")
-            return
-        elif value == False:
-          hr_nogood.append( (atom.symlit.sym,False) )
-          if not nogood.add(-atom.symlit.lit):
-            logging.debug(name+" cannot build nogood (opposite literals)!")
-            return
-        # None case does not contribute to nogood
+    if not holder.props.doInputOutputLearning:
+      logging.info("%s not performing input/output learning due to configuration", name)
+      return
 
-      checklit = None
-      if realValue == True:
-        # ... and if computation gave true but eatom replacement is false
-        checklit = -veri.replacement.lit
-        hr_nogood.append( (veri.replacement.sym,False) )
-      else:
-        # ... and if computation gave false but eatom replacement is true
-        checklit = veri.replacement.lit
-        hr_nogood.append( (veri.replacement.sym,True) )
+    # build naive input/output nogoods
+    
+    nogood = self.Nogood()
+    hr_nogood = []
+    # solution is eliminated if all inputs are as they were above ...
+    for atom in veri.allinputs:
+      value = control.assignment.value(atom.symlit.lit)
+      if value == True:
+        hr_nogood.append( (atom.symlit.sym,True) )
+        if not nogood.add(atom.symlit.lit):
+          logging.debug(name+" cannot build nogood (opposite literals)!")
+          return
+      elif value == False:
+        hr_nogood.append( (atom.symlit.sym,False) )
+        if not nogood.add(-atom.symlit.lit):
+          logging.debug(name+" cannot build nogood (opposite literals)!")
+          return
+      # None case does not contribute to nogood
 
-      if not nogood.add(checklit):
-        logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
-        return
+    checklit = None
+    if realValue == True:
+      # ... and if computation gave true but eatom replacement is false
+      checklit = -veri.replacement.lit
+      hr_nogood.append( (veri.replacement.sym,False) )
+    else:
+      # ... and if computation gave false but eatom replacement is true
+      checklit = veri.replacement.lit
+      hr_nogood.append( (veri.replacement.sym,True) )
 
-      if logging.getLogger().isEnabledFor(logging.INFO):
-        hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
-        logging.info("%s CPcheck adding input/output nogood %s", name, hr_nogood_str)
-      # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
-      # and do not waste computing external atoms on a candidate that is for sure not an answer set
-      self.recordNogood(nogood, defer=False)
-     
+    if not nogood.add(checklit):
+      logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
+      return
+
+    if logging.getLogger().isEnabledFor(logging.INFO):
+      hr_nogood_str = repr([ {True:'',False:'-'}[sign]+str(x) for x, sign in hr_nogood ])
+      logging.info("%s CPcheck adding input/output nogood %s", name, hr_nogood_str)
+    # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
+    # and do not waste computing external atoms on a candidate that is for sure not an answer set
+    self.recordNogood(nogood, defer=False)
+
   def recordNogood(self, nogood, defer=False):
     nogood = list(nogood.literals)
     if __debug__:
@@ -814,6 +818,7 @@ class ClingoPropagator:
       logging.debug(name+" {}, may_continue={}".format(repr(nogood), repr(may_continue)))
     if may_continue == False:
       raise ClingoPropagator.StopPropagation()
+
 
 class ClingoModel(dlvhex.Model):
   '''
