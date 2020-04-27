@@ -283,6 +283,9 @@ class JavaPluginCallWrapper:
 			#logging.debug("retrieved")
 			tt = janswer.getTrueTuples()
 			#logging.info("true tuples")
+			if __debug__:
+				# sort for reproducable runs (java hashing is not stable across runs)
+				tt = sorted(tt, key=lambda t: t.toString())
 			for t in tt:
 				logging.debug("true tuple = %s %s", repr(t), t.toString())
 				for idx, elem in enumerate(t):				
