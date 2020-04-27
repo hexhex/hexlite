@@ -689,7 +689,7 @@ class ClingoPropagator:
     #logging.info("checking if %s is confirmed by previously learned nogoods", veri.replacement)
     target = 1 if control.assignment.is_true(veri.replacement.lit) else 0
     ngset = veri.nogoods[target]
-    logging.debug("  nogood set %s", ngset)
+    logging.debug("  previously recorded atom-specified nogoods: %s", ngset)
     for nogood in ngset:
       #logging.info("  checking nogood %s", nogood)
       if all([ control.assignment.is_true(l) for l in nogood if l > 0 ]) and \
