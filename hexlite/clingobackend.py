@@ -664,6 +664,7 @@ class ClingoPropagator:
               # just skip this verification here
               continue
             if control.assignment.is_true(veri.relevance.lit):
+              logging.info(name+' relevance of {} is true'.format(veri.replacement.sym))
               if self.config.consider_skipping_evaluation_if_nogood_determines_truth:
                 if self.nogoodConfirmsTruthOfAtom(control, veri):
                   logging.info(name+' no need to verify atom {} (existing nogood)'.format(veri.replacement.sym))
@@ -704,7 +705,7 @@ class ClingoPropagator:
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
       idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
-      logging.debug(name+' checking if {} = {} with interpretation {} ({})'.format(
+      logging.info(name+' checking if {} = {} with interpretation {} ({})'.format(
         str(targetValue), veri.replacement.sym, idebug,
         {True:'total', False:'partial'}[control.assignment.is_total]))
     holder = dlvhex.eatoms[eatomname]
@@ -712,7 +713,7 @@ class ClingoPropagator:
     replargs = veri.replacement.sym.arguments
     inputtuple = tuple(replargs[0:len(replargs)-holder.outnum])
     outputtuple = tuple(replargs[len(replargs)-holder.outnum:len(replargs)])
-    logging.debug(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
+    logging.info(name+' inputtuple {} outputtuple {}'.format(repr(inputtuple), repr(outputtuple)))
     self.currentVerification = veri
     try:
       outKnownTrue, outUnknown = self.eaeval.evaluate(holder, inputtuple, veri.allinputs)
