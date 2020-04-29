@@ -652,7 +652,7 @@ class ClingoPropagator:
       if len(true) > 0: logging.debug(name+" assignment has true slits "+' '.join(true))
       if len(false) > 0: logging.debug(name+" assignment has false slits "+' '.join(false))
       if len(unassigned) > 0: logging.debug(name+" assignment has unassigned slits "+' '.join(unassigned))
-      logging.info(name+"assignment is "+' '.join([ str(x[0]) for x in self.dbgSym2Solv.items() if control.assignment.is_true(x[1]) ]))
+      logging.debug(name+"assignment is "+' '.join([ str(x[0]) for x in self.dbgSym2Solv.items() if control.assignment.is_true(x[1]) ]))
     partial_evaluation = not control.assignment.is_total
     with self.ccontext(control, self):
       try:
