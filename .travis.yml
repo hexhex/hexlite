@@ -19,7 +19,7 @@ install:
   - conda install -c potassco clingo
   # conda packages for java plugin api
   - conda install ant
-  - conda install -c conda-forge jpype1
+  - conda install -c conda-forge jpype1=0.7.3
   # setup of hexlite
   - python setup.py develop --user
   # setup of java api
