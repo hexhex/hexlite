@@ -1,0 +1,1 @@
+{bee(foo(bar(b),baz)),bee(foo(bar(a),baz)),bee(foo(bar(c),baz)),boo(a),boo(c),boo(b)}
