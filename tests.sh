@@ -6,7 +6,10 @@
 # generic
 
 if /bin/true; then
-  for WHAT in ./tests/inputs/extatom2.hex ./tests/inputs/extatom10.hex; do
+  # ./tests/inputs/extatom2.hex
+  # ./tests/inputs/extatom10.hex;
+  # ./tests/inputs/store_parseable_1.hex
+  for WHAT in ./tests/inputs/store_parseable_1.hex; do
     echo "=== $WHAT python"
     EXTRA="--verbose"
     EXTRA=""

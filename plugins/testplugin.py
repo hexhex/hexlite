@@ -389,6 +389,11 @@ def issue_2_num(a):
 			n += 1
 	dlvhex.output((n, ))
 
+def testStoreParseable(term):
+	newterm = "foo(bar({}),baz)".format(term.value())
+	dlvhex.output( (dlvhex.storeParseable(newterm),) )
+
+
 def register(arguments=None):
 	if arguments == ['foo', '3']:
 		sys.stdout.write("testplugin loaded with arguments %s" % str(arguments))
@@ -480,9 +485,11 @@ def register(arguments=None):
 
 	dlvhex.addAtom("rdf", (dlvhex.CONSTANT,), 3)
 
-	dlvhex.addAtom("issue_2_num", (dlvhex.PREDICATE, ), 1)
+	dlvhex.addAtom("issue_2_num", (dlvhex.PREDICATE,), 1)
 
 	dlvhex.addAtom("testArity1OneTupleA", (), 1)
 	dlvhex.addAtom("testArity1OneTupleB", (), 1)
 	dlvhex.addAtom("testArity1TwoTuples", (), 1)
+
+	dlvhex.addAtom("testStoreParseable", (dlvhex.CONSTANT,), 1)
 # vim:list:noet:

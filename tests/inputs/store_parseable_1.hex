@@ -1,0 +1,7 @@
+
+boo(a;b;c).
+
+bee(X) :- &testStoreParseable[Y](X), boo(Y).
+
+% require each T sent into &testStoreParseable to come back as bee(foo(bar(T),baz))
+:- boo(Z), not bee(foo(bar(Z),baz)).
