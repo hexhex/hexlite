@@ -5,7 +5,7 @@
 
 # generic
 
-if /bin/true; then
+if /bin/false; then
   # ./tests/inputs/extatom2.hex
   # ./tests/inputs/extatom10.hex;
   # ./tests/inputs/store_parseable_1.hex
@@ -29,7 +29,7 @@ if /bin/true; then
   PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi2Plugin
   PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi3Plugin
   PLUGIN=at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
-  for WHAT in ./tests/inputs/nonmon_guess.hex; do
+  for WHAT in ./tests/inputs/nonmon_guess.hex ./tests/inputs/nonmon_inc.hex ./tests/inputs/nonmon_guess.hex ./tests/inputs/nonmon_inc.hex ; do
     echo "=== $WHAT java"
     EXTRA="--verbose --debug"
     EXTRA="--verbose"
@@ -43,7 +43,7 @@ if /bin/true; then
 fi
 
 # for acthex development
-if /bin/true; then
+if /bin/false; then
   echo "+++++"
 
   WHAT="./tests/inputs/acthex_bubblesort_sortenv.hex"
