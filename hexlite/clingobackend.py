@@ -739,10 +739,12 @@ class ClingoPropagator:
     # clause contains veri.relevance.lit, veri.replacement.lit and negation of all atoms in
 
     if not holder.props.doInputOutputLearning:
+      # this breaks the search if the external atom does not provide at least one nogood that declares this answer set invalid!
       logging.info("%s not performing input/output learning due to configuration", name)
       return
 
-    # build naive input/output nogoods
+    # build naive input/output nogood
+    # this invalidates the current answer set candidate
     
     nogood = self.Nogood()
     hr_nogood = []
@@ -752,12 +754,12 @@ class ClingoPropagator:
       if value == True:
         hr_nogood.append( (atom.symlit.sym,True) )
         if not nogood.add(atom.symlit.lit):
-          logging.debug(name+" cannot build nogood (opposite literals)!")
+          logging.warning(name+" cannot build nogood (opposite literals)!")
           return
       elif value == False:
         hr_nogood.append( (atom.symlit.sym,False) )
         if not nogood.add(-atom.symlit.lit):
-          logging.debug(name+" cannot build nogood (opposite literals)!")
+          logging.warning(name+" cannot build nogood (opposite literals)!")
           return
       # None case does not contribute to nogood
 
@@ -772,7 +774,7 @@ class ClingoPropagator:
       hr_nogood.append( (veri.replacement.sym,True) )
 
     if not nogood.add(checklit):
-      logging.debug(self.name+"CPvTOA cannot build nogood (opposite literals)!")
+      logging.warning(self.name+"CPvTOA cannot build nogood (opposite literals)!")
       return
 
     if logging.getLogger().isEnabledFor(logging.INFO):
@@ -780,9 +782,10 @@ class ClingoPropagator:
       logging.info("%s CPcheck adding input/output nogood %s", name, hr_nogood_str)
     # defer=False to make sure that we abort investigating this answer set candidate as soon as possible
     # and do not waste computing external atoms on a candidate that is for sure not an answer set
-    self.recordNogood(nogood, defer=False)
+    # lock=False to permit the solver to delete the nogood later (these nogoods only serve to invalidate the current result)
+    self.recordNogood(nogood, defer=False, lock=False)
 
-  def recordNogood(self, nogood, defer=False):
+  def recordNogood(self, nogood, defer=False, lock=True):
     nogood = list(nogood.literals)
     if __debug__:
       name = self.name+'recordNogood:'
@@ -795,7 +798,7 @@ class ClingoPropagator:
       self.nogoodsToAdd.append(nogood)
     else:
       # add (potentially raises StopPropagation)
-      self.addNogood(nogood)
+      self.addNogood(nogood, lock)
 
   def addPendingNogoodsOrThrow(self):
     '''
@@ -808,9 +811,9 @@ class ClingoPropagator:
       ng = self.nogoodsToAdd.pop(0)
       self.addNogood(ng)
 
-  def addNogood(self, nogood):
+  def addNogood(self, nogood, lock=True):
     # low-level add of nogood and abort of propagation if required
-    may_continue = self.ccontext.propcontrol.add_nogood(nogood, tag=False, lock=True)
+    may_continue = self.ccontext.propcontrol.add_nogood(nogood, tag=False, lock=lock)
     if may_continue:
       may_continue = self.ccontext.propcontrol.propagate()
     if __debug__:
