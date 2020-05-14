@@ -26,6 +26,15 @@ CONSTANT = 1
 PREDICATE = 2
 TUPLE = 3
 
+class StoreAtomException(Exception):
+  '''
+  this exception is thrown if storeAtom(...) and similar are called for symbols that do not exist in the solver
+
+  (nogoods that should contain these atoms can not, must not, and need not be learned)
+  '''
+  def __init__(self, msg):
+    super().__init__(msg)
+
 class ExtSourceProperties:
   def __init__(self):
     self.provides_partial = False
@@ -77,13 +86,13 @@ def learn(nogood):
 def storeAtom(tpl):
   # build an atom specified in a tuple and retrieves its existing ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
-  # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
+  # WARNING if we do not find in the backend we throw StoreAtomException
   return currentEvaluation().backend.storeAtom(tpl)
 
 def storeOutputAtom(args, sign=True):
   # build a replacement atom for the currently called external atom with the given tuple as arguments and retrieves its ID or registers a new atom (and ID)
   # WARNING hexlite will not extend the theory during search so we will just lookup in the backend
-  # WARNING if we do not find in the backend we warn and return an ID with None to let other backend code ignore this ID
+  # WARNING if we do not find in the backend we throw StoreAtomException
   return currentEvaluation().backend.storeOutputAtom(args, sign)
 
 def storeConstant(c):

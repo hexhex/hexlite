@@ -334,13 +334,17 @@ def testSetMinusLearn(p, q):
 		if x not in qe:
 			#logging.error("ATOM {} not in qe".format(x))
 			# learn that it is not allowed that p(x) and -q(x) and this atom is false for x
-			nogood = (
-					dlvhex.storeAtom((p, ) + x),
-					dlvhex.storeAtom((q, ) + x).negate(),
-					dlvhex.storeOutputAtom(x).negate()
-					)
-			#logging.error("ATOM nogood {}".format(repr(nogood)))
-			dlvhex.learn(nogood)
+			try:
+				nogood = (
+						dlvhex.storeAtom((p, ) + x),
+						dlvhex.storeAtom((q, ) + x).negate(),
+						dlvhex.storeOutputAtom(x).negate()
+						)
+				logging.error("ATOM nogood {}".format(repr(nogood)))
+				dlvhex.learn(nogood)
+			except dlvhex.StoreAtomException as e:
+				logging.warning("StoreAtomException %s", e)
+				pass
 			#logging.error("ATOM output {}".format(repr(x)))
 			dlvhex.output(x)
 

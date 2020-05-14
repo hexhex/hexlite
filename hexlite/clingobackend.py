@@ -308,8 +308,7 @@ class EAtomEvaluator(dlvhex.Backend):
       if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
         #print("found {}".format(repr(x)))
         return x
-    logging.warning("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
-    return None
+    raise dlvhex.StoreAtomException("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
 
   # implementation of Backend method
   def storeOutputAtom(self, args, sign):
@@ -337,8 +336,7 @@ class EAtomEvaluator(dlvhex.Backend):
         #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
         return ClingoID(self.ccontext, x.replacement)
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
-    logging.warning("did not find literal to return in storeOutputAtom for &{}[{}]({}) will return None".format(eatomname, inputtuple, repr(args)))
-    return None
+    raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
 
   def storeConstant(self, s: str):
     if len(s) == 0 or (s[0] == '"' and s[1] == '"'):
