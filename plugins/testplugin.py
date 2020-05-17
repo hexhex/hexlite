@@ -330,17 +330,16 @@ def testSetMinusLearn(p, q):
 	#for y in qe:
 	#	logging.error("ATOM y in qe {} {} {}".format(str(y), repr(y[0].symlit.lit), hash(y)))
 	for x in pe:
-		#logging.error("ATOM x = {} {}".format(repr(x), x.__class__))
+		logging.debug("ATOM x = {} {} in pe {}(.)".format(repr(x), x.__class__, p))
 		if x not in qe:
-			#logging.error("ATOM {} not in qe".format(x))
+			logging.debug("ATOM {} not in qe {}(.)".format(x, q))
 			# learn that it is not allowed that p(x) and -q(x) and this atom is false for x
 			try:
-				nogood = (
-						dlvhex.storeAtom((p, ) + x),
-						dlvhex.storeAtom((q, ) + x).negate(),
-						dlvhex.storeOutputAtom(x).negate()
-						)
-				logging.error("ATOM nogood {}".format(repr(nogood)))
+				p_x = dlvhex.storeAtom((p, ) + x)
+				q_x = dlvhex.storeAtom((q, ) + x)
+				output_x = dlvhex.storeOutputAtom(x)
+				nogood = (p_x, q_x.negate(), output_x.negate())
+				logging.debug("ATOM nogood {} for p_x {} q_x {} output_x {}".format(repr(nogood), repr(p_x), repr(q_x), repr(output_x)))
 				dlvhex.learn(nogood)
 			except dlvhex.StoreAtomException as e:
 				logging.warning("StoreAtomException %s", e)
