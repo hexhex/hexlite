@@ -99,7 +99,11 @@ class ClingoID(dlvhex.ID):
     self.__value = str(symlit.sym)
 
   def negate(self):
-    return ClingoID(self.ccontext, SymLit(self.symlit.sym, -self.symlit.lit))
+    if self.symlit.sym.type != clingo.SymbolType.Function:
+      raise Exception("cannot negate non-function symbols!")
+    return ClingoID(self.ccontext, SymLit(
+      clingo.Function(self.symlit.sym.name, self.symlit.sym.arguments, self.symlit.sym.negative),
+      -self.symlit.lit))
 
   def value(self):
     return self.__value
@@ -158,10 +162,7 @@ class ClingoID(dlvhex.ID):
     return self.__value
 
   def __repr__(self):
-    sign = ''
-    if self.symlit.lit and self.symlit.lit < 0:
-      sign = '-'
-    return "{}ClingoID({})".format(sign, str(self))
+    return "ClingoID({})/{}".format(str(self), self.symlit.lit)
 
   def __hash__(self):
     return hash(self.symlit)
