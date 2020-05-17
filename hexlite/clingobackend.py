@@ -304,10 +304,9 @@ class EAtomEvaluator(dlvhex.Backend):
     match_arguments = [t.symlit.sym for t in tpl[1:]]
     #print("match_name = {} match_arguments = {}".format(repr(match_name), repr(match_arguments)))
     for x in dlvhex.currentEvaluation().input:
-      #print("comparing {} with {}".format(repr(x), repr(tpl)))
-      #print("xsxn {} xssa {}".format(repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
+      #logging.info("storeAtom comparing {} with {}: xsxn {} xssa {}".format(repr(tpl), repr(x), repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
       if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
-        #print("found {}".format(repr(x)))
+        #logging.info("storeAtom found {}".format(repr(x)))
         return x
     raise dlvhex.StoreAtomException("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
 
@@ -332,9 +331,9 @@ class EAtomEvaluator(dlvhex.Backend):
     # XXX maybe first use self.ccontext.propagator.currentVerification as a possible shortcut
     # (works if the external atom creates nogood for the output tuple of the verification where it was called)
     for x in self.ccontext.propagator.eatomVerifications[eatomname]:
-      #print("comparing {}".format(repr(x.replacement.sym.arguments)))
+      #logging.info("storeOutputAtom {} comparing {} with {}".format(sign, repr(args), repr(x.replacement.sym.arguments)))
       if x.replacement.sym.arguments == match_args:
-        #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
+        #logging.info("storeOutputAtom found replacement {}".format(x.replacement))
         return ClingoID(self.ccontext, x.replacement)
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
     raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
@@ -586,8 +585,9 @@ class ClingoPropagator:
               logging.debug(name+'       relevantSig {}'.format(repr(relevantSig)))
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
-                  logging.debug(name+'         atom {}'.format(str(ax.symbol)))
-                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
+                  slit = init.solver_literal(ax.literal)
+                  logging.debug(name+'         atom {} (neg:{}) / slit {}'.format(str(ax.symbol), ax.symbol.negative, slit))
+                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, slit))
                   verification.predinputs[argpos].append(predinputid)
 
           verification.allinputs = frozenset(hexlite.flatten([idlist for idlist in verification.predinputs.values()]))
