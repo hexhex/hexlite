@@ -90,6 +90,7 @@ class SymLit:
   def __str__(self):
     return "{}/{}".format(self.sym, self.lit)
 
+
 class ClingoID(dlvhex.ID):
   # the ID class as passed to plugins, from view of Clingo backend
   def __init__(self, ccontext, symlit):
@@ -113,6 +114,9 @@ class ClingoID(dlvhex.ID):
       return self.symlit.sym.number
     else:
       raise Exception('intValue called on ID {} which is not a number!'.format(self.__value))
+
+  def isPositive(self):
+    return self.symlit.sym.positive
 
   def isTrue(self):
     if not self.symlit.lit:
@@ -376,9 +380,15 @@ class EAtomEvaluator(dlvhex.Backend):
     # convert and validate
     nogood = self.ccontext.propagator.Nogood()
     replacementAtomSymLit = None
+    replacementAtomPositiveSym = None
     for clingoid in ng:
-      if clingoid.symlit.sym in self.replacementAtoms:
+      if clingoid.isPositive():
+        positive = clingoid
+      else:
+        positive = clingoid.negate()
+      if positive.symlit.sym in self.replacementAtoms:
         replacementAtomSymLit = clingoid.symlit
+        replacementAtomPositiveSymLit = positive.symlit
       if not nogood.add(clingoid.symlit.lit):
         logging.debug("cannot build nogood (opposite literals)!")
         return
@@ -388,13 +398,13 @@ class EAtomEvaluator(dlvhex.Backend):
       logging.warning("learn() obtained nogood %s which does not contain replacement atoms (storeOutputAtom) - this might be a mistake - ignoring", ng)
       return
     else:
-      logging.debug("identified replacementAtomSymLit %s", replacementAtomSymLit)
+      logging.debug("identified replacementAtomSymLit %s with positive %s", replacementAtomSymLit, replacementAtomPositiveSymLit)
 
     # analyze the nogood and check if it exists in learned nogoods
     # if yes, just return and do not learn it
     # if no, add it and schedule to add it in the solver
-    veri = self.eatomVerificationsByReplacement[replacementAtomSymLit.sym]
-    idx = 1 if replacementAtomSymLit.lit < 0 else 0 # negative -> truth of external atom (see __init__ / self.nogoods)
+    veri = self.eatomVerificationsByReplacement[replacementAtomPositiveSymLit.sym]
+    idx = 1 if replacementAtomSymLit == replacementAtomPositiveSymLit else 0 # negative -> truth of external atom (see __init__ / self.nogoods)
 
     inogood = tuple(nogood.literals)
     if inogood in veri.nogoods[idx]:
