@@ -1,6 +1,7 @@
 import clingo
 
 import logging
+import sys
 
 class GroundProgramPrinter:
   def __init__(self):
@@ -12,7 +13,7 @@ class GroundProgramPrinter:
     self.int2atom = {} # int to str
 
   def __output(self, what):
-    logging.info("Ground Program: "+what)
+    sys.stderr.write(what+'\n')
 
   class WarnMissing:
     def __init__(self, name):
@@ -66,6 +67,7 @@ class GroundProgramPrinter:
 
   def end_step(self):
     logging.debug("GPEndStep")
+    self.__output("GroundProgramPrinter START")
     def formatElement(idx, e):
       ilit, weight = e
       a = self.__lit2str(ilit)
@@ -80,3 +82,4 @@ class GroundProgramPrinter:
       hstr = self.__formatHead(choice, head)
       selems = ';'.join([formatElement(idx, e) for idx, e in enumerate(body)])
       self.__output(hstr+' :- '+str(lower_bound)+' <= #sum { '+selems + ' }.')
+    self.__output("GroundProgramPrinter END")
