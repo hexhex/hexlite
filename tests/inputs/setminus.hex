@@ -20,3 +20,5 @@ domain(g).
 sel(X) :- domain(X), &testSetMinus[domain, nsel](X).
 nsel(X) :- domain(X), &testSetMinus[domain, sel](X).
 :- sel(X), sel(Y), sel(Z), X != Y, X != Z, Y != Z.
+
+#show sel/1.
