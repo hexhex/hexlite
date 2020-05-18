@@ -99,7 +99,11 @@ class ClingoID(dlvhex.ID):
     self.__value = str(symlit.sym)
 
   def negate(self):
-    return ClingoID(self.ccontext, SymLit(self.symlit.sym, -self.symlit.lit))
+    if self.symlit.sym.type != clingo.SymbolType.Function:
+      raise Exception("cannot negate non-function symbols!")
+    return ClingoID(self.ccontext, SymLit(
+      clingo.Function(self.symlit.sym.name, self.symlit.sym.arguments, self.symlit.sym.negative),
+      -self.symlit.lit))
 
   def value(self):
     return self.__value
@@ -158,10 +162,7 @@ class ClingoID(dlvhex.ID):
     return self.__value
 
   def __repr__(self):
-    sign = ''
-    if self.symlit.lit and self.symlit.lit < 0:
-      sign = '-'
-    return "{}ClingoID({})".format(sign, str(self))
+    return "ClingoID({})/{}".format(str(self), self.symlit.lit)
 
   def __hash__(self):
     return hash(self.symlit)
@@ -303,13 +304,11 @@ class EAtomEvaluator(dlvhex.Backend):
     match_arguments = [t.symlit.sym for t in tpl[1:]]
     #print("match_name = {} match_arguments = {}".format(repr(match_name), repr(match_arguments)))
     for x in dlvhex.currentEvaluation().input:
-      #print("comparing {} with {}".format(repr(x), repr(tpl)))
-      #print("xsxn {} xssa {}".format(repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
+      #logging.info("storeAtom comparing {} with {}: xsxn {} xssa {}".format(repr(tpl), repr(x), repr(x.symlit.sym.name), repr(x.symlit.sym.arguments)))
       if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
-        #print("found {}".format(repr(x)))
+        #logging.info("storeAtom found {}".format(repr(x)))
         return x
-    logging.warning("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
-    return None
+    raise dlvhex.StoreAtomException("storeAtom() called with tuple {} that cannot be stored because it is not part of the predicate input or not existing in the ground rewriting (we have no liberal safety)".format(repr(tpl)))
 
   # implementation of Backend method
   def storeOutputAtom(self, args, sign):
@@ -332,13 +331,12 @@ class EAtomEvaluator(dlvhex.Backend):
     # XXX maybe first use self.ccontext.propagator.currentVerification as a possible shortcut
     # (works if the external atom creates nogood for the output tuple of the verification where it was called)
     for x in self.ccontext.propagator.eatomVerifications[eatomname]:
-      #print("comparing {}".format(repr(x.replacement.sym.arguments)))
+      #logging.info("storeOutputAtom {} comparing {} with {}".format(sign, repr(args), repr(x.replacement.sym.arguments)))
       if x.replacement.sym.arguments == match_args:
-        #print("for storeOutputAtom({},{}) found replacement {}".format(repr(args), repr(sign), repr(x.replacement)))
+        #logging.info("storeOutputAtom found replacement {}".format(x.replacement))
         return ClingoID(self.ccontext, x.replacement)
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
-    logging.warning("did not find literal to return in storeOutputAtom for &{}[{}]({}) will return None".format(eatomname, inputtuple, repr(args)))
-    return None
+    raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
 
   def storeConstant(self, s: str):
     if len(s) == 0 or (s[0] == '"' and s[1] == '"'):
@@ -587,8 +585,9 @@ class ClingoPropagator:
               logging.debug(name+'       relevantSig {}'.format(repr(relevantSig)))
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
-                  logging.debug(name+'         atom {}'.format(str(ax.symbol)))
-                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, init.solver_literal(ax.literal)))
+                  slit = init.solver_literal(ax.literal)
+                  logging.debug(name+'         atom {} (neg:{}) / slit {}'.format(str(ax.symbol), ax.symbol.negative, slit))
+                  predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, slit))
                   verification.predinputs[argpos].append(predinputid)
 
           verification.allinputs = frozenset(hexlite.flatten([idlist for idlist in verification.predinputs.values()]))

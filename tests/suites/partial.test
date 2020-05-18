@@ -1,5 +1,5 @@
 setminus.hex setminus.out
-setminus_learn.hex setminus.out
+setminus_learn1.hex setminus.out
 partialTest.hex partialTest.out
 # not testing the following, because it is intended to fail (shows the need for partial and/or learning)
 #not_some_selected_naive.hex not_some_selected.out

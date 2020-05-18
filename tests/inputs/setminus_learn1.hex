@@ -14,3 +14,5 @@ domain(g).
 sel(X) :- domain(X), &testSetMinusLearn[domain, nsel](X).
 nsel(X) :- domain(X), &testSetMinusLearn[domain, sel](X).
 :- sel(X), sel(Y), sel(Z), X != Y, X != Z, Y != Z.
+
+#show sel/1.
