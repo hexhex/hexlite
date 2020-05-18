@@ -7,6 +7,6 @@ nonmon_inc.hex nonmon_inc.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.tes
 variable_predicate_inputs_worksnow.hex variable_predicate_inputs.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
 # the following is from suite partial.test
 setminus.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
-setminus_learn.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
+setminus_learn1.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.ConcatSetMinusPlugin
 setminus.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi2Plugin
 setminus.hex setminus.out --plugin javaapiplugin at.ac.tuwien.kr.hexlite.testplugin.SetMinusApi3Plugin
