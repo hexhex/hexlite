@@ -5,14 +5,17 @@
 
 # generic
 
-if /bin/false; then
+if /bin/true; then
   # ./tests/inputs/extatom2.hex
   # ./tests/inputs/extatom10.hex;
   # ./tests/inputs/store_parseable_1.hex
-  for WHAT in ./tests/inputs/store_parseable_1.hex; do
+  # ./tests/inputs/setminus_learn1.hex 
+  # ./tests/inputs/setminus_learn2.hex
+  for WHAT in ./tests/inputs/relevance_learning.hex; do
     echo "=== $WHAT python"
     EXTRA="--verbose"
     EXTRA=""
+    EXTRA="--verbose --debug --flpcheck=none"
     hexlite $EXTRA \
       --pluginpath=./plugins/ \
       --plugin=stringplugin --plugin=testplugin \
@@ -21,7 +24,7 @@ if /bin/false; then
 fi
 
 # for java plugin
-if /bin/true; then
+if /bin/false; then
   # ./tests/inputs/extatom2.hex 
   # ./tests/inputs/extatom10.hex
   # ./tests/inputs/nonmon_guess.hex

@@ -304,6 +304,19 @@ def someSelectedLearning(selected):
 			nogood = [x, dlvhex.storeOutputAtom(()).negate()]
 			dlvhex.learn(nogood)
 
+def secondArgByFirstArg(predicate, first_arg):
+	for x in dlvhex.getTrueInputAtoms():
+		xtup = x.tuple()
+		if xtup[0] == predicate and xtup[1] == first_arg:
+			outtup = (xtup[2],) 
+			dlvhex.output(outtup)
+			try:
+				logging.info("trying to add nogood for %s and %s", x, outtup)
+				nogood = [x, dlvhex.storeOutputAtom(outtup).negate()]
+				dlvhex.learn(nogood)
+			except StoreAtomException as e:
+				logging.warning("could not store atom: %s", e)
+
 def testSetMinus(p, q):
 	# is true for all constants in extension of p but not in extension of q
 	pset, qset = set(), set()
@@ -466,6 +479,8 @@ def register(arguments=None):
 	prop = dlvhex.ExtSourceProperties()
 	prop.setProvidesPartialAnswer(True)
 	dlvhex.addAtom("someSelectedPartial", (dlvhex.PREDICATE,), 0, prop)
+
+	dlvhex.addAtom("secondArgByFirstArg", (dlvhex.PREDICATE, dlvhex.CONSTANT), 1)
 
 	#XFAIL (TODO) sumD0
 	#XFAIL getreq
