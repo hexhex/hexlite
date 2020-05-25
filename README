@@ -88,7 +88,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
 * Using the Java API
 
-  Building the JAVA API is not automated, you need to install `Jpype >=0.7.2` and `ant` and `maven` and run
+  Building the JAVA API is not automated, you need to install `Jpype version =0.7.3 or >=0.7.5` and `ant` and `maven` and run
 
   ```mvn clean compile package install```
 
@@ -147,6 +147,13 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/inputs/extatom3.hex
   ```
 
+* Jpype
+
+  - we need version 0.7.3 or above 0.7.5, the versions below and 0.7.4 have a bug that affects us
+  - conda-forge has 0.7.3
+
+    $ conda install -c conda-forge jpype1=0.7.3
+
 # Developer Readme
 
 * For developing hexlite without uploading to anaconda repository:
@@ -172,7 +179,9 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
   (Installed scripts are not automatically uninstalled.)
 
-* For building and uploading a new version to pip and conda (Note: conda requires to upload to pip first)
+* Releasing
+
+  For building and uploading a new version to pip and conda (Note: conda requires to upload to pip first)
   
   * Update version in `setup.py`.
 
@@ -192,9 +201,9 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   
     First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
 
-    `$ conda build . -c potassco`
+    `$ conda build . -c potassco --no-verify --no-test`
 
-    (get upload command from last lines of output)
+    (get upload command from last lines of output, check output, then re-run without the last two arguments.)
 
     If conda is installed on an encrypted /home/ or similar, this will abort with a permission error.
     You can make it work by creating a new directory on an unencrypted `/tmp/`, for example `/tmp/conda-build`,
@@ -206,13 +215,3 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
     `$ anaconda upload <path-from-conda-build>`
 
-* Roadmap
-
-  - make it deployable via conda and pip
-
-* Jpype
-
-  - we need version 0.7.2 the versions below have a bug that affects us
-  - conda-forge has 0.7.2
-
-    $ conda install -c conda-forge jpype1  
