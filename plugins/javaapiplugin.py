@@ -31,7 +31,7 @@ def logJavaExceptionWithStacktrace(ex):
 # this loads the hexlite-API-specific classes (from hexlite-java-plugin-api-XYZ.jar)
 IPluginAtom = JClass("at.ac.tuwien.kr.hexlite.api.IPluginAtom")
 ISolverContext = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext")
-StoreAtomException = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext.StoreAtomException")
+JStoreAtomException = JClass("at.ac.tuwien.kr.hexlite.api.ISolverContext.StoreAtomException")
 IInterpretation = JClass("at.ac.tuwien.kr.hexlite.api.IInterpretation")
 ISymbol = JClass("at.ac.tuwien.kr.hexlite.api.ISymbol")
 
@@ -201,10 +201,10 @@ class JavaSolverContextImpl:
 	def storeOutputAtom(self, otuple):
 		# all the otuple elements are ISymbol s
 		#logging.info("jsci.storeOutputAtom %s", otuple)
-		s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
-		#logging.info(" got symbol %s", s)
-		if s is None:
-			raise StoreAtomException("cannot store output atom (does not exist in solver)")
+		try:
+			s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
+		except dlvhex.StoreAtomException as e:
+			raise JStoreAtomException(str(e))
 		r = JavaSymbolImpl(s)
 		ret = jpype.JObject(r, ISymbol)
 		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(ret), type(ret))
@@ -214,10 +214,10 @@ class JavaSolverContextImpl:
 	def storeAtom(self, tuple_):
 		# all the tuple_ elements are ISymbol s
 		#logging.info("jsci.storeAtom %s", tuple_)
-		s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
-		#logging.info(" got symbol %s", s)
-		if s is None:
-			raise StoreAtomException("cannot store output atom (does not exist in solver)")
+		try:
+			s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
+		except dlvhex.StoreAtomException as e:
+			raise JStoreAtomException(str(e))
 		r = JavaSymbolImpl(s)
 		ret = jpype.JObject(r, ISymbol)
 		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(ret), type(ret))
@@ -294,10 +294,13 @@ class JavaPluginCallWrapper:
 				tupleOfID = tuple([ e.hid for e in t ])
 				#logging.warning("retrieve created output %s for java output %s", tupleOfID, t.toString())
 				dlvhex.output(tupleOfID)
-		except JException as e:
+		except jpype.JException as e:
+			logging.error("plugin call wrapper got Java exception %s %s", e, e.__class__)
 			logJavaExceptionWithStacktrace(e)
 			raise
-
+		except Exception as e:
+			logging.error("plugin call wrapper got exception taht is not a JException %s %s", e, e.__class__)
+			raise
 
 def register(arguments):
 	logging.info("Java API loaded with arguments %s", arguments)	
