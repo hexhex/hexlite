@@ -201,7 +201,7 @@ class EAtomEvaluator(dlvhex.Backend):
     # set of all replacement atom symbols so that we can detect them in nogoods
     self.replacementAtoms = set()
     # key = replacement symbol
-    # value = single EAtomVerification in above lists
+    # value = single EAtomVerification in ClingoPropagator.eatomVerifications.values()
     self.eatomVerificationsByReplacement = {}
     # list of nogoods that still need to be added
     # (in an external atom call, dlvhex.learn() collects nogoods here and adds them later)
@@ -390,7 +390,7 @@ class EAtomEvaluator(dlvhex.Backend):
         replacementAtomSymLit = clingoid.symlit
         replacementAtomPositiveSymLit = positive.symlit
       if not nogood.add(clingoid.symlit.lit):
-        logging.debug("cannot build nogood (opposite literals)!")
+        logging.info("cannot build nogood (opposite literals)!")
         return
 
     if replacementAtomSymLit is None:
@@ -404,8 +404,19 @@ class EAtomEvaluator(dlvhex.Backend):
     # if yes, just return and do not learn it
     # if no, add it and schedule to add it in the solver
     veri = self.eatomVerificationsByReplacement[replacementAtomPositiveSymLit.sym]
+
+    # extend nogood with relevance atom
+    # (only if external atom is relevant, the nogood can make the replacement true/false)
+    # otherwise we get unfounded "must be true" external atom replacements, see testcase relevance_learning.hex
+    if not nogood.add(veri.relevance.lit):
+      logging.info("cannot add nogood (opposing relevance literal)!")
+      return
+    logging.info("learn() added relevance atom %s to nogood which became %s", veri.relevance, nogood)
+
+    # find out of this external atom is positive/negative in the nogood
     idx = 1 if replacementAtomSymLit == replacementAtomPositiveSymLit else 0 # negative -> truth of external atom (see __init__ / self.nogoods)
 
+    # find out if this nogood is already known
     inogood = tuple(nogood.literals)
     if inogood in veri.nogoods[idx]:
       logging.info("learn() skips adding known nogood")
@@ -413,7 +424,7 @@ class EAtomEvaluator(dlvhex.Backend):
 
     # add to known nogoods
     veri.nogoods[idx].add(inogood)
-    logging.debug("learn() adds [%d] nogood %s / %s", idx, inogood, ng)
+    logging.debug("learn() adds [%d] nogood %s / %s+[%s]", idx, inogood, ng, veri.relevance)
 
     # record as nogood to be added
     self.ccontext.propagator.recordNogood(nogood, defer=True)
@@ -771,6 +782,11 @@ class ClingoPropagator:
           logging.warning(name+" cannot build nogood (opposite literals)!")
           return
       # None case does not contribute to nogood
+
+    # ... if the atom was relevant ...
+    if not nogood.add(veri.relevance.lit):
+      logging.warning("cannot add relevance to  i/o nogood (opposing literal)!")
+      return
 
     checklit = None
     if realValue == True:
