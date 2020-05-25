@@ -1,0 +1,74 @@
+#script (python)
+
+import clingo
+import logging
+import collections
+
+class Prop:
+    def __init__(self):
+        self.m = collections.defaultdict(list)
+        self.w = {}
+        self.scheduled = []
+
+    def init(self, init):
+        init.check_mode = clingo.PropagatorCheckMode.Total
+        for x in init.symbolic_atoms:
+            self.m[init.solver_literal(x.literal)].append(str(x.symbol))
+        self.w = { sym: solverlit
+            for solverlit, syms in self.m.items()
+            for sym in syms }
+        for solverlit, syms in self.m.items():
+            logging.info('solver lit {} syms {}'.format(solverlit, syms))
+
+    def check(self, control):
+        logging.info('check with assignment.is_total=%d assignment %s',
+            control.assignment.is_total,
+            ' '.join([ str(x)
+                for solverlit, syms in self.m.items()
+                if control.assignment.is_true(solverlit)
+                for x in syms ]))
+
+        if control.assignment.is_true(self.w['sel(1)']) and control.assignment.is_true(self.w['try(1,2)']) and control.assignment.is_false(self.w['t(try,1,2)']):
+            ng = ( self.w['try(1,2)'], -self.w['t(try,1,2)'], self.w['sel(1)'], self.w['r(try,1,2)'] )
+            self.scheduled.append(ng)
+
+        if control.assignment.is_true(self.w['sel(3)']) and control.assignment.is_true(self.w['try(1,3)']) and control.assignment.is_false(self.w['t(try,1,3)']):
+            ng = ( self.w['try(1,3)'], -self.w['t(try,1,3)'], self.w['sel(3)'], self.w['r(try,1,3)'] )
+            self.scheduled.append(ng)
+
+        while len(self.scheduled) > 0:
+            ng = self.scheduled.pop()
+            r = control.add_nogood(ng, lock=True)
+            logging.info("added nogood %s with result %s", ng, r)
+            if not r:
+                return
+
+def main(prg):
+    logging.basicConfig(level=logging.INFO)
+
+    def on_model(m):
+        print("shown")
+        print("  positive: " + ", ".join(map(str, m.symbols(shown=True))))
+        print("  negative: " + ", ".join(map(str, m.symbols(shown=True, complement=True))))
+        print("atoms")
+        print("  positive: " + ", ".join(map(str, m.symbols(atoms=True))))
+        print("  negative: " + ", ".join(map(str, m.symbols(atoms=True, complement=True))))
+        print("terms")
+        print("  positive: " + ", ".join(map(str, m.symbols(terms=True))))
+        print("  negative: " + ", ".join(map(str, m.symbols(terms=True, complement=True))))
+
+    prg.ground([("base", [])])
+    prg.register_propagator(Prop())
+    prg.solve(on_model=on_model)
+
+#end.
+
+1 {sel (1) ; sel (3)} 1.
+try (1 , 2). try (1 , 3).
+r (try , 1 , 2) :- sel (1).
+r (try , 1 , 3) :- sel (3).
+{t (try , 1 , 2)} :- r (try , 1 , 2).
+{t (try , 1 , 3)} :- r (try , 1 , 3).
+find (1) :- t (try , 1 , 2) , sel (1).
+find (3) :- t (try , 1 , 3) , sel (3).
+#show. #show sel/1. #show find/1.
