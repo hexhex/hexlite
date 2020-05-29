@@ -95,6 +95,11 @@ def storeOutputAtom(args, sign=True):
   # WARNING if we do not find in the backend we throw StoreAtomException
   return currentEvaluation().backend.storeOutputAtom(args, sign)
 
+def getInstantiatedOutputAtoms():
+  # obtain all output atoms of currently called external atom that have been instantiated in the solver and can therefore be used in nogoods
+  # the return value is a symbol of a replacement atom
+  return currentEvaluation().backend.getInstantiatedOutputAtoms()
+
 def storeConstant(c):
   # gives back an ID that represents the constant c
   return currentEvaluation().backend.storeConstant(c)

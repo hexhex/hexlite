@@ -314,8 +314,30 @@ def secondArgByFirstArg(predicate, first_arg):
 				logging.info("trying to add nogood for %s and %s", x, outtup)
 				nogood = [x, dlvhex.storeOutputAtom(outtup).negate()]
 				dlvhex.learn(nogood)
-			except StoreAtomException as e:
+			except dlvhex.StoreAtomException as e:
 				logging.warning("could not store atom: %s", e)
+
+def secondArgByFirstArgMoreLearning(predicate, first_arg):
+	for x in dlvhex.getTrueInputAtoms():
+		xtup = x.tuple()
+		if xtup[0] == predicate and xtup[1] == first_arg:
+			outtup = (xtup[2],) 
+			dlvhex.output(outtup)
+
+	# we simply produce all relevant nogoods
+	# this is unrealistic, but helps to test several parts of hexlite (only one eatom call will be sufficient)
+	for output in dlvhex.getInstantiatedOutputAtoms():
+		aux, pred, selector, out = output.tuple()
+		logging.debug("processing instantiated output atom &secondArgByFirstArgMoreLearning[%s,%s](%s)", pred, selector, out)
+		try:
+			relevantinput = dlvhex.storeAtom((pred, selector, out))
+			nogood1 = [relevantinput, output.negate()]
+			dlvhex.learn(nogood1)
+			nogood2 = [relevantinput.negate(), output]
+			dlvhex.learn(nogood2)
+		except dlvhex.StoreAtomException as e:
+			logging.debug("relevant input atom not storable")
+
 
 def testSetMinus(p, q):
 	# is true for all constants in extension of p but not in extension of q
@@ -481,6 +503,7 @@ def register(arguments=None):
 	dlvhex.addAtom("someSelectedPartial", (dlvhex.PREDICATE,), 0, prop)
 
 	dlvhex.addAtom("secondArgByFirstArg", (dlvhex.PREDICATE, dlvhex.CONSTANT), 1)
+	dlvhex.addAtom("secondArgByFirstArgMoreLearning", (dlvhex.PREDICATE, dlvhex.CONSTANT), 1)
 
 	#XFAIL (TODO) sumD0
 	#XFAIL getreq

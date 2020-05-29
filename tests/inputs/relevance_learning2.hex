@@ -1,0 +1,25 @@
+
+#const worlds=5.
+
+world(0..worlds).
+
+1 { sel(W,1) ; sel(W,3) } 1 :- world(W).
+
+try(W,2) :- world(W).
+try(W,3) :- world(W).
+
+% its good if the selection coincides with the existing fact
+%good(W) :- &secondArgByFirstArg[try,W](X), sel(W,X).
+good(W) :- &secondArgByFirstArgMoreLearning[try,W](X), sel(W,X).
+
+% its good if all worlds are good
+:- world(W), not good(W).
+
+% should have answer sets
+% {sel(W,1),...} for all W in 0..worlds
+
+% should require at most 2 * worlds evaluations with normal learning
+% should require at most 2 evaluations with extra learning
+
+#show.
+#show sel/2.

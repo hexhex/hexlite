@@ -5,4 +5,5 @@ partialTest.hex partialTest.out
 #not_some_selected_naive.hex not_some_selected.out
 not_some_selected_partial.hex not_some_selected.out
 not_some_selected_learning.hex not_some_selected.out
-relevance_learning.hex relevance_learning.out
+relevance_learning1.hex relevance_learning1.out
+#relevance_learning2.hex relevance_learning2.out

@@ -342,6 +342,14 @@ class EAtomEvaluator(dlvhex.Backend):
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
     raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
 
+  def getInstantiatedOutputAtoms(self):
+    '''
+    as storeOutputAtom, but returns all output atoms that have been instantiated for the currently called external atom
+    '''
+    eatomname = dlvhex.currentEvaluation().holder.name
+    return [  ClingoID(self.ccontext, x.replacement)
+              for x in self.ccontext.propagator.eatomVerifications[eatomname] ]
+
   def storeConstant(self, s: str):
     if len(s) == 0 or (s[0] == '"' and s[1] == '"'):
       # TODO this is only for backwards compatibility, should be removed in V2
