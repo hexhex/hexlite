@@ -888,8 +888,10 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
     ccontext = ClaspContext()
 
     # preparing evaluator for external atoms which needs to know the clasp context
-    #eaeval = EAtomEvaluator(config, ccontext)
-    eaeval = CachedEAtomEvaluator(config, ccontext, pcontext.stats)
+    if config.enable_generic_eatom_cache:
+      eaeval = CachedEAtomEvaluator(config, ccontext, pcontext.stats)
+    else:
+      eaeval = EAtomEvaluator(config, ccontext, pcontext.stats)
 
     # find names of external atoms that advertises to do checks on a partial assignment
     partial_evaluation_eatoms = [ eatomname for eatomname, info in dlvhex.eatoms.items() if info.props.provides_partial ]
