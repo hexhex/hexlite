@@ -421,11 +421,17 @@ class EAtomEvaluator(dlvhex.Backend):
       return
     logging.info("learn() added relevance atom %s to nogood which became %s", veri.relevance, nogood)
 
-    # find out of this external atom is positive/negative in the nogood
-    idx = 1 if replacementAtomSymLit == replacementAtomPositiveSymLit else 0 # negative -> truth of external atom (see __init__ / self.nogoods)
+    # find out of this external atom is positive/negative in the nogood (see __init__ / self.nogoods)
+    if replacementAtomSymLit == replacementAtomPositiveSymLit:
+      # positive -> indicates that the external atom must be false if all other literals match
+      idx = 0
+    else:
+      # negative -> indicates that the external atom must be true if all other literals match
+      idx = 1
 
+    # remove replacement literal (it is encoded in the index)
+    inogood = tuple([ x for x in nogood.literals if x != replacementAtomSymLit.lit ])
     # find out if this nogood is already known
-    inogood = tuple(nogood.literals)
     if inogood in veri.nogoods[idx]:
       logging.info("learn() skips adding known nogood")
       return
@@ -540,6 +546,8 @@ class ClingoPropagator:
       # (nogoods for falsity, nogoods for truth)
       # nogoods for falsity contain positive replacement literal
       # nogoods for truth contain negative replacement literal
+      # these nogoods are stored _without_ the replacement literal
+      # (it is implicit from the set in which the nogood is stored)
       self.nogoods = (set(), set())
 
   class Nogood:
@@ -714,16 +722,16 @@ class ClingoPropagator:
     logging.info(self.name+' leaving check() propagator')
   
   def nogoodConfirmsTruthOfAtom(self, control, veri):
-    #logging.info("checking if %s is confirmed by previously learned nogoods", veri.replacement)
+    logging.debug("checking if %s is confirmed by previously learned nogoods", veri.replacement)
     target = 1 if control.assignment.is_true(veri.replacement.lit) else 0
     ngset = veri.nogoods[target]
-    logging.debug("  previously recorded atom-specified nogoods: %s", ngset)
+    logging.debug("  previously recorded atom-specified nogoods for target %d without replacement: %s", target, ngset)
     for nogood in ngset:
-      #logging.info("  checking nogood %s", nogood)
-      if all([ control.assignment.is_true(l) for l in nogood if l > 0 ]) and \
-          all([ control.assignment.is_false(-l) for l in nogood if l < 0 ]):
+      check = [ control.assignment.is_true(l) for l in nogood ]
+      logging.debug("  checking nogood %s: check=%s", nogood, check)
+      if all(check):
           # this nogood fires!
-          logging.debug("previously learned nogood %s decides truth %d of atom!", nogood, bool(idx))
+          logging.debug("previously learned nogood %s decides truth %s of atom!", nogood, target)
           return True
     return False
 

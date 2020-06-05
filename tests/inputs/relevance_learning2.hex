@@ -4,6 +4,7 @@
 world(0..worlds).
 
 1 { sel(W,1) ; sel(W,3) } 1 :- world(W).
+1 { sel2(W,1) ; sel2(W,3) } 1 :- world(W).
 
 try(W,2) :- world(W).
 try(W,3) :- world(W).
@@ -12,14 +13,19 @@ try(W,3) :- world(W).
 %good(W) :- &secondArgByFirstArg[try,W](X), sel(W,X).
 good(W) :- &secondArgByFirstArgMoreLearning[try,W](X), sel(W,X).
 
+% hardcode another variant where we instantiate all atoms with output 2
+good2(W) :- &secondArgByFirstArgMoreLearning[try,W](2), sel2(W,1).
+
 % its good if all worlds are good
 :- world(W), not good(W).
+:- world(W), not good2(W).
 
 % should have answer sets
-% {sel(W,1),...} for all W in 0..worlds
+% {sel(W,3),sel2(W,1),...} for all W in 0..worlds
 
 % should require at most 2 * worlds evaluations with normal learning
 % should require at most 2 evaluations with extra learning
 
 #show.
 #show sel/2.
+#show sel2/2.

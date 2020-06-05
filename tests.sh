@@ -11,11 +11,15 @@ if /bin/true; then
   # ./tests/inputs/store_parseable_1.hex
   # ./tests/inputs/setminus_learn1.hex 
   # ./tests/inputs/setminus_learn2.hex
-  for WHAT in ./tests/inputs/relevance_learning.hex; do
+  for WHAT in ./tests/inputs/relevance_learning2.hex; do
     echo "=== $WHAT python"
-    EXTRA="--verbose"
     EXTRA=""
-    EXTRA="--verbose --debug --flpcheck=none"
+    EXTRA="--verbose"
+    EXTRA="--verbose --debug"
+    EXTRA="--verbose --debug --flpcheck=none --stats"
+    EXTRA="--verbose --debug --flpcheck=none --stats --noskipevalfromnogoods"
+    EXTRA="--verbose --debug --flpcheck=none --stats --nocache"
+    EXTRA="--stats --nocache"
     hexlite $EXTRA \
       --pluginpath=./plugins/ \
       --plugin=stringplugin --plugin=testplugin \
