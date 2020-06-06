@@ -200,27 +200,33 @@ class JavaSolverContextImpl:
 	@jpype.JOverride
 	def storeOutputAtom(self, otuple):
 		# all the otuple elements are ISymbol s
-		#logging.info("jsci.storeOutputAtom %s", otuple)
+		#logging.info("jSC.storeOutputAtom %s", otuple)
 		try:
 			s = dlvhex.storeOutputAtom([ x.hid for x in otuple ])
 		except dlvhex.StoreAtomException as e:
 			raise JStoreAtomException(str(e))
 		r = JavaSymbolImpl(s)
 		ret = jpype.JObject(r, ISymbol)
-		#logging.info("jsci.storeOutputAtom %s returns %s with type %s", otuple, repr(ret), type(ret))
+		#logging.info("jSC.storeOutputAtom %s returns %s with type %s", otuple, repr(ret), type(ret))
+		return ret
+
+	@jpype.JOverride
+	def getInstantiatedOutputAtoms(self):
+		ret = [ jpype.JObject(JavaSymbolImpl(oa), ISymbol) for oa in dlvhex.getInstantiatedOutputAtoms() ]
+		logging.info("jSC.getInstantiatedOutputAtoms returns %s", repr(ret))
 		return ret
 
 	@jpype.JOverride
 	def storeAtom(self, tuple_):
 		# all the tuple_ elements are ISymbol s
-		#logging.info("jsci.storeAtom %s", tuple_)
+		#logging.info("jSC.storeAtom %s", tuple_)
 		try:
 			s = dlvhex.storeAtom([ x.hid for x in tuple_ ])
 		except dlvhex.StoreAtomException as e:
 			raise JStoreAtomException(str(e))
 		r = JavaSymbolImpl(s)
 		ret = jpype.JObject(r, ISymbol)
-		#logging.info("jsci.storeAtom %s returns %s with type %s", tuple_, repr(ret), type(ret))
+		#logging.info("jSC.storeAtom %s returns %s with type %s", tuple_, repr(ret), type(ret))
 		return ret
 
 	@jpype.JOverride
