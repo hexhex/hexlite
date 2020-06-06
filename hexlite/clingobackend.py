@@ -739,7 +739,7 @@ class ClingoPropagator:
     name = self.name+'vTOA:'
     targetValue = control.assignment.is_true(veri.replacement.lit)
     if __debug__:
-      idebug = pprint.pformat([ x.value() for x in veri.allinputs if x.isTrue() ])
+      idebug = repr([ x.value() for x in veri.allinputs if x.isTrue() ])
       logging.info(name+' checking if {} = {} with interpretation {} ({})'.format(
         str(targetValue), veri.replacement.sym, idebug,
         {True:'total', False:'partial'}[control.assignment.is_total]))
