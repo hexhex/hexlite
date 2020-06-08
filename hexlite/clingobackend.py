@@ -48,6 +48,7 @@ class ClaspContext:
   def __init__(self):
     self.propcontrol = None
     self.propagator = None
+    
   def __call__(self, control, propagator):
     '''
     initialize context with control object
@@ -198,11 +199,16 @@ class EAtomEvaluator(dlvhex.Backend):
     self.config = config
     self.ccontext = claspcontext
     self.stats = stats
+
     # set of all replacement atom symbols so that we can detect them in nogoods
+    # this is initialized by ClingoPropagator.init
     self.replacementAtoms = set()
+
     # key = replacement symbol
     # value = single EAtomVerification in ClingoPropagator.eatomVerifications.values()
+    # this is initialized by ClingoPropagator.init
     self.eatomVerificationsByReplacement = {}
+
     # list of nogoods that still need to be added
     # (in an external atom call, dlvhex.learn() collects nogoods here and adds them later)
     self.nogoodsToAdd = set()
@@ -341,6 +347,13 @@ class EAtomEvaluator(dlvhex.Backend):
         return ClingoID(self.ccontext, x.replacement)
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
     raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
+
+  def getInstantiatedInputAtoms(self, output_id):
+    '''
+    see dlvhex/__init__
+    '''
+    eatomname = dlvhex.currentEvaluation().holder.name
+    return self.ccontext.propagator.eatomVerificationsByReplacement[output_id.symlit.sym].allinputs
 
   def getInstantiatedOutputAtoms(self):
     '''

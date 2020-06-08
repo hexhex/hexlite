@@ -217,6 +217,12 @@ class JavaSolverContextImpl:
 		return ret
 
 	@jpype.JOverride
+	def getInstantiatedInputAtoms(self):
+		ret = [ jpype.JObject(JavaSymbolImpl(oa), ISymbol) for oa in dlvhex.getInstantiatedInputAtoms() ]
+		logging.info("jSC.getInstantiatedInputAtoms returns %s", repr(ret))
+		return ret
+
+	@jpype.JOverride
 	def storeAtom(self, tuple_):
 		# all the tuple_ elements are ISymbol s
 		#logging.info("jSC.storeAtom %s", tuple_)
