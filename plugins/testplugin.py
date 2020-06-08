@@ -328,9 +328,7 @@ def secondArgByFirstArgMoreLearning(predicate, first_arg):
 	# this is unrealistic, but helps to test several parts of hexlite (only one eatom call will be sufficient)
 	for output in dlvhex.getInstantiatedOutputAtoms():
 		aux, pred, selector, out = output.tuple()
-		logging.warning("processing instantiated output atom &secondArgByFirstArgMoreLearning[%s,%s](%s)", pred, selector, out)
-		inputatoms = dlvhex.getInstantiatedInputAtoms(output)
-		logging.info("   got relevant input atoms: %s", inputatoms)
+		logging.debug("processing instantiated output atom &secondArgByFirstArgMoreLearning[%s,%s](%s)", pred, selector, out)
 		try:
 			relevantinput = dlvhex.storeAtom((pred, selector, out))
 			nogood1 = [relevantinput, output.negate()]

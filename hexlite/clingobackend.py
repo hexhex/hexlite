@@ -348,13 +348,6 @@ class EAtomEvaluator(dlvhex.Backend):
     #  if x.symlit.sym.name == match_name and x.symlit.sym.arguments == match_arguments:
     raise dlvhex.StoreAtomException("did not find literal to return in storeOutputAtom for &{}[{}]({})".format(eatomname, inputtuple, repr(args)))
 
-  def getInstantiatedInputAtoms(self, output_id):
-    '''
-    see dlvhex/__init__
-    '''
-    eatomname = dlvhex.currentEvaluation().holder.name
-    return self.ccontext.propagator.eatomVerificationsByReplacement[output_id.symlit.sym].allinputs
-
   def getInstantiatedOutputAtoms(self):
     '''
     as storeOutputAtom, but returns all output atoms that have been instantiated for the currently called external atom
