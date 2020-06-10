@@ -11,7 +11,7 @@ public interface ISolverContext {
     }
     // otuple = the output tuple of the current evaluation that shall be represented as an ISymbol
     public ISymbol storeOutputAtom(ArrayList<ISymbol> otuple) throws StoreAtomException;
-    public ISymbol getInstantiatedOutputAtoms();
+    public ArrayList<ISymbol> getInstantiatedOutputAtoms();
     // tuple = predicate + arguments of an atom to be represented as an ISymbol
     public ISymbol storeAtom(ArrayList<ISymbol> tuple) throws StoreAtomException;
     public ISymbol storeConstant(String s);
