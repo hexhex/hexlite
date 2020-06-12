@@ -71,35 +71,42 @@ class JavaSymbolImpl:
 		assert(isinstance(hid,ID))
 		self.hid = hid
 		self.__valuecache = hid.value()
-		#logging.info("JavaSymbolImpl with hid %s %s", str(hid), repr(hid))
+		#logging.info("JavaSymbolImpl with hid %s %s", self.hid, self.__valuecache)
 
 	@jpype.JOverride
 	def negate(self):
+		#logging.info("want to negate %s", self.hid)
 		return JavaSymbolImpl(self.hid.negate())
 
 	@jpype.JOverride
 	def value(self):
+		#logging.info("value of %s", self.hid)
 		return self.hid.value()
 
 	@jpype.JOverride
 	def intValue(self):
+		#logging.info("intvalue of %s", self.hid)
 		return self.hid.intValue()
 
 	@jpype.JOverride
 	def isTrue(self):
+		#logging.info("isTrue of %s", self.hid)
 		return self.hid.isTrue()
 
 	@jpype.JOverride
 	def isFalse(self):
+		#logging.info("isFalse of %s", self.hid)
 		return self.hid.isFalse()
 
 	@jpype.JOverride
 	def isAssigned(self):
+		#logging.info("isAssigned of %s", self.hid)
 		return self.hid.isAssigned()
 
 	@jpype.JOverride
 	def tuple(self):
 		ret = java.util.ArrayList()
+		#logging.info("want to get tuple of %s", self.hid)
 		for e in self.hid.tuple():
 			ret.add(JavaSymbolImpl(e))
 		return ret
@@ -129,7 +136,7 @@ class JavaSymbolImpl:
 		return int(hash(self.__valuecache) & 0x7FFFFFFF)
 
 	def __eq__(self, other):
-		#logging.info("__eq__ got called on %s/%s vs %s/%s", repr(self), self.hid, repr(other), other.hid)
+		#logging.info("__eq__ got called on %s vs repr(%s)", self.hid, repr(other))
 		if not isinstance(other, JavaSymbolImpl):
 			return False
 		return self.hid == other.hid
@@ -143,10 +150,12 @@ class JavaSymbolImpl:
 		return self.__eq__(other)
 
 	def __str__(self):
+		#logging.info("__str__ of %s %s", self.hid, self.__valuecache)
 		return str(self.hid)
 
 	@jpype.JOverride
 	def toString(self):
+		#logging.info("toString of %s %s", self.hid, self.__valuecache)
 		return str(self.hid)
 
 @jpype.JImplements(IInterpretation)
@@ -217,6 +226,7 @@ class JavaSolverContextImpl:
 		ret = java.util.ArrayList()
 		for oa in dlvhex.getInstantiatedOutputAtoms():
 			ret.add(jpype.JObject(JavaSymbolImpl(oa), ISymbol))
+		#logging.info("jSC.getInstantiatedOutputAtoms returns %s", repr(ret))
 		return ret
 
 	@jpype.JOverride
@@ -255,7 +265,7 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def learn(self, nogood):
-		#logging.info("java learns nogood %s", [ str(x) for x in nogood ])
+		logging.info("java learns nogood %s", nogood.toString())
 		dlvhex.learn([ x.hid for x in nogood ])
 
 def convertArguments(pyArguments):
@@ -308,7 +318,7 @@ class JavaPluginCallWrapper:
 			logJavaExceptionWithStacktrace(e)
 			raise
 		except Exception as e:
-			logging.error("plugin call wrapper got exception taht is not a JException %s %s", e, e.__class__)
+			logging.error("plugin call wrapper got exception that is not a JException %s %s", e, e.__class__)
 			raise
 
 def register(arguments):
