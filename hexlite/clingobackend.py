@@ -444,7 +444,7 @@ class EAtomEvaluator(dlvhex.Backend):
 
     # add to known nogoods
     veri.nogoods[idx].add(inogood)
-    logging.debug("learn() adds [%d] nogood %s / %s+[%s]", idx, inogood, ng, veri.relevance)
+    logging.debug("learn() records [%d] nogood part %s - nogood is %s+[%s]", idx, inogood, ng, veri.relevance)
 
     # record as nogood to be added
     self.ccontext.propagator.recordNogood(nogood, defer=True)
