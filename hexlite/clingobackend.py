@@ -388,66 +388,67 @@ class EAtomEvaluator(dlvhex.Backend):
       logging.info("ignored eatom-specified nogood %s due to configuration", ng)
       return
 
-    logging.info("learning eatom-specified nogood %s", ng)
-    assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
+    with self.stats.context('specific-learn'):
+      logging.info("learning eatom-specified nogood %s", ng)
+      assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
 
-    # convert and validate
-    nogood = self.ccontext.propagator.Nogood()
-    replacementAtomSymLit = None
-    replacementAtomPositiveSym = None
-    for clingoid in ng:
-      if clingoid.isPositive():
-        positive = clingoid
+      # convert and validate
+      nogood = self.ccontext.propagator.Nogood()
+      replacementAtomSymLit = None
+      replacementAtomPositiveSym = None
+      for clingoid in ng:
+        if clingoid.isPositive():
+          positive = clingoid
+        else:
+          positive = clingoid.negate()
+        if positive.symlit.sym in self.replacementAtoms:
+          replacementAtomSymLit = clingoid.symlit
+          replacementAtomPositiveSymLit = positive.symlit
+        if not nogood.add(clingoid.symlit.lit):
+          logging.info("cannot build nogood (opposite literals)!")
+          return
+
+      if replacementAtomSymLit is None:
+        # we intend nogoods to only specify truth of replacement atoms = truth of external atom evaluations
+        logging.warning("learn() obtained nogood %s which does not contain replacement atoms (storeOutputAtom) - this might be a mistake - ignoring", ng)
+        return
       else:
-        positive = clingoid.negate()
-      if positive.symlit.sym in self.replacementAtoms:
-        replacementAtomSymLit = clingoid.symlit
-        replacementAtomPositiveSymLit = positive.symlit
-      if not nogood.add(clingoid.symlit.lit):
-        logging.info("cannot build nogood (opposite literals)!")
+        logging.debug("identified replacementAtomSymLit %s with positive %s", replacementAtomSymLit, replacementAtomPositiveSymLit)
+
+      # analyze the nogood and check if it exists in learned nogoods
+      # if yes, just return and do not learn it
+      # if no, add it and schedule to add it in the solver
+      veri = self.eatomVerificationsByReplacement[replacementAtomPositiveSymLit.sym]
+
+      # extend nogood with relevance atom
+      # (only if external atom is relevant, the nogood can make the replacement true/false)
+      # otherwise we get unfounded "must be true" external atom replacements, see testcase relevance_learning.hex
+      if not nogood.add(veri.relevance.lit):
+        logging.info("cannot add nogood (opposing relevance literal)!")
+        return
+      logging.info("learn() added relevance atom %s to nogood which became %s", veri.relevance, nogood)
+
+      # find out of this external atom is positive/negative in the nogood (see __init__ / self.nogoods)
+      if replacementAtomSymLit == replacementAtomPositiveSymLit:
+        # positive -> indicates that the external atom must be false if all other literals match
+        idx = 0
+      else:
+        # negative -> indicates that the external atom must be true if all other literals match
+        idx = 1
+
+      # remove replacement literal (it is encoded in the index)
+      inogood = tuple([ x for x in nogood.literals if x != replacementAtomSymLit.lit ])
+      # find out if this nogood is already known
+      if inogood in veri.nogoods[idx]:
+        logging.info("learn() skips adding known nogood")
         return
 
-    if replacementAtomSymLit is None:
-      # we intend nogoods to only specify truth of replacement atoms = truth of external atom evaluations
-      logging.warning("learn() obtained nogood %s which does not contain replacement atoms (storeOutputAtom) - this might be a mistake - ignoring", ng)
-      return
-    else:
-      logging.debug("identified replacementAtomSymLit %s with positive %s", replacementAtomSymLit, replacementAtomPositiveSymLit)
+      # add to known nogoods
+      veri.nogoods[idx].add(inogood)
+      logging.debug("learn() records [%d] nogood part %s - nogood is %s+[%s]", idx, inogood, ng, veri.relevance)
 
-    # analyze the nogood and check if it exists in learned nogoods
-    # if yes, just return and do not learn it
-    # if no, add it and schedule to add it in the solver
-    veri = self.eatomVerificationsByReplacement[replacementAtomPositiveSymLit.sym]
-
-    # extend nogood with relevance atom
-    # (only if external atom is relevant, the nogood can make the replacement true/false)
-    # otherwise we get unfounded "must be true" external atom replacements, see testcase relevance_learning.hex
-    if not nogood.add(veri.relevance.lit):
-      logging.info("cannot add nogood (opposing relevance literal)!")
-      return
-    logging.info("learn() added relevance atom %s to nogood which became %s", veri.relevance, nogood)
-
-    # find out of this external atom is positive/negative in the nogood (see __init__ / self.nogoods)
-    if replacementAtomSymLit == replacementAtomPositiveSymLit:
-      # positive -> indicates that the external atom must be false if all other literals match
-      idx = 0
-    else:
-      # negative -> indicates that the external atom must be true if all other literals match
-      idx = 1
-
-    # remove replacement literal (it is encoded in the index)
-    inogood = tuple([ x for x in nogood.literals if x != replacementAtomSymLit.lit ])
-    # find out if this nogood is already known
-    if inogood in veri.nogoods[idx]:
-      logging.info("learn() skips adding known nogood")
-      return
-
-    # add to known nogoods
-    veri.nogoods[idx].add(inogood)
-    logging.debug("learn() records [%d] nogood part %s - nogood is %s+[%s]", idx, inogood, ng, veri.relevance)
-
-    # record as nogood to be added
-    self.ccontext.propagator.recordNogood(nogood, defer=True)
+      # record as nogood to be added
+      self.ccontext.propagator.recordNogood(nogood, defer=True)
 
 class CachedEAtomEvaluator(EAtomEvaluator):
   counter = 0

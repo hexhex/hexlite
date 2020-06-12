@@ -165,7 +165,7 @@ class Statistics:
       # remove element from statstack
       self.stats.statstack.pop()
   
-  # do "with stats.closure('category'): ..." (nesting is OK)
+  # do "with stats.context('category'): ..." (nesting is OK)
   def context(self, categoryname):
     return Statistics._Closure(self, categoryname)
 
