@@ -130,6 +130,8 @@ class JavaSymbolImpl:
 
 	def __eq__(self, other):
 		#logging.info("__eq__ got called on %s/%s vs %s/%s", repr(self), self.hid, repr(other), other.hid)
+		if not isinstance(other, JavaSymbolImpl):
+			return False
 		return self.hid == other.hid
 
 	@jpype.JOverride
