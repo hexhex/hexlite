@@ -214,8 +214,9 @@ class JavaSolverContextImpl:
 
 	@jpype.JOverride
 	def getInstantiatedOutputAtoms(self):
-		ret = [ jpype.JObject(JavaSymbolImpl(oa), ISymbol) for oa in dlvhex.getInstantiatedOutputAtoms() ]
-		logging.info("jSC.getInstantiatedOutputAtoms returns %s", repr(ret))
+		ret = java.util.ArrayList()
+		for oa in dlvhex.getInstantiatedOutputAtoms():
+			ret.add(jpype.JObject(JavaSymbolImpl(oa), ISymbol))
 		return ret
 
 	@jpype.JOverride
