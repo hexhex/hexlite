@@ -217,11 +217,12 @@ class ProgramContext:
   '''
   def __init__(self):
     # key = eatomname, value = list of SignatureInfo
-    self.eatoms = collections.defaultdict(list)
+    self.eatoms = collections.defaultdict(set)
     self.wroteMaxint = False
     self.stats = StatisticsDummy()
+
   def addSignature(self, eatomname, relevancePred, replacementPred, arity):
-    self.eatoms[eatomname].append(
+   self.eatoms[eatomname].add(
       self.SignatureInfo(relevancePred, replacementPred, arity))
 
   class SignatureInfo:
@@ -229,6 +230,18 @@ class ProgramContext:
       self.relevancePred = relevancePred
       self.replacementPred = replacementPred
       self.arity = arity
+
+    def __hash__(self):
+      return hash( (self.relevancePred, self.replacementPred, self.arity) )
+
+    def __eq__(self, other):
+      return (self.relevancePred == other.relevancePred) and (self.replacementPred == other.replacementPred) and (self.arity == other.arity)
+
+    def __repr__(self):
+      return str(self)
+
+    def __str__(self):
+      return "SignatureInfo(rel={},repl={},arity={})".format(self.relevancePred, self.replacementPred, self.arity)
 
 def flatten(listoflists):
   return [x for y in listoflists for x in y]

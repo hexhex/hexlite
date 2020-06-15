@@ -604,18 +604,17 @@ class ClingoPropagator:
     # no need for watches as long as we use only check()
     require_partial_evaluation = False
     for eatomname, signatures in self.pcontext.eatoms.items():
-      logging.info(name+' processing eatom '+eatomname)
+      logging.info("%s eatom %s has signatures %s", name, eatomname, signatures)
       found_this_eatomname = False
       verify_on_partial = eatomname in self.partial_evaluation_eatoms
       for siginfo in signatures:
-        logging.debug(name+' init processing eatom {} relpred {} reppred {} arity {}'.format(
-          eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity))
+        logging.debug('%s init processing eatom %s signature relpred %s reppred %s arity %d', name, eatomname, siginfo.relevancePred, siginfo.replacementPred, siginfo.arity)
         for xrep in init.symbolic_atoms.by_signature(siginfo.replacementPred, siginfo.arity):
           found_this_eatomname = True
-          logging.debug(name+'   replacement atom {}'.format(str(xrep.symbol)))
+          logging.debug('%s   replacement atom %s', name, xrep.symbol)
           replacement = SymLit(xrep.symbol, init.solver_literal(xrep.literal))
           xrel = init.symbolic_atoms[clingo.Function(name=siginfo.relevancePred, arguments = xrep.symbol.arguments)]
-          logging.debug(name+'   relevance atom {}'.format(str(xrel.symbol)))
+          logging.debug('%s   relevance atom %s', name, xrel.symbol)
           relevance = SymLit(xrel.symbol, init.solver_literal(xrel.literal))
 
           verification = self.EAtomVerification(relevance, replacement, verify_on_partial)
@@ -624,13 +623,13 @@ class ClingoPropagator:
           for argpos, argtype in enumerate(dlvhex.eatoms[eatomname].inspec):
             if argtype == dlvhex.PREDICATE:
               argval = str(xrep.symbol.arguments[argpos])
-              logging.debug(name+'     argument {} is {}'.format(argpos, str(argval)))
+              logging.debug('%s   argument %d is %s', name, argpos, argval)
               relevantSig = [ (aarity, apol) for (aname, aarity, apol) in init.symbolic_atoms.signatures if aname == argval ]
-              logging.debug(name+'       relevantSig {}'.format(repr(relevantSig)))
+              logging.debug('%s   relevantSig %s', name, repr(relevantSig))
               for aarity, apol in relevantSig:
                 for ax in init.symbolic_atoms.by_signature(argval, aarity):
                   slit = init.solver_literal(ax.literal)
-                  logging.debug(name+'         atom {} (neg:{}) / slit {}'.format(str(ax.symbol), ax.symbol.negative, slit))
+                  logging.debug('%s       atom %s (neg:%s) / slit %d', name, str(ax.symbol), ax.symbol.negative, slit)
                   predinputid = ClingoID(self.ccontext, SymLit(ax.symbol, slit))
                   verification.predinputs[argpos].append(predinputid)
 
