@@ -6,7 +6,7 @@
 
   <groupId>at.ac.tuwien.kr</groupId>
   <artifactId>hexlite</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.3.0</version>
   <packaging>pom</packaging>
 
   <name>Hexlite</name>
