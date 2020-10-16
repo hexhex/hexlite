@@ -1,1 +1,3 @@
-jpype=0.7.3
+jpype>=0.7.3
+clingo>=5.4.0
+ply>=3.11
