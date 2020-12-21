@@ -36,17 +36,9 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
   The easiest way to install `hexlite` is Conda.
   
-  First you need to install the `clingo` dependency:
+  ```$ conda install -c peterschueller -c potassco -c conda-forge hexlite```
 
-  ```$ conda install -c potassco clingo```
-
-  Then you install hexlite:
-
-  ```$ conda install -c peterschueller hexlite```
-
-  (If you wonder why we do not automatically install clingo as a dependency:
-  certain conda restrictions prevent that `clingo` is automatically installed
-  unless the potassco channel is **manually** added by the user.)
+  (We need the `potassco` channel for `clingo` and the `conda-forge` channel for `jpype1`.)
 
   Then you test hexlite:
 
@@ -201,6 +193,10 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   
     First, some conda packages need to be installed via `conda install conda-build conda-verify anaconda`.
 
+    `$ conda build . -c potassco`
+    
+    or
+    
     `$ conda build . -c potassco --no-verify --no-test`
 
     (get upload command from last lines of output, check output, then re-run without the last two arguments.)
