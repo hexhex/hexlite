@@ -972,9 +972,11 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
           handle.resume()
         else:
           try:
+            clingo_model = ClingoModel(ccontext, model)
             for cb in model_callbacks:
-              cb(ClingoModel(ccontext, model))
-            pcontext.stats.display('answerset')
+              cb(clingo_model)
+            suffix = 'opt' if clingo_model.is_optimal else 'nonopt'
+            pcontext.stats.display('answerset'+suffix)
           except modelcallback.StopModelEnumerationException:
             handle.cancel()
             ret = 'SAT'
