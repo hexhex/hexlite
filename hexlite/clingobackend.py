@@ -388,7 +388,7 @@ class EAtomEvaluator(dlvhex.Backend):
       logging.info("ignored eatom-specified nogood %s due to configuration", ng)
       return
 
-    with self.stats.context('specific-learn'):
+    with self.stats.context('spec-learn'):
       logging.info("learning eatom-specified nogood %s", ng)
       assert(all([isinstance(clingoid, ClingoID) for clingoid in ng]))
 
