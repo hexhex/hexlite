@@ -125,7 +125,7 @@ class Plugin:
 
 class Statistics:
   '''
-  collect statistics (real time, cpu time) in categories
+  collect statistics (real time, cpu time, counter) in categories
   '''
   def __init__(self):
     self.initial = time.perf_counter(), time.process_time()
