@@ -947,7 +947,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
     ccc = GringoContext(eaeval)
     flpchecker.attach(cc)
 
-    if config.verbose or config.debug:
+    if config.dump_grounding:
       cc.register_observer(GroundProgramPrinter(), False)
 
     cc.ground([('base',())], ccc)
