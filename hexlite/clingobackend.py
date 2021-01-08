@@ -934,7 +934,7 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
   with pcontext.stats.context('grounding'):
     logging.info('sending nonground program to clingo control '+repr(cmdlineargs))
     cc = clingo.Control(cmdlineargs)
-    sendprog = shp.shallowprint(rewritten)
+    sendprog = '\n'.join([ shp.shallowprint(x) for x in rewritten ])
     try:
       logging.debug('sending program ===\n'+sendprog+'\n===')
       cc.add('base', (), sendprog)
