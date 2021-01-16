@@ -437,7 +437,7 @@ class EAtomEvaluator(dlvhex.Backend):
         idx = 1
 
       # remove replacement literal (it is encoded in the index)
-      inogood = tuple([ x for x in nogood.literals if x != replacementAtomSymLit.lit ])
+      inogood = frozenset([ x for x in nogood.literals if x != replacementAtomSymLit.lit ])
       # find out if this nogood is already known
       if inogood in veri.nogoods[idx]:
         logging.info("learn() skips adding known nogood")
