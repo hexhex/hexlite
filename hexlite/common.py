@@ -190,6 +190,7 @@ class Statistics:
     accum = self.accumulate()
     # print stats
     sys.stderr.write(json.dumps({ 'event':'stats', 'name':name, 'stack': self.statstack, 'categories': dict(self.categories), 'accumulated': accum })+'\n')
+    sys.stderr.flush()
     # decrement again in case we display() multiple times
     self.categories[self.statstack[-1]][2] -= 1
 
