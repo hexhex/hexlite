@@ -1005,10 +1005,12 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
         else:
           try:
             clingo_model = ClingoModel(ccontext, model)
+            suffix = 'opt' if clingo_model.is_optimal else 'nonopt'
+            # first display stats (if the callback ends the search we still want to have the stats of that answer set!)
+            pcontext.stats.display('answerset'+suffix)
+            # then call the callbacks
             for cb in model_callbacks:
               cb(clingo_model)
-            suffix = 'opt' if clingo_model.is_optimal else 'nonopt'
-            pcontext.stats.display('answerset'+suffix)
           except modelcallback.StopModelEnumerationException:
             handle.cancel()
             ret = 'SAT'
