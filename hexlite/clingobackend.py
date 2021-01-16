@@ -817,6 +817,11 @@ class ClingoPropagator:
       logging.warning("cannot add relevance to  i/o nogood (opposing literal)!")
       return
 
+    # important: check this _before_ adding replacement literal
+    if self._inputOutputNogoodSubsumedByLearnedNogood(veri.nogoods, realValue, nogood):
+      logging.info(self.name+"CPvTOA omitting nogood (subsumed)!")
+      return
+
     checklit = None
     if realValue == True:
       # ... and if computation gave true but eatom replacement is false
@@ -838,6 +843,26 @@ class ClingoPropagator:
     # and do not waste computing external atoms on a candidate that is for sure not an answer set
     # lock=False to permit the solver to delete the nogood later (these nogoods only serve to invalidate the current result)
     self.recordNogood(nogood, defer=False, lock=False)
+
+  def _inputOutputNogoodSubsumedByLearnedNogood(self, veri_nogoods, realValue, nogood):
+    # veri_nogoods -> see EAtomVerification.__init__ comments
+    if realValue == True:
+      vngds = veri_nogoods[1]
+    else:
+      vngds = veri_nogoods[0]
+
+    # vngds does not contain replacement literal
+    # nogood _also_ does not contain a replacement literal at this point
+    # (where this method is called)
+
+    for vng in vngds:
+      # vng is a frozenset of integers (solver literals)
+      # nogood is a Nogood -> nogood.literals is a set of integers (solver literals)
+      if vng.issubset(nogood.literals):
+        logging.info("learned nogood %s subsumes nogood %s", list(vng), nogood)
+        return True
+
+    return False
 
   def recordNogood(self, nogood, defer=False, lock=True):
     nogood = list(nogood.literals)
