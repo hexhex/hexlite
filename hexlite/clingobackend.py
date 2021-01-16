@@ -570,6 +570,13 @@ class ClingoPropagator:
     def __contains__(self, lit):
       return lit in self.literals
 
+    def subsumes(self, other):
+      # this nogood (self) subsumes another one (other) if it is more strict
+      # i.e., other is no longer necessary
+      # this is the case if self is a subset of other
+      assert(isinstance(other, Nogood))
+      return self.literals.issubset(other.literals)
+
   class StopPropagation(Exception):
     pass
 
