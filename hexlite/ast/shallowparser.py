@@ -283,6 +283,7 @@ def testparse():
   message("LOK {} LFAIL {} POK {} FFAIL {}".format(lok, lfail, pok, pfail))
 
 def shallowprint(x,sepspace=' ', listspace=' ',unaryTupleFinalComma=False):
+  #logging.warning("shallowprint %s", repr(x))
   if isinstance(x, alist):
     innerparts = [ shallowprint(y, sepspace, listspace) for y in x ]
     if len(x) == 1 and unaryTupleFinalComma:

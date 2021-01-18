@@ -454,8 +454,9 @@ class StatementRewriterRuleCstr(StatementRewriterHead):
     for eatom in pendingEatoms:
       if eatom['inputvars'].issubset(safeVars):
         return eatom, eatom['outputvars']
+    eatomshallows = [shp.shallowprint(ea['shallow']) for ea in pendingEatoms]
     raise Exception("could not find safe external atom:\n"+
-      "remaining atoms to resolve: "+shp.shallowprint(pendingEatoms)+"\n"+
+      "remaining atoms to resolve: "+shp.shallowprint(eatomshallows)+"\n"+
       "safe variables in rule: "+repr(safeVars)+"\n"+
       "rule: "+shp.shallowprint(self.statement))
 
