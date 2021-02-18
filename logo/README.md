@@ -1,0 +1,1 @@
+see the images/logo/ directory in https://github.com/hexhex/website/
