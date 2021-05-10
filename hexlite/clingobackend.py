@@ -495,6 +495,7 @@ class GringoContext:
     def __init__(self, eaeval, holder):
       self.eaeval = eaeval
       self.holder = holder
+      self.ERR = "GringoContext.ExternalAtomCall returning at least one non-Symbol: repr=%s"
     def __call__(self, *arguments):
       logging.debug('GC.EAC(%s) called with %s',self.holder.name, repr(arguments))
       outKnownTrue, outUnknown = self.eaeval.evaluate(self.holder, arguments, [])
@@ -505,9 +506,11 @@ class GringoContext:
       if outarity == 0:
         # no output arguments: 1 or 0
         if len(outKnownTrue) == 0:
-          gringoOut = 0
+          gringoOut = clingo.Number(0)
         else:
-          gringoOut = 1
+          gringoOut = clingo.Number(1)
+        if not isinstance(gringoOut, clingo.Symbol):
+          logging.error(self.ERR, repr(gringoOut))
       elif outarity == 1:
         # list of terms, not list of tuples (I could not convince Gringo to process single-element-tuples)
         if any([ len(x) != outarity for x in outKnownTrue ]):
@@ -515,8 +518,13 @@ class GringoContext:
           outKnownTrue = [ x for x in outKnownTrue if len(x) == outarity ]
           logging.warning("ignored tuples {} with wrong arity from atom {}".format(repr(wrongarity), self.holder.name))
         gringoOut = [ x[0] for x in outKnownTrue ]
+        if not all([isinstance(x, clingo.Symbol) for x in gringoOut]):
+          logging.error(self.ERR, repr(gringoOut))
       else:
-        gringoOut = outKnownTrue
+        # list of tuples of terms
+        gringoOut = [clingo.Tuple_(args) for args in outKnownTrue]
+        if not all([isinstance(x, clingo.Symbol) for x in gringoOut]):
+          logging.error(self.ERR, repr(gringoOut))
       # in other cases we can directly use what externalAtomCallHelper returned
       logging.debug('GC.EAC(%s) call returned output %s', self.holder.name, repr(gringoOut))
       return gringoOut
