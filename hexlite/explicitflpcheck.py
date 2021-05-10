@@ -290,11 +290,9 @@ class RuleActivityProgram:
     self.po = programObserver
     self.cc = clingo.Control()
     prog = self._build()
-    with self.cc.builder() as b:
-      for rule in prog:
-        logging.debug('RAP rule: '+repr(rule))
-        # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
-        clingo.parse_program(rule, lambda ast: b.add(ast))
+    for rule in prog:
+      logging.debug('RAP rule: '+repr(rule))
+      self.cc.add('base', [], rule)
     logging.debug("RAP grounding starts")
     self.cc.ground([("base", [])])
     logging.debug("RAP grounding finished")
@@ -430,11 +428,9 @@ class CheckOptimizedProgram:
     # list of str of all cmatoms that are relevant for the compatible set
     self.cmatoms = []
     prog = self._build()
-    with self.cc.builder() as b:
-      for rule in prog:
-        logging.debug('COP rule: '+repr(rule))
-        # TODO ask Benjamin/benchmark if it is faster to parse one by one or all in one string
-        clingo.parse_program(rule, lambda ast: b.add(ast))
+    for rule in prog:
+      logging.debug('COP rule: '+repr(rule))
+      self.cc.add('base', [], rule)
     logging.debug("COP grounding starts")
     self.cc.ground([("base", [])])
     logging.debug("COP grounding finished")
