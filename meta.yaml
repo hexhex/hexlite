@@ -1,5 +1,5 @@
 {% set name = "hexlite" %}
-{% set version = "1.3.1" %}
+{% set version = "1.4.0" %}
 {% set file_ext = "tar.gz" %}
 
 package:
@@ -19,11 +19,13 @@ requirements:
     - setuptools
     - python
     - ply>=3.11
-    - clingo>=5.4.0
+    - clingo>=5.5.0
+    - jpype1>=1.2.1
   run:
     - python
     - ply>=3.11
-    - clingo>=5.4.0
+    - clingo>=5.5.0
+    - jpype1>=1.2.1
 
 test:
   imports:
