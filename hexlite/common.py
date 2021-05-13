@@ -170,7 +170,7 @@ class Statistics:
       self.stats._timestamp(self.stats.statstack[-1], increment=True)
       # remove element from statstack
       self.stats.statstack.pop()
-  
+
   # do "with stats.context('category'): ..." (nesting is OK)
   def context(self, categoryname):
     return Statistics._Closure(self, categoryname)

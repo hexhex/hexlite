@@ -98,6 +98,10 @@ def loadPlugins(plugins):
     ret.append(pi)
   return ret
 
+def teardownPlugins(plugins):
+  for p in plugins:
+    p.teardown()
+
 def main():
   code = 1
   try:
@@ -128,6 +132,7 @@ def main():
     # ignore code as dlvhex does
     code = 0
     pcontext.stats.display('final')
+    teardownPlugins(plugins)
   except SystemExit:
     pass
   except:
