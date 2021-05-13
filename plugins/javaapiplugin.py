@@ -15,7 +15,10 @@ import jpype
 from jpype import java
 from jpype.types import *
 logging.debug("starting JVM")
-jpype.startJVM(convertStrings=False)
+java_args = os.environ.get('HEXLITE_JAVA_ARGUMENTS', [])
+if java_args != []:
+	java_args = java_args.split(' ')
+jpype.startJVM(*java_args, convertStrings=False)
 
 def logJavaExceptionWithStacktrace(ex):
 	logging.error("Java exception: %s", ex.toString())
