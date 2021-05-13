@@ -20,7 +20,7 @@ def readme():
 readme_txt = readme()
 setuptools.setup(
     name='hexlite',
-    version='1.4.0',
+    version='1.4.1',
     description='Hexlite - Solver for a fragment of HEX',
     long_description=readme_txt,
     long_description_content_type='text/markdown',
