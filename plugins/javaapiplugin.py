@@ -2,10 +2,13 @@ import dlvhex
 from dlvhex import ID
 import hexlite
 
-import re
-import traceback
-import logging
 import atexit
+import logging
+import os
+import re
+import sys
+import threading
+import time
 
 # this requires jpype to be installed and it requires a working Java runtime environment
 import jpype
@@ -17,7 +20,22 @@ jpype.startJVM(convertStrings=False)
 # cleanup
 def shutdownJVM():
 	logging.info("JVM shutdown")
+	# create shutdown-thread
+	success = False
+	def watchdog():
+		nonlocal success
+		# wait for 1 second, let's hope it shuts down, otherwise we force shutdown
+		time.sleep(1)
+		if not success:
+			logging.error("JVM shutdown did not terminate, quitting anyways")
+		sys.stdout.flush()
+		sys.stderr.flush()
+		os._exit(-1)
+	stt = threading.Thread(target=watchdog, daemon=True)
+	stt.start()
 	jpype.shutdownJVM()
+	logging.info("JVM shutdown successful")
+	success = True
 logging.debug("registering JVM shutdown")
 atexit.register(shutdownJVM)
 
