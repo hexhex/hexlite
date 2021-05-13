@@ -10,11 +10,12 @@ RUN set -ex ; \
   apt-get update ; \
   apt-get install -y --no-install-recommends \
     wget git ca-certificates \
-    build-essential $PYTHON python3-setuptools python3-dev python3-pip python3-cffi lua5.3 \
+    build-essential $PYTHON python3-setuptools python3-dev python3-pip lua5.3 \
     openjdk-11-jre-headless openjdk-11-jdk-headless
 
 RUN set -ex ; \
-  pip3 install "clingo>=5.5.0" "jpype1>=1.2.1"
+  $PYTHON -m pip install --upgrade pip ; \
+  $PYTHON -m pip install clingo==5.5.0.post3 jpype1==1.2.1 cffi==1.14.4
 
 # install maven for building hexlite Java API
 # (not the one shipped with buster, because it does not work with openjdk-11)

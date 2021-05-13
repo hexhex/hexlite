@@ -44,9 +44,9 @@ setuptools.setup(
     license='MIT License',
     packages=['hexlite', 'hexlite.ast', 'dlvhex', 'acthex'],
     install_requires=[
-        'ply>=3.11',
-        'clingo>=5.5.0',
-        'jpype1>=1.2.1'
+        'ply==3.11',
+        'clingo==5.5.0.post3',
+        'jpype1==1.2.1'
     ],
     entry_points={
         'console_scripts': [
