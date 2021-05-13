@@ -69,7 +69,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
     export PATH=$PATH:~/.local/bin
     ```
 
-  * Run hexlite the first time. This will help to download and build pyclingo unless it is already usable via `import clingo`:
+  * Run hexlite the first time.
 
     ```$ hexlite```
 
@@ -83,7 +83,7 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
 
 * Using the Java API
 
-  Building the JAVA API is not automated, you need to install `Jpype version =0.7.3 or >=0.7.5` and `ant` and `maven` and run
+  Building the JAVA API is not automated, you need to install `maven` and run
 
   ```mvn clean compile package install```
 
@@ -142,20 +142,17 @@ In case of bugs please report an issue here: https://github.com/hexhex/hexlite/i
   $ hexlite --pluginpath=./plugins/ --plugin=testplugin tests/inputs/extatom3.hex
   ```
 
-* Jpype
-
-  - we need version 0.7.3 or above 0.7.5, the versions below and 0.7.4 have a bug that affects us
-  - conda-forge has 0.7.3
-
-    $ conda install -c conda-forge jpype1=0.7.3
-
 # Developer Readme
 
 * For developing hexlite without uploading to anaconda repository:
 
-  * Install clingo with conda, but but do **not** install hexlite with conda.
+  * Install clingo with conda or pip, but but do **not** install hexlite with conda.
 
     ```$ conda install -c potassco clingo```
+
+    or
+
+    ```$ pip install clingo```
 
   * checkout hexlite with git
 

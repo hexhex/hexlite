@@ -17,7 +17,7 @@ def readme():
 
 readme_txt = readme()
 setuptools.setup(name='hexlite',
-      version='1.3.1',
+      version='1.4.0',
       description='Hexlite - Solver for a fragment of HEX',
       long_description=readme_txt,
       long_description_content_type='text/markdown',
@@ -42,6 +42,8 @@ setuptools.setup(name='hexlite',
       packages=['hexlite', 'hexlite.ast', 'dlvhex', 'acthex'],
       install_requires=[
         'ply>=3.11',
+        'clingo>=5.5.0',
+        'jpype1>=1.2.1'
       ],
       entry_points={
         'console_scripts': [

@@ -1,61 +1,46 @@
 FROM debian:buster as builder
 
+ARG PYTHON=python3.7
+ARG HEXLITE_JAVA_PLUGIN_API_JAR_VERSION_TAG=1.4.0
+ARG HEXLITE_JAVA_PLUGIN_API_JAR_WITH_PATH=/opt/hexlite/java-api/target/hexlite-java-plugin-api-${HEXLITE_JAVA_PLUGIN_API_JAR_VERSION_TAG}.jar
+
+RUN mkdir -p /opt/lib/$PYTHON/site-packages/
+
 RUN set -ex ; \
   apt-get update ; \
   apt-get install -y --no-install-recommends \
-    git ca-certificates \
-    g++ binutils re2c bison cmake make python3 python3-setuptools python3-dev lua5.3
-  
+    wget git ca-certificates \
+    build-essential $PYTHON python3-setuptools python3-dev python3-pip python3-cffi lua5.3 \
+    openjdk-11-jre-headless openjdk-11-jdk-headless
+
+RUN set -ex ; \
+  pip3 install "clingo>=5.5.0" "jpype1>=1.2.1"
+
+# install maven for building hexlite Java API
+# (not the one shipped with buster, because it does not work with openjdk-11)
 RUN set -ex ; \
   cd /opt ; \
-  git clone https://github.com/potassco/clingo.git --branch v5.4.0 ; \
-  cd clingo ; \
-  git submodule update --init --recursive
+  wget https://downloads.apache.org/maven/maven-3/3.8.1/binaries/apache-maven-3.8.1-bin.tar.gz ; \
+  tar xvf apache-maven-3.8.1-bin.tar.gz ; \
+  mv apache-maven-3.8.1 /opt/maven
 
-ENV PATH /opt/bin:$PATH
-ENV PYTHONPATH /opt/lib/python3.7/site-packages/:$PYTHONPATH
+ENV MAVEN_HOME /opt/maven
+ENV PATH /opt/bin:/opt/maven/bin:$PATH
+ENV PYTHONPATH /opt/lib/$PYTHON/site-packages/:$PYTHONPATH
 
-RUN mkdir -p /opt/lib/python3.7/site-packages/
+COPY . /opt/hexlite
 
-RUN set -ex ; \
-  cd /opt/clingo ; \
-  mkdir build ; \
-  cmake -H. -Bbuild \
-    -DCLINGO_REQUIRE_PYTHON=ON \
-    -DPYCLINGO_USER_INSTALL=OFF \
-    -DPYTHON_EXECUTABLE:FILEPATH=/usr/bin/python3 \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DPYCLINGO_USE_INSTALL_PREFIX=/opt \
-    -DCMAKE_INSTALL_PREFIX:PATH=/opt; \
-  cmake --build build
-
-RUN set -ex ; \
-  cd /opt/clingo ; \
-  cmake --build build --target install
-
-RUN set -ex ; \
-  cd /opt ; \
-  git clone https://github.com/hexhex/hexlite.git --branch master
+# RUN set -ex ; \
+#   cd /opt ; \
+#   git clone https://github.com/hexhex/hexlite.git --branch master
 
 RUN set -ex ; \
   cd /opt/hexlite ; \
-  python3 setup.py install --prefix=/opt
+  python3 setup.py install --prefix=/opt ; \
+  mvn compile package install
 
-FROM debian:buster-slim
-
-ENV PATH /opt/bin:$PATH
-ENV PYTHONPATH /opt/lib/python3.7/site-packages/:$PYTHONPATH
-
+# run tests (optional)
 RUN set -ex ; \
-  apt-get update ; \
-  apt-get install -y --no-install-recommends \
-    python3-dev python3-setuptools lua5.3
-
-WORKDIR /opt
-COPY --from=builder /opt .
-
-RUN set -ex ; \
-  apt autoremove --purge -y ; \
-  apt clean ; \
-  apt autoclean
-
+  cd /opt/hexlite/tests ; \
+  CLASSPATH=${HEXLITE_JAVA_PLUGIN_API_JAR_WITH_PATH} \
+  ./run-tests.sh
