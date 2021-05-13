@@ -125,6 +125,10 @@ class Plugin:
     self.pmodule = pmodule
     self.arguments = arguments
 
+  def teardown(self):
+    if hasattr(self.pmodule, 'teardown'):
+      self.pmodule.teardown()
+
 class Statistics:
   '''
   collect statistics (real time, cpu time, counter) in categories
