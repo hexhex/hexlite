@@ -279,5 +279,10 @@ public class ConcatSetMinusPlugin implements IPlugin {
         atoms.add(new SetMinusAtom());
         atoms.add(new SetMinusLearnAtom());
         return atoms;
-	}
+    }
+
+    @Override
+    public void teardown() {
+        // nothing to do
+    }
 }

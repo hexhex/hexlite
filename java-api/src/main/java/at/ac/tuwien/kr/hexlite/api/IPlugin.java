@@ -11,4 +11,5 @@ public interface IPlugin {
     public String getName();
 
     public AbstractCollection<IPluginAtom> createAtoms();
+    public void teardown();
 }

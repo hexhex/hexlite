@@ -113,5 +113,10 @@ public class SetMinusApi3Plugin implements IPlugin {
         final LinkedList<IPluginAtom> atoms = new LinkedList<IPluginAtom>();
         atoms.add(new SetMinusAtom());
         return atoms;
-	}
+    }
+
+    @Override
+    public void teardown() {
+        // nothing to do
+    }
 }

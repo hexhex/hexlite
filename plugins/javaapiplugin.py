@@ -355,6 +355,15 @@ def register(arguments):
 	logging.info("loaded %d Java plugins", len(loadedPlugins))
 
 def teardown():
+	logging.info("teardown: destructing plugins")
+	global loadedPlugins
+	for p in loadedPlugins:
+		try:
+			logging.info("teardown on %s", p.classname)
+			p.jplugin.teardown()
+		except JException as e:
+			logJavaExceptionWithStacktrace(e)
+
 	logging.info("teardown: JVM shutdown")
 	def watchdog():
 		logging.info("watchdog started")
