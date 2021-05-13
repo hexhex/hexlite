@@ -17,27 +17,13 @@ from jpype.types import *
 logging.debug("starting JVM")
 jpype.startJVM(convertStrings=False)
 
-# cleanup
+# cleanup (deactivated because it sometimes hangs)
 def shutdownJVM():
 	logging.info("JVM shutdown")
-	# create shutdown-thread
-	success = False
-	def watchdog():
-		nonlocal success
-		# wait for 1 second, let's hope it shuts down, otherwise we force shutdown
-		time.sleep(1)
-		if not success:
-			logging.error("JVM shutdown did not terminate, quitting anyways")
-		sys.stdout.flush()
-		sys.stderr.flush()
-		os._exit(-1)
-	stt = threading.Thread(target=watchdog, daemon=True)
-	stt.start()
 	jpype.shutdownJVM()
 	logging.info("JVM shutdown successful")
-	success = True
-logging.debug("registering JVM shutdown")
-atexit.register(shutdownJVM)
+# logging.debug("registering JVM shutdown")
+# atexit.register(shutdownJVM)
 
 def logJavaExceptionWithStacktrace(ex):
 	logging.error("Java exception: %s", ex.toString())
