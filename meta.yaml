@@ -19,12 +19,12 @@ requirements:
     - setuptools
     - python
     - ply==3.11
-    - clingo==5.5.0.post3
+    - clingo==5.5.0
     - jpype1==1.2.1
   run:
     - python
     - ply==3.11
-    - clingo==5.5.0.post3
+    - clingo==5.5.0
     - jpype1==1.2.1
 
 test:
