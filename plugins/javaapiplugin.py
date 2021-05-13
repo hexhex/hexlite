@@ -17,14 +17,6 @@ from jpype.types import *
 logging.debug("starting JVM")
 jpype.startJVM(convertStrings=False)
 
-# cleanup (deactivated because it sometimes hangs)
-def shutdownJVM():
-	logging.info("JVM shutdown")
-	jpype.shutdownJVM()
-	logging.info("JVM shutdown successful")
-# logging.debug("registering JVM shutdown")
-# atexit.register(shutdownJVM)
-
 def logJavaExceptionWithStacktrace(ex):
 	logging.error("Java exception: %s", ex.toString())
 	st = ex.getStackTrace()
@@ -358,3 +350,16 @@ def register(arguments):
 
 			
 	logging.info("loaded %d Java plugins", len(loadedPlugins))
+
+def teardown():
+	logging.info("teardown: JVM shutdown")
+	def watchdog():
+		logging.info("watchdog started")
+		time.sleep(1)
+		logging.info("watchdog still alive -> killing")
+		os._exit(-1)
+	stt = threading.Thread(target=watchdog, daemon=True)
+	stt.start()
+	jpype.shutdownJVM()
+	logging.info("JVM shutdown successful")
+
