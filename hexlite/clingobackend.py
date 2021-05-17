@@ -1029,6 +1029,9 @@ def execute(pcontext, rewritten, facts, plugins, config, model_callbacks):
           ret = 'UNSAT'
         if res.interrupted or res.unknown:
           raise InterruptedError("clingo solve interrupted or unknown")
+      # make sure we end the search and all of its threads
+      handle.cancel()
+      handle.wait()
 
   if config.stats:
     sys.stderr.write(json.dumps({'event':'stats', 'name':'clingo', 'c': cc.statistics })+'\n')
