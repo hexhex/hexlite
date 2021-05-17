@@ -14,7 +14,8 @@ import time
 import jpype
 from jpype import java
 from jpype.types import *
-logging.debug("starting JVM")
+
+logging.info("starting JVM")
 java_args = os.environ.get('HEXLITE_JAVA_ARGUMENTS', [])
 if java_args != []:
 	java_args = java_args.split(' ')
@@ -364,7 +365,6 @@ def teardown():
 		except JException as e:
 			logJavaExceptionWithStacktrace(e)
 
-
 	logging.info("teardown: JVM shutdown")
 	def watchdog():
 		logging.info("watchdog started")
@@ -376,6 +376,7 @@ def teardown():
 	try:
 		jpype.shutdownJVM()
 	except jpype._core.JVMNotRunning:
+		logging.warning("JVM shutdown: JVM was not running")
 		pass  # fine
 	logging.info("JVM shutdown successful")
 
