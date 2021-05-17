@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 
 # HEXLite Python-based solver for a fragment of HEX
 # Copyright (C) 2017  Peter Schueller <schueller.p@gmail.com>
