@@ -365,18 +365,18 @@ def teardown():
 		except JException as e:
 			logJavaExceptionWithStacktrace(e)
 
-	logging.info("teardown: JVM shutdown")
-	def watchdog():
-		logging.info("watchdog started")
-		time.sleep(10)
-		logging.error("watchdog still alive -> killing self because JVM shutdown failed")
-		os._exit(-1)
-	stt = threading.Thread(target=watchdog, daemon=True)
-	stt.start()
-	try:
-		jpype.shutdownJVM()
-	except jpype._core.JVMNotRunning:
-		logging.warning("JVM shutdown: JVM was not running")
-		pass  # fine
-	logging.info("JVM shutdown successful")
+	# logging.info("teardown: JVM shutdown")
+	# def watchdog():
+	# 	logging.info("watchdog started")
+	# 	time.sleep(10)
+	# 	logging.error("watchdog still alive -> killing self because JVM shutdown failed")
+	# 	os._exit(-1)
+	# stt = threading.Thread(target=watchdog, daemon=True)
+	# stt.start()
+	# try:
+	# 	jpype.shutdownJVM()
+	# except jpype._core.JVMNotRunning:
+	# 	logging.warning("JVM shutdown: JVM was not running")
+	# 	pass  # fine
+	# logging.info("JVM shutdown successful")
 
