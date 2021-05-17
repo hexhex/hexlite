@@ -361,7 +361,10 @@ def teardown():
 	for p in loadedPlugins:
 		try:
 			logging.info("teardown on %s", p.classname)
-			p.jplugin.teardown()
+			if jpype.isJVMStarted():
+				p.jplugin.teardown()
+			else:
+				logging.info("no teardown - JVM not started")
 		except JException as e:
 			logJavaExceptionWithStacktrace(e)
 
