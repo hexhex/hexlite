@@ -364,6 +364,7 @@ def teardown():
 		except JException as e:
 			logJavaExceptionWithStacktrace(e)
 
+
 	logging.info("teardown: JVM shutdown")
 	def watchdog():
 		logging.info("watchdog started")
@@ -372,6 +373,9 @@ def teardown():
 		os._exit(-1)
 	stt = threading.Thread(target=watchdog, daemon=True)
 	stt.start()
-	jpype.shutdownJVM()
+	try:
+		jpype.shutdownJVM()
+	except jpype._core.JVMNotRunning:
+		pass  # fine
 	logging.info("JVM shutdown successful")
 
