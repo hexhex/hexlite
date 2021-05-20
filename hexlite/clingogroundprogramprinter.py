@@ -64,10 +64,10 @@ class GroundProgramPrinter:
     logging.debug("GPPInit")
   def begin_step(self):
     logging.debug("GPPBeginStep")
+    self.__output("GroundProgramPrinter START")
 
   def end_step(self):
     logging.debug("GPEndStep")
-    self.__output("GroundProgramPrinter START")
     def formatElement(idx, e):
       ilit, weight = e
       a = self.__lit2str(ilit)
